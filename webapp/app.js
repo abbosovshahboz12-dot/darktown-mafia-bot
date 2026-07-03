@@ -9,7 +9,7 @@ document.documentElement.style.setProperty('--bg-color', tg.backgroundColor || '
 // Determine current user ID
 // Try from Telegram initData first, then fallback to URL parameter (for browser testing)
 let userId = 0;
-let userFirstName = "Mafiozi";
+let userFirstName = "Sh.Abbosov";
 let userUsername = "";
 
 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -19,7 +19,8 @@ if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
 } else {
     // Fallback to URL query parameter
     const urlParams = new URLSearchParams(window.location.search);
-    userId = parseInt(urlParams.get('user_id')) || 12345678; // Dummy for testing
+    userId = parseInt(urlParams.get('user_id')) || 7759713314; // Sh.Abbosov Telegram ID
+    userUsername = "sh_abbosov";
 }
 
 // Global state
@@ -390,6 +391,208 @@ function updateCalculator(playerCount) {
 
 // Initial load
 loadProfile();
+loadActiveGame();
+
+// Poll active game status every 4 seconds
+setInterval(loadActiveGame, 4000);
+
+// Active Game Arena Actions
+async function loadActiveGame() {
+    try {
+        const response = await fetch(`/api/game/status?user_id=${userId}`);
+        if (!response.ok) throw new Error("Game status fetch failed");
+        
+        const data = await response.json();
+        const calcView = document.getElementById('match-calc-view');
+        const gameView = document.getElementById('match-active-game-view');
+        
+        if (!data.inGame) {
+            calcView.style.display = 'block';
+            gameView.style.display = 'none';
+            return;
+        }
+        
+        // Inside active game!
+        calcView.style.display = 'none';
+        gameView.style.display = 'block';
+        
+        // Render phase
+        const phaseBadge = document.getElementById('game-phase-badge');
+        const phaseNames = {
+            "lobby": "⏳ LOBBI",
+            "night": "🌙 TUN",
+            "day": "🌅 KUN",
+            "voting": "🗳️ OVOZ BERISH",
+            "ended": "🏁 YAKUNLANDI"
+        };
+        phaseBadge.innerText = phaseNames[data.phase] || data.phase.toUpperCase();
+        
+        // Render my role
+        const roleEmojis = {
+            "Mafia": "🔴", "Don": "🕶️", "Civilian": "🟢", "Detective": "🔵",
+            "Doctor": "🟡", "Bodyguard": "🛡️", "Courtesan": "🌸", "Maniac": "🦹"
+        };
+        const myRoleText = document.getElementById('game-my-role');
+        myRoleText.innerText = `${roleEmojis[data.myRole] || "🎭"} ${data.myRole}`;
+        
+        // Render status instructions
+        const statusText = document.getElementById('game-status-text');
+        if (!data.isAlive) {
+            statusText.innerText = "💀 Siz o'ldirildingiz. O'yinni kuzatib boring.";
+        } else if (data.phase === "night") {
+            const instructions = {
+                "Mafia": "Sheriklaringiz bilan kimnidir o'ldirish uchun ovoz bering.",
+                "Don": "Komissarni topish uchun o'yinchilardan birini tekshiring.",
+                "Detective": "Gumondorning rolini tekshiring yoki uni otib yuboring.",
+                "Doctor": "Tunda kimnidir o'limdan qutqarish uchun davolang.",
+                "Bodyguard": "Tunda kimnidir himoya qiling (u o'rniga o'lasiz).",
+                "Courtesan": "Birorta o'yinchining tungi qobiliyatini bloklang.",
+                "Maniac": "Tunda o'ldirish uchun birorta qurbonni tanlang.",
+                "Civilian": "Tunda tinch aholi uxlamoqda... Tong otishini kuting."
+            };
+            statusText.innerText = instructions[data.myRole] || "Tunda harakat qiling.";
+        } else if (data.phase === "voting") {
+            statusText.innerText = "🗳️ Munozara tugadi. Kimni osmoqchisiz? Ovoz bering!";
+        } else {
+            statusText.innerText = "🌅 Darktown shahri uyg'ondi. Guruhda gaplashing va gumondorlarni aniqlang.";
+        }
+        
+        // Render players grid
+        const grid = document.getElementById('game-players-grid');
+        grid.innerHTML = '';
+        
+        data.players.forEach(p => {
+            const card = document.createElement('div');
+            card.className = `game-player-card ${p.is_alive ? 'alive' : 'dead'}`;
+            
+            // Left section: status dot + name + revealed role
+            const roleReveal = p.role ? `<span class="player-card-role-reveal">${roleEmojis[p.role] || ""} ${p.role}</span>` : '';
+            card.innerHTML = `
+                <div class="player-card-left">
+                    <span class="player-card-status ${p.is_alive ? 'alive' : 'dead'}"></span>
+                    <span class="player-card-name">${p.name} ${p.user_id === userId ? "(Siz)" : ""}</span>
+                    ${roleReveal}
+                </div>
+            `;
+            
+            // Actions section (if user is alive and target is alive)
+            if (data.isAlive && p.is_alive && p.user_id !== userId) {
+                const actionsContainer = document.createElement('div');
+                actionsContainer.className = 'player-card-actions';
+                
+                if (data.phase === "night") {
+                    if (data.myRole === "Mafia" || data.myRole === "Don") {
+                        // Mafia kill
+                        if (p.role !== "Mafia" && p.role !== "Don") {
+                            addActionBtn(actionsContainer, "🔴 O'ldirish", () => sendAction(p.user_id, "mafia"), "shoot");
+                        }
+                    }
+                    if (data.myRole === "Don") {
+                        // Don check
+                        addActionBtn(actionsContainer, "🔍 Tekshirish", () => sendAction(p.user_id, "don"), "check");
+                    }
+                    if (data.myRole === "Detective") {
+                        // Detective choice: check or shoot
+                        addActionBtn(actionsContainer, "🔍 Tekshirish", () => sendAction(p.user_id, "det_check"), "check");
+                        addActionBtn(actionsContainer, "🔫 Otish", () => sendAction(p.user_id, "det_shoot"), "shoot");
+                    }
+                    if (data.myRole === "Doctor") {
+                        addActionBtn(actionsContainer, "🏥 Davolash", () => sendAction(p.user_id, "doctor"), "heal");
+                    }
+                    if (data.myRole === "Bodyguard") {
+                        addActionBtn(actionsContainer, "🛡️ Himoya", () => sendAction(p.user_id, "bodyguard"), "guard");
+                    }
+                    if (data.myRole === "Courtesan") {
+                        addActionBtn(actionsContainer, "🌸 Bloklash", () => sendAction(p.user_id, "courtesan"), "block");
+                    }
+                    if (data.myRole === "Maniac") {
+                        addActionBtn(actionsContainer, "🔴 O'ldirish", () => sendAction(p.user_id, "maniac"), "shoot");
+                    }
+                } else if (data.phase === "voting") {
+                    addActionBtn(actionsContainer, "🗳️ Ovoz", () => sendVote(p.user_id), "vote");
+                }
+                
+                card.appendChild(actionsContainer);
+            }
+            
+            grid.appendChild(card);
+        });
+        
+        // Add skip voting button if voting phase
+        if (data.isAlive && data.phase === "voting") {
+            const skipCard = document.createElement('div');
+            skipCard.className = 'game-player-card';
+            skipCard.innerHTML = `
+                <div class="player-card-left">
+                    <span class="player-card-name">⏩ Hech kimga ovoz bermaslik</span>
+                </div>
+            `;
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'player-card-actions';
+            addActionBtn(actionsContainer, "⏩ Ovoz", () => sendVote("skip"), "vote");
+            skipCard.appendChild(actionsContainer);
+            grid.appendChild(skipCard);
+        }
+        
+    } catch (e) {
+        console.error("Active game fetch error:", e);
+    }
+}
+
+function addActionBtn(container, text, onClick, className) {
+    const btn = document.createElement('button');
+    btn.className = `action-btn-mini ${className}`;
+    btn.innerText = text;
+    btn.onclick = onClick;
+    container.appendChild(btn);
+}
+
+async function sendAction(targetId, actionType) {
+    try {
+        const response = await fetch('/api/game/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                target_id: targetId,
+                action_type: actionType
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(`✅ ${data.message}`);
+            loadActiveGame();
+        } else {
+            alert(`⚠️ Xato: ${data.error}`);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Server bilan aloqada xatolik!");
+    }
+}
+
+async function sendVote(targetId) {
+    try {
+        const response = await fetch('/api/game/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                target_id: targetId
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(`🗳️ ${data.message}`);
+            loadActiveGame();
+        } else {
+            alert(`⚠️ Xato: ${data.error}`);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Server bilan aloqada xatolik!");
+    }
+}
 
 // Admin Tab Actions
 async function loadAdminStats() {

@@ -152,56 +152,74 @@
 
             <!-- 4. Match Tab -->
             <section id="tab-match" class="tab-content">
-                <div class="section-title">🎲 Rol taqsimoti kalkulyatori</div>
-                
-                <div class="calculator-card">
-                    <div class="calc-header">
-                        <span>O'yinchilar soni:</span>
-                        <span id="calc-player-count" class="player-count-display">5</span>
+                <div id="match-calc-view">
+                    <div class="section-title">🎲 Rol taqsimoti kalkulyatori</div>
+                    
+                    <div class="calculator-card">
+                        <div class="calc-header">
+                            <span>O'yinchilar soni:</span>
+                            <span id="calc-player-count" class="player-count-display">5</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" id="player-slider" min="5" max="15" value="5" class="player-slider">
+                        </div>
                     </div>
-                    <div class="slider-container">
-                        <input type="range" id="player-slider" min="5" max="15" value="5" class="player-slider">
+
+                    <div class="section-title">👥 Kutilayotgan rollar taqsimoti</div>
+                    <div class="calc-roles-list" id="calc-roles-list">
+                        <!-- Dynamic role count cards will go here -->
+                    </div>
+
+                    <div class="section-title" style="margin-top:24px;">🎭 Rol qoidalari va tavsiflari</div>
+                    <div class="roles-guide-list">
+                        <div class="guide-item">
+                            <div class="guide-header">🔴 Mafiya</div>
+                            <div class="guide-desc">Tunda shahar a'zolarini o'ldirish uchun sheriklari bilan ovoz beradi.</div>
+                        </div>
+                        <div class="guide-item">
+                            <div class="guide-header">Don 🕶️</div>
+                            <div class="guide-desc">Mafiya boshlig'i, tunda Komissarni qidiradi.</div>
+                        </div>
+                        <div class="guide-item">
+                            <div class="guide-header">Komissar 🔵</div>
+                            <div class="guide-desc">Qonun himoyachisi, tunda o'yinchilardan birining rolini tekshiradi.</div>
+                        </div>
+                        <div class="guide-item">
+                            <div class="guide-header">Shifokor 🟡</div>
+                            <div class="guide-desc">O'yinchi hayotini saqlab qoladi, bir kishini ketma-ket ikki marta davolay olmaydi.</div>
+                        </div>
+                        <div class="guide-item">
+                            <div class="guide-header">Tansoqchi 🛡️</div>
+                            <div class="guide-desc">O'yinchini himoya qiladi, hujum bo'lsa o'zi vafot etadi.</div>
+                        </div>
+                        <div class="guide-item">
+                            <div class="guide-header">Kutizanka 🌸</div>
+                            <div class="guide-desc">O'yinchi qobiliyatini bir kechaga cheklaydi.</div>
+                        </div>
+                        <div class="guide-item">
+                            <div class="guide-header">Telba 🦹</div>
+                            <div class="guide-desc">Yolg'iz qotil, hamma bilan kurashadi va yakka o'zi qolsa g'olib bo'ladi.</div>
+                        </div>
+                        <div class="guide-item">
+                            <div class="guide-header">Tinch aholi 🟢</div>
+                            <div class="guide-desc">Oddiy fuqaro, kunduzi munozara qilib mafiyani topishga harakat qiladi.</div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="section-title">👥 Kutilayotgan rollar taqsimoti</div>
-                <div class="calc-roles-list" id="calc-roles-list">
-                    <!-- Dynamic role count cards will go here -->
-                </div>
+                <div id="match-active-game-view" style="display:none;">
+                    <div class="game-header-card">
+                        <div class="game-phase-badge" id="game-phase-badge">🌙 TUN</div>
+                        <div class="game-role-info">
+                            <span>Sizning rolingiz:</span>
+                            <span id="game-my-role" class="game-role-text">🕵️‍♂️ Komissar</span>
+                        </div>
+                        <div class="game-status-text" id="game-status-text">Shahar ahlini tekshiring yoki otib yuboring.</div>
+                    </div>
 
-                <div class="section-title" style="margin-top:24px;">🎭 Rol qoidalari va tavsiflari</div>
-                <div class="roles-guide-list">
-                    <div class="guide-item">
-                        <div class="guide-header">🔴 Mafiya</div>
-                        <div class="guide-desc">Tunda shahar a'zolarini o'ldirish uchun sheriklari bilan ovoz beradi.</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">Don 🕶️</div>
-                        <div class="guide-desc">Mafiya boshlig'i, tunda Komissarni qidiradi.</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">Komissar 🔵</div>
-                        <div class="guide-desc">Qonun himoyachisi, tunda o'yinchilardan birining rolini tekshiradi.</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">Shifokor 🟡</div>
-                        <div class="guide-desc">O'yinchi hayotini saqlab qoladi, bir kishini ketma-ket ikki marta davolay olmaydi.</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">Tansoqchi 🛡️</div>
-                        <div class="guide-desc">O'yinchini himoya qiladi, hujum bo'lsa o'zi vafot etadi.</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">Kutizanka 🌸</div>
-                        <div class="guide-desc">O'yinchi qobiliyatini bir kechaga cheklaydi.</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">Telba 🦹</div>
-                        <div class="guide-desc">Yolg'iz qotil, hamma bilan kurashadi va yakka o'zi qolsa g'olib bo'ladi.</div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">Tinch aholi 🟢</div>
-                        <div class="guide-desc">Oddiy fuqaro, kunduzi munozara qilib mafiyani topishga harakat qiladi.</div>
+                    <div class="section-title">👥 O'yinchilar maydoni</div>
+                    <div class="game-players-grid" id="game-players-grid">
+                        <!-- Players cards will go here dynamically -->
                     </div>
                 </div>
             </section>

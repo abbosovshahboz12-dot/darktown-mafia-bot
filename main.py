@@ -143,6 +143,197 @@ async def admin_give_handler(request):
         logging.error(f"Error in admin_give_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+async def admin_give_handler(request):
+    try:
+        data = await request.json()
+        admin_id = int(data.get("admin_id", 0))
+        if admin_id != ADMIN_ID:
+            return web.json_response({"error": "Ruxsat etilmagan"}, status=403)
+            
+        target_uid = int(data.get("target_id", 0))
+        coins = int(data.get("coins", 0))
+        xp = int(data.get("xp", 0))
+        
+        if not target_uid:
+            return web.json_response({"error": "target_id kiritilishi shart"}, status=400)
+            
+        await db.add_xp_and_coins(target_uid, xp, coins)
+        return web.json_response({"success": True, "message": "Muvaffaqiyatli to'ldirildi!"})
+    except Exception as e:
+        logging.error(f"Error in admin_give_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def get_game_status_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game:
+            return web.json_response({"inGame": False})
+            
+        player = game.players.get(user_id)
+        if not player:
+            return web.json_response({"inGame": False})
+            
+        # Compile players list
+        players_list = []
+        from game.loop import ROLE_EMOJIS
+        for p in game.players.values():
+            is_mafia_team = player.role in ["Mafia", "Don"] and p.role in ["Mafia", "Don"]
+            show_role = not p.is_alive or p.user_id == user_id or is_mafia_team
+            players_list.append({
+                "user_id": p.user_id,
+                "name": p.name,
+                "is_alive": p.is_alive,
+                "role": p.role if show_role else None
+            })
+            
+        return web.json_response({
+            "inGame": True,
+            "phase": game.phase,
+            "chat_id": game.chat_id,
+            "myRole": player.role,
+            "isAlive": player.is_alive,
+            "players": players_list,
+            "event": game.event
+        })
+    except Exception as e:
+        logging.error(f"Error in get_game_status_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def post_game_action_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        target_id = int(data.get("target_id", 0))
+        action_type = data.get("action_type")
+        
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game or game.phase != "night":
+            return web.json_response({"error": "Hozir tungi faza emas!"}, status=400)
+            
+        player = game.players.get(user_id)
+        if not player or not player.is_alive:
+            return web.json_response({"error": "Siz tirik emassiz!"}, status=400)
+            
+        target_player = game.players.get(target_id)
+        if not target_player or not target_player.is_alive:
+            return web.json_response({"error": "Tanlangan o'yinchi tirik emas!"}, status=400)
+            
+        if action_type == "mafia":
+            if player.role not in ["Mafia", "Don"]:
+                return web.json_response({"error": "Siz mafiya emassiz!"}, status=400)
+            game.night_actions["mafia"][user_id] = target_id
+        elif action_type == "don":
+            if player.role != "Don":
+                return web.json_response({"error": "Siz Don emassiz!"}, status=400)
+            game.night_actions["don"] = target_id
+        elif action_type == "det_check":
+            if player.role != "Detective":
+                return web.json_response({"error": "Siz Komissar emassiz!"}, status=400)
+            game.night_actions["detective_check"] = target_id
+        elif action_type == "det_shoot":
+            if player.role != "Detective":
+                return web.json_response({"error": "Siz Komissar emassiz!"}, status=400)
+            game.night_actions["detective_shoot"] = target_id
+        elif action_type == "doctor":
+            if player.role != "Doctor":
+                return web.json_response({"error": "Siz Shifokor emassiz!"}, status=400)
+            if game.last_doctor_target == target_id and not (game.event and game.event["key"] == "epidemic"):
+                return web.json_response({"error": "Ketma-ket bir kishini davolay olmaysiz!"}, status=400)
+            game.night_actions["doctor"] = target_id
+        elif action_type == "bodyguard":
+            if player.role != "Bodyguard":
+                return web.json_response({"error": "Siz Tansoqchi emassiz!"}, status=400)
+            if game.last_bodyguard_target == target_id:
+                return web.json_response({"error": "Ketma-ket bir kishini himoya qila olmaysiz!"}, status=400)
+            game.night_actions["bodyguard"] = target_id
+        elif action_type == "courtesan":
+            if player.role != "Courtesan":
+                return web.json_response({"error": "Siz Kutizanka emassiz!"}, status=400)
+            game.night_actions["courtesan"] = target_id
+        elif action_type == "maniac":
+            if player.role != "Maniac":
+                return web.json_response({"error": "Siz Telba emassiz!"}, status=400)
+            game.night_actions["maniac"] = target_id
+        else:
+            return web.json_response({"error": "Noto'g'ri harakat turi"}, status=400)
+            
+        return web.json_response({"success": True, "message": "Tanlov qabul qilindi!"})
+    except Exception as e:
+        logging.error(f"Error in post_game_action_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def post_game_vote_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        target_id = data.get("target_id")
+        
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game or game.phase != "voting":
+            return web.json_response({"error": "Hozir ovoz berish bosqichi emas!"}, status=400)
+            
+        player = game.players.get(user_id)
+        if not player or not player.is_alive:
+            return web.json_response({"error": "Siz tirik emassiz!"}, status=400)
+            
+        if target_id == "skip":
+            game.votes[user_id] = "skip"
+        else:
+            target_id = int(target_id)
+            target_player = game.players.get(target_id)
+            if not target_player or not target_player.is_alive:
+                return web.json_response({"error": "Tanlangan o'yinchi tirik emas!"}, status=400)
+            game.votes[user_id] = target_id
+            
+        bot = request.app.get('bot')
+        if bot:
+            try:
+                alive = game.get_alive_players()
+                vote_counts = {}
+                for target in game.votes.values():
+                    vote_counts[target] = vote_counts.get(target, 0) + 1
+                    
+                text = "🗳️ **Ovoz berish boshlandi!**\nKimni dorda osmoqchisiz? Quyidagi tugmalardan birini tanlang.\n\n"
+                for p in alive:
+                    count = vote_counts.get(p.user_id, 0)
+                    votes_box = "🗳️" * count if count > 0 else ""
+                    text += f"- **{p.name}**: {votes_box} ({count})\n"
+                    
+                skip_count = vote_counts.get("skip", 0)
+                skip_box = "🗳️" * skip_count if skip_count > 0 else ""
+                text += f"- Hech kimga: {skip_box} ({skip_count})\n\n"
+                text += f"Ovoz berganlar: {len(game.votes)} / {len(alive)}"
+                
+                from aiogram.utils.keyboard import InlineKeyboardBuilder
+                from aiogram import types
+                kb = InlineKeyboardBuilder()
+                for p in alive:
+                    kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"vote_{p.user_id}"))
+                kb.add(types.InlineKeyboardButton(text="⏩ Hech kimga", callback_data="vote_skip"))
+                kb.adjust(2)
+                
+                await bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.vote_message_id,
+                    text=text,
+                    reply_markup=kb.as_markup(),
+                    parse_mode="Markdown"
+                )
+            except Exception as e:
+                logging.error(f"Error updating live voting from web: {e}")
+                
+        return web.json_response({"success": True, "message": "Ovozingiz qabul qilindi!"})
+    except Exception as e:
+        logging.error(f"Error in post_game_vote_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 # Setup Web Server Routing
 def setup_web_server():
     app = web.Application()
@@ -154,6 +345,9 @@ def setup_web_server():
     app.router.add_get("/api/leaderboard", get_leaderboard_handler)
     app.router.add_get("/api/admin/stats", admin_stats_handler)
     app.router.add_post("/api/admin/give", admin_give_handler)
+    app.router.add_get("/api/game/status", get_game_status_handler)
+    app.router.add_post("/api/game/action", post_game_action_handler)
+    app.router.add_post("/api/game/vote", post_game_vote_handler)
     
     # Frontend static files and index
     webapp_dir = os.path.join(os.path.dirname(__file__), "webapp")
@@ -181,6 +375,7 @@ async def main():
     
     # 3. Setup Web Server
     web_app = setup_web_server()
+    web_app['bot'] = bot
     runner = web.AppRunner(web_app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)

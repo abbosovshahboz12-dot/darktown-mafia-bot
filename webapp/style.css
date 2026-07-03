@@ -794,3 +794,160 @@ body {
 .admin-input:focus {
     border-color: var(--primary);
 }
+
+/* Active Game Arena Styling */
+.game-header-card {
+    background: linear-gradient(135deg, rgba(82, 45, 168, 0.2), rgba(0, 198, 251, 0.15));
+    border: 1px solid var(--primary);
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    backdrop-filter: blur(10px);
+}
+
+.game-phase-badge {
+    background: var(--primary);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-block;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 0 15px var(--primary);
+}
+
+.game-role-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.game-role-info span:first-child {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.game-role-text {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+}
+
+.game-status-text {
+    font-size: 0.8rem;
+    color: var(--text-color);
+    font-style: italic;
+}
+
+.game-players-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.game-player-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.game-player-card.dead {
+    opacity: 0.55;
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.player-card-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.player-card-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50px;
+}
+
+.player-card-status.alive {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.player-card-status.dead {
+    background: var(--danger);
+    box-shadow: 0 0 8px var(--danger);
+}
+
+.player-card-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.player-card-role-reveal {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 30px;
+    margin-left: 8px;
+}
+
+.player-card-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.action-btn-mini {
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn-mini:hover {
+    transform: scale(1.05);
+}
+
+.action-btn-mini.shoot {
+    background: var(--danger);
+}
+
+.action-btn-mini.check {
+    background: var(--primary);
+}
+
+.action-btn-mini.heal {
+    background: #ffcc00;
+    color: #000;
+}
+
+.action-btn-mini.guard {
+    background: #4cd964;
+}
+
+.action-btn-mini.block {
+    background: #ff2d55;
+}
+
+.action-btn-mini.vote {
+    background: var(--secondary);
+}
