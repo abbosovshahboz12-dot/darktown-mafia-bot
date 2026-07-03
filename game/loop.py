@@ -134,7 +134,8 @@ async def night_phase(bot: Bot, game: Game):
     game.night_actions = {
         "mafia": {},
         "don": None,
-        "detective": None,
+        "detective_check": None,
+        "detective_shoot": None,
         "doctor": None,
         "bodyguard": None,
         "courtesan": None,
