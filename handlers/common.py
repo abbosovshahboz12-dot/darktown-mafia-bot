@@ -6,6 +6,7 @@ from database import db
 from config import WEBAPP_URL, ADMIN_ID
 
 router = Router()
+router.message.filter(F.chat.type == "private")
 
 def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot") -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
@@ -149,7 +150,8 @@ async def cb_activate_booster(cb: types.CallbackQuery):
 async def cmd_admin(message: types.Message):
     user_id = message.from_user.id
     if user_id != ADMIN_ID:
-        return # Ignore non-admins silently
+        await message.answer(f"⚠️ Ushbu buyruq faqat bot admini uchun!\nSizning ID: `{user_id}`\nConfigdagi Admin ID: `{ADMIN_ID}`\n\nAgar mos kelmasa, Railway Variables bo'limida `ADMIN_ID` ni to'g'ri o'rnating.", parse_mode="Markdown")
+        return
         
     stats = await db.get_global_stats()
     from game.manager import game_manager
@@ -169,6 +171,7 @@ async def cmd_admin(message: types.Message):
 @router.message(Command("givecoins"))
 async def cmd_givecoins(message: types.Message):
     if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
         return
         
     args = message.text.split()
@@ -187,6 +190,7 @@ async def cmd_givecoins(message: types.Message):
 @router.message(Command("givexp"))
 async def cmd_givexp(message: types.Message):
     if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
         return
         
     args = message.text.split()
