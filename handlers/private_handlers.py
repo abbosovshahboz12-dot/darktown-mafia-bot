@@ -94,7 +94,19 @@ async def cb_don(cb: types.CallbackQuery):
 
 @router.callback_query(F.data.startswith("det_"))
 async def cb_det(cb: types.CallbackQuery):
-    target_id = int(cb.data.replace("det_", ""))
+    target_data = cb.data.replace("det_", "")
+    if target_data == "skip":
+        user_id = cb.from_user.id
+        game = game_manager.get_game_by_player(user_id)
+        if game and game.phase == "night":
+            player = game.players.get(user_id)
+            if player and player.role == "Detective" and player.is_alive:
+                game.night_actions["detective"] = "skip"
+                await cb.message.edit_text("🔵 Siz bugun tunda tekshiruv o'tkazishni o'tkazib yubordingiz. Tanlov qabul qilindi!")
+                await cb.answer("Tanlov qabul qilindi!")
+        return
+        
+    target_id = int(target_data)
     await register_night_choice(cb, "det", target_id)
 
 @router.callback_query(F.data.startswith("doc_"))
@@ -116,3 +128,13 @@ async def cb_block(cb: types.CallbackQuery):
 async def cb_maniac(cb: types.CallbackQuery):
     target_id = int(cb.data.replace("maniac_", ""))
     await register_night_choice(cb, "maniac", target_id)
+
+@router.message()
+async def private_text_handler(message: types.Message):
+    user_id = message.from_user.id
+    game = game_manager.get_game_by_player(user_id)
+    if game and game.waiting_last_words.get(user_id):
+        game.last_words[user_id] = message.text
+        game.waiting_last_words[user_id] = False
+        await message.answer("✍️ Vasiyatingiz qabul qilindi. U tong otganda guruhda e'lon qilinadi.")
+        return

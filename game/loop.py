@@ -35,11 +35,9 @@ def get_role_details(role: str) -> str:
     return details.get(role, "")
 
 def distribute_roles(players_count: int) -> List[str]:
-    # Custom role distribution logic based on player count
-    if players_count == 3:
-        return ["Mafia", "Detective", "Civilian"]
-    elif players_count == 4:
-        return ["Mafia", "Doctor", "Detective", "Civilian"]
+    # Custom role distribution logic based on player count (minimum 5)
+    if players_count < 5:
+        return ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"]
     elif players_count == 5:
         return ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"]
     elif players_count == 6:
@@ -50,8 +48,13 @@ def distribute_roles(players_count: int) -> List[str]:
         return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Civilian", "Civilian"]
     elif players_count == 9:
         return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian"]
-    else: # 10+
+    elif 10 <= players_count < 15:
         base = ["Mafia", "Mafia", "Don", "Maniac", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian"]
+        while len(base) < players_count:
+            base.append("Civilian")
+        return base
+    else: # 15+ players: 3 Mafia, 1 Don, 1 Maniac, 1 Doctor, 1 Detective, 1 Bodyguard, 1 Courtesan, remaining Civilians
+        base = ["Mafia", "Mafia", "Mafia", "Don", "Maniac", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian", "Civilian", "Civilian", "Civilian", "Civilian"]
         while len(base) < players_count:
             base.append("Civilian")
         return base
@@ -403,6 +406,37 @@ async def process_night(bot: Bot, game: Game):
                 victim.is_alive = False
                 victims.append((victim, f"Maniakning qo'lida jon berdi. Rol: **{victim.role}**"))
 
+    # Prompt victims for last words
+    victim_users = [vic for vic, _ in victims]
+    if victim_users:
+        # Wait message in group
+        await bot.send_message(game.chat_id, "🌅 **Tong otmoqda... Shahar aholisi tungi voqealardan xabar kutmoqda.**\n_(Tunda vafot etganlarning oxirgi so'zlari kutilmoqda...)_")
+        
+        for vic in victim_users:
+            game.waiting_last_words[vic.user_id] = True
+            game.last_words[vic.user_id] = None
+            try:
+                await bot.send_message(
+                    vic.user_id,
+                    "💀 **Siz bugun tunda halok bo'ldingiz!**\n"
+                    "Shahar ahlisiga o'z vasiyatingizni (so'nggi so'zingizni) yozib yuboring.\n"
+                    "Sizda **30 soniya** vaqt bor. Yozgan xatingiz guruhda e'lon qilinadi:"
+                )
+            except Exception as e:
+                logging.error(f"Could not send last words prompt to {vic.user_id}: {e}")
+                game.waiting_last_words[vic.user_id] = False
+                
+        # Wait loop (max 30 seconds)
+        for _ in range(30):
+            still_waiting = [uid for uid, waiting in game.waiting_last_words.items() if waiting]
+            if not still_waiting:
+                break
+            await asyncio.sleep(1)
+            
+        # Clean up
+        for uid in list(game.waiting_last_words.keys()):
+            game.waiting_last_words[uid] = False
+
     # Day announcement text
     day_text = "🌅 **Tong otdi! Darktown shahri uyg'ondi...**\n\n"
     
@@ -412,12 +446,29 @@ async def process_night(bot: Bot, game: Game):
         day_text += f"📣 **Bugungi Shahar Hodisasi**:\n**{game.event['name']}**\n_{game.event['description']}_\n\n"
         
     if not victims:
-        day_text += "✨ **Ajoyib yangilik! Bugun tunda hech kim halok bo'lmadi.**"
+        day_text += "✨ **Ajoyib yangilik! Bugun tunda hech kim halok bo'lmadi.**\n\n"
     else:
         day_text += "💀 **Tungi yo'qotishlar**:\n"
         for vic, details in victims:
             role_emoji = ROLE_EMOJIS.get(vic.role, "")
             day_text += f"- {vic.name} ({role_emoji} {vic.role}): {details}\n"
+        day_text += "\n"
+        
+        # Add last words
+        day_text += "✍️ **Vasiyatnomalar (So'nggi so'zlar)**:\n"
+        for vic in victim_users:
+            words = game.last_words.get(vic.user_id)
+            if words:
+                day_text += f"- **{vic.name}**: _\"{words}\"_\n"
+            else:
+                day_text += f"- **{vic.name}**: _(vasiyat qoldirmadi)_\n"
+        day_text += "\n"
+        
+    # Add alive players grid (Tirik o'yinchilar jadvali)
+    alive_players = game.get_alive_players()
+    day_text += f"👥 **Tirik qolgan o'yinchilar ro'yxati ({len(alive_players)})**:\n"
+    for p in alive_players:
+        day_text += f"- {p.name}\n"
             
     await bot.send_message(game.chat_id, day_text, parse_mode="Markdown")
     

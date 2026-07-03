@@ -44,6 +44,10 @@ class Game:
         # Last targets to prevent doctor/bodyguard from healing/protecting the same person twice in a row
         self.last_doctor_target: Optional[int] = None
         self.last_bodyguard_target: Optional[int] = None
+        
+        # Last words states
+        self.waiting_last_words: Dict[int, bool] = {}
+        self.last_words: Dict[int, str] = {}
 
     def get_alive_players(self) -> List[Player]:
         return [p for p in self.players.values() if p.is_alive]

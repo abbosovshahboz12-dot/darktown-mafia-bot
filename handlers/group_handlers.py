@@ -20,6 +20,45 @@ def get_lobby_keyboard() -> types.InlineKeyboardMarkup:
     kb.adjust(1)
     return kb.as_markup()
 
+async def lobby_timer(bot: Bot, game: Game):
+    try:
+        for sec in range(120, 0, -1):
+            await asyncio.sleep(1)
+            if game.phase != "lobby":
+                return
+            if sec in [90, 60, 30, 15, 5]:
+                try:
+                    players_list = "\n".join([f"{i}. {p.name}" for i, p in enumerate(game.players.values(), 1)])
+                    await bot.edit_message_text(
+                        chat_id=game.chat_id,
+                        message_id=game.lobby_message_id,
+                        text=f"🎮 **Darktown Mafiya O'yini**\n\n"
+                             f"O'yinchilar yig'ilmoqda. Kirish tugashiga **{sec} soniya** qoldi!\n\n"
+                             f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
+                             f"{players_list}\n\n"
+                             f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!",
+                        reply_markup=get_lobby_keyboard(),
+                        parse_mode="Markdown"
+                    )
+                except Exception:
+                    pass
+        if len(game.players) >= 5:
+            try:
+                await bot.edit_message_reply_markup(chat_id=game.chat_id, message_id=game.lobby_message_id, reply_markup=None)
+            except Exception:
+                pass
+            await bot.send_message(game.chat_id, "⏰ Vaqt tugadi! O'yin avtomatik ravishda boshlanmoqda...")
+            await start_game_loop(bot, game)
+        else:
+            try:
+                await bot.edit_message_reply_markup(chat_id=game.chat_id, message_id=game.lobby_message_id, reply_markup=None)
+            except Exception:
+                pass
+            await bot.send_message(game.chat_id, "⚠️ 2 daqiqa tugadi. O'yinchi soni yetarli emas (kamida 5 ta bo'lishi kerak). O'yin bekor qilindi.")
+            game_manager.remove_game(game.chat_id)
+    except asyncio.CancelledError:
+        pass
+
 @router.message(Command("newgame"))
 async def cmd_newgame(message: types.Message, bot: Bot):
     chat_id = message.chat.id
@@ -55,7 +94,7 @@ async def cmd_newgame(message: types.Message, bot: Bot):
     
     lobby_msg = await message.answer(
         f"🎮 **Darktown Mafiya O'yini**\n\n"
-        f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda.\n\n"
+        f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda. Kirish tugashiga **120 soniya** qoldi!\n\n"
         f"👥 **O'yinchilar ro'yxati (1)**:\n"
         f"1. {name}\n\n"
         f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!",
@@ -63,6 +102,9 @@ async def cmd_newgame(message: types.Message, bot: Bot):
         parse_mode="Markdown"
     )
     game.lobby_message_id = lobby_msg.message_id
+    
+    # Start lobby timer
+    game.timer_task = asyncio.create_task(lobby_timer(bot, game))
 
 @router.callback_query(F.data == "join_game")
 async def join_callback(cb: types.CallbackQuery, bot: Bot):
@@ -147,9 +189,8 @@ async def lobby_start_callback(cb: types.CallbackQuery, bot: Bot):
             await cb.answer("⚠️ Faqat o'yin yaratuvchisi o'yinni boshlay oladi!", show_alert=True)
             return
             
-    if len(game.players) < 4:
-        # For testing we can allow 3 players, but let's advise 4+
-        await cb.answer("⚠️ O'yinni boshlash uchun kamida 4 ta o'yinchi bo'lishi kerak!", show_alert=True)
+    if len(game.players) < 5:
+        await cb.answer("⚠️ O'yinni boshlash uchun kamida 5 ta o'yinchi bo'lishi kerak!", show_alert=True)
         return
         
     # Remove lobby keyboard and start game
@@ -299,8 +340,8 @@ async def cmd_start_game(message: types.Message, bot: Bot):
             await message.answer("⚠️ Faqat o'yin yaratuvchisi o'yinni boshlay oladi!")
             return
             
-    if len(game.players) < 4:
-        await message.answer("⚠️ O'yinni boshlash uchun kamida 4 ta o'yinchi bo'lishi kerak!")
+    if len(game.players) < 5:
+        await message.answer("⚠️ O'yinni boshlash uchun kamida 5 ta o'yinchi bo'lishi kerak!")
         return
         
     await message.answer("O'yin boshlanmoqda...")

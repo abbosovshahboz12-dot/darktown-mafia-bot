@@ -311,10 +311,8 @@ function updateCalculator(playerCount) {
     
     // Exact logic from game/loop.py
     let roles = [];
-    if (playerCount === 3) {
-        roles = ["Mafia", "Detective", "Civilian"];
-    } else if (playerCount === 4) {
-        roles = ["Mafia", "Doctor", "Detective", "Civilian"];
+    if (playerCount < 5) {
+        roles = ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"];
     } else if (playerCount === 5) {
         roles = ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"];
     } else if (playerCount === 6) {
@@ -325,8 +323,13 @@ function updateCalculator(playerCount) {
         roles = ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Civilian", "Civilian"];
     } else if (playerCount === 9) {
         roles = ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian"];
-    } else { // 10+
+    } else if (playerCount >= 10 && playerCount < 15) {
         roles = ["Mafia", "Mafia", "Don", "Maniac", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian"];
+        while (roles.length < playerCount) {
+            roles.push("Civilian");
+        }
+    } else { // 15+
+        roles = ["Mafia", "Mafia", "Mafia", "Don", "Maniac", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian", "Civilian", "Civilian", "Civilian", "Civilian"];
         while (roles.length < playerCount) {
             roles.push("Civilian");
         }
