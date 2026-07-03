@@ -346,3 +346,50 @@ async def cmd_start_game(message: types.Message, bot: Bot):
         
     await message.answer("O'yin boshlanmoqda...")
     await start_game_loop(bot, game)
+
+@router.message(Command("help"))
+async def cmd_group_help(message: types.Message):
+    help_text = (
+        "ℹ️ **Darktown Mafia Bot - Guruh Yordami**\n\n"
+        "Guruhda asinxron mafiya o'yinlarini o'ynash uchun quyidagi buyruqlardan foydalaning:\n\n"
+        "/newgame - Yangi o'yin (lobi) yaratish. (Lobi 2 daqiqa davomida ochiq bo'ladi va kamida 5 kishi yig'ilgach boshlanadi).\n"
+        "/start yoki /startgame - Yig'ilgan o'yinchilar bilan o'yinni darhol boshlash (faqat lobi yaratuvchisi yoki admin uchun).\n"
+        "/leave - Lobidan yoki o'yindan chiqish.\n"
+        "/rules - O'yin va guruh qoidalari bilan tanishish\n"
+        "/friend - Rasmiy guruh va do'stlar kanallar ro'yxati"
+    )
+    await message.answer(help_text, parse_mode="Markdown")
+
+@router.message(Command("rules", "qoidalar"))
+async def cmd_group_rules(message: types.Message):
+    rules_text = (
+        "📖 **O'yin va Guruh Qoidalari**\n\n"
+        "**🎮 O'YIN QOIDALARI**:\n"
+        "1. **Maqsad**:\n"
+        "   * **Tinch aholi**: Barcha Mafiya va Telbalarni topib dorda osish.\n"
+        "   * **Mafiya**: Shahar ahlini yo'qotib, son jihatdan tenglashish.\n"
+        "   * **Telba (Maniac)**: Yakka o'zi tirik qolgan so'nggi o'yinchi bo'lish.\n"
+        "2. **Bosqichlar**:\n"
+        "   * **🌙 Tun**: Faol rollar o'z qobiliyatlarini ishga soladilar (o'ldirish, davolash, tekshirish).\n"
+        "   * **🌅 Kun**: Tungi yo'qotishlar va vasiyatnomalar o'qiladi. O'yinchilar munozara olib boradilar.\n"
+        "   * **🗳️ Ovoz berish**: Gumondorni dorda osish uchun ovoz beriladi. Ko'p ovoz olgan o'yinchi osiladi.\n\n"
+        "**⚠️ GURUH QOIDALARI**:\n"
+        "1. Kurash madaniyatli bo'lishi kerak. Haqorat va so'kinish qat'iyan man etiladi.\n"
+        "2. O'yin boshlangach uni tashlab ketish (afk bo'lish) boshqalarning o'yinini buzadi. Bunday o'yinchilar jazolanadi.\n"
+        "3. O'yin vaqtida o'lganlar guruhda yozishi yoki faol o'yinchilar roliga aralashishi taqiqlanadi."
+    )
+    await message.answer(rules_text, parse_mode="Markdown")
+
+@router.message(Command("friend"))
+async def cmd_group_friend(message: types.Message):
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="🎮 Rasmiy O'yin Guruhi", url="https://t.me/+jJAWhi60hLxjZjI6"))
+    kb.add(types.InlineKeyboardButton(text="📢 Admin Kanali", url="https://t.me/sh_abbosov"))
+    kb.adjust(1)
+    
+    await message.answer(
+        "🤝 **Do'stlarimiz va Hamkorlarimiz kanallari**\n\n"
+        "Quyidagi tugmalar orqali rasmiy guruhimizga va foydali kanallarga qo'shilishingiz mumkin:",
+        reply_markup=kb.as_markup(),
+        parse_mode="Markdown"
+    )

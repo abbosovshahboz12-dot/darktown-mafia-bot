@@ -205,3 +205,58 @@ async def cmd_givexp(message: types.Message):
         await message.answer(f"✅ O'yinchi {target_uid} ga **{amount}** XP berildi!")
     except Exception as e:
         await message.answer(f"Xato: {e}")
+
+@router.message(Command("help"))
+async def cmd_help(message: types.Message):
+    help_text = (
+        "ℹ️ **Darktown Mafia Bot - Nimalar qila oladi?**\n\n"
+        "Bu bot guruhlarda asinxron **Mafiya** o'yinlarini tashkil qilish va o'ynash uchun yaratilgan. Barcha o'yin boshqaruvi Telegram chatida va maxsus **Mini App** interfeysida amalga oshiriladi.\n\n"
+        "**Asosiy imkoniyatlar**:\n"
+        "1. 🎭 **8 ta Noyob Rollar**: Mafiya, Don, Komissar, Shifokor, Tansoqchi, Kutizanka, Telba (Maniac) va Tinch aholi.\n"
+        "2. 📱 **Telegram Mini App**: Shaxsiy profil, o'yin statistikasi, do'kon (boosterlar va qalqonlar sotib olish), global yetakchilar reytingi va jonli o'yin maydoni!\n"
+        "3. 🔫 **Komissar Qobiliyati**: Komissar tunda nafaqat tekshira oladi, balki gumondorni otib ham tashlay oladi!\n"
+        "4. 💀 **Oxirgi So'z (Vasiyatnoma)**: Tunda o'ldirilgan o'yinchi shaxsiy chatida botga o'z vasiyatini yozadi va bot uni tongda guruhga e'lon qiladi.\n"
+        "5. 📊 **Tiriklar jadvali**: Tong otganda tirik qolgan o'yinchilar jadvali guruhda yangilanib boradi.\n\n"
+        "**Mavjud buyruqlar**:\n"
+        "/profile - Profilingiz va statslaringizni ko'rish\n"
+        "/leaderboard - Global Top 10 o'yinchilar\n"
+        "/boost - Faol boosterlaringizni ko'rish\n"
+        "/rules - O'yin va guruh qoidalari\n"
+        "/friend - Do'stlarimiz kanallari\n"
+        "/newgame - Guruhda yangi o'yin boshlash (lobi)"
+    )
+    await message.answer(help_text, parse_mode="Markdown")
+
+@router.message(Command("rules", "qoidalar"))
+async def cmd_rules(message: types.Message):
+    rules_text = (
+        "📖 **O'yin va Guruh Qoidalari**\n\n"
+        "**🎮 O'YIN QOIDALARI**:\n"
+        "1. **Maqsad**:\n"
+        "   * **Tinch aholi**: Barcha Mafiya va Telbalarni topib dorda osish.\n"
+        "   * **Mafiya**: Shahar ahlini yo'qotib, son jihatdan tenglashish.\n"
+        "   * **Telba (Maniac)**: Yakka o'zi tirik qolgan so'nggi o'yinchi bo'lish.\n"
+        "2. **Bosqichlar**:\n"
+        "   * **🌙 Tun**: Faol rollar o'z qobiliyatlarini ishga soladilar (o'ldirish, davolash, tekshirish).\n"
+        "   * **🌅 Kun**: Tungi yo'qotishlar va vasiyatnomalar o'qiladi. O'yinchilar munozara olib boradilar.\n"
+        "   * **🗳️ Ovoz berish**: Gumondorni dorda osish uchun ovoz beriladi. Ko'p ovoz olgan o'yinchi osiladi.\n\n"
+        "**⚠️ GURUH QOIDALARI**:\n"
+        "1. Kurash madaniyatli bo'lishi kerak. Haqorat va so'kinish qat'iyan man etiladi.\n"
+        "2. O'yin boshlangach uni tashlab ketish (afk bo'lish) boshqalarning o'yinini buzadi. Bunday o'yinchilar jazolanadi.\n"
+        "3. O'yin vaqtida o'lganlar guruhda yozishi yoki faol o'yinchilar roliga aralashishi taqiqlanadi."
+    )
+    await message.answer(rules_text, parse_mode="Markdown")
+
+@router.message(Command("friend"))
+async def cmd_friend(message: types.Message):
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="🎮 Rasmiy O'yin Guruhi", url="https://t.me/+jJAWhi60hLxjZjI6"))
+    kb.add(types.InlineKeyboardButton(text="📢 Admin Kanali", url="https://t.me/sh_abbosov"))
+    kb.adjust(1)
+    
+    await message.answer(
+        "🤝 **Do'stlarimiz va Hamkorlarimiz kanallari**\n\n"
+        "Quyidagi tugmalar orqali rasmiy guruhimizga va foydali kanallarga qo'shilishingiz mumkin:",
+        reply_markup=kb.as_markup(),
+        parse_mode="Markdown"
+    )
