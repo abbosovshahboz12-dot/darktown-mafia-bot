@@ -7,7 +7,7 @@ from config import WEBAPP_URL
 
 router = Router()
 
-def get_start_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
+def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot") -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     # WebApp URL must contain user_id to load their profile
     url = f"{WEBAPP_URL}?user_id={user_id}"
@@ -17,7 +17,7 @@ def get_start_keyboard(user_id: int) -> types.InlineKeyboardMarkup:
     ))
     kb.add(types.InlineKeyboardButton(
         text="🌐 Guruhga qo'shish",
-        url="https://t.me/darktown_mafia_bot?startgroup=true" # Replace with actual bot username if needed
+        url=f"https://t.me/{bot_username}?startgroup=true"
     ))
     kb.adjust(1)
     return kb.as_markup()
@@ -27,6 +27,7 @@ async def cmd_start(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username
     first_name = message.from_user.full_name
+    bot_user = (await message.bot.get_me()).username
     
     # Save/Get user from DB
     user = await db.get_user(user_id, username, first_name)
@@ -41,12 +42,13 @@ async def cmd_start(message: types.Message):
         f"O'yin statistikasini ko'rish, yangi rollar/qalqonlar sotib olish va global reytingda o'rningizni ko'rish uchun **Darktown Mini App** ni oching!"
     )
     
-    await message.answer(welcome_text, reply_markup=get_start_keyboard(user_id), parse_mode="Markdown")
+    await message.answer(welcome_text, reply_markup=get_start_keyboard(user_id, bot_user), parse_mode="Markdown")
 
 @router.message(Command("profile"))
 async def cmd_profile(message: types.Message):
     user_id = message.from_user.id
     user = await db.get_user(user_id, message.from_user.username, message.from_user.full_name)
+    bot_user = (await message.bot.get_me()).username
     
     # Get stats
     stats = await db.get_user_stats(user_id)
@@ -66,7 +68,7 @@ async def cmd_profile(message: types.Message):
         f"🏆 G'alabalar: **{total_won} ta** ({win_rate:.1f}%)\n"
     )
     
-    await message.answer(profile_text, reply_markup=get_start_keyboard(user_id), parse_mode="Markdown")
+    await message.answer(profile_text, reply_markup=get_start_keyboard(user_id, bot_user), parse_mode="Markdown")
 
 @router.message(Command("leaderboard"))
 async def cmd_leaderboard(message: types.Message):
@@ -88,6 +90,7 @@ async def cmd_leaderboard(message: types.Message):
 async def cmd_boost(message: types.Message):
     user_id = message.from_user.id
     inventory = await db.get_inventory(user_id)
+    bot_user = (await message.bot.get_me()).username
     
     # Check if they have boosters
     boosters = {k: v for k, v in inventory.items() if k.startswith("booster_") and v > 0}
@@ -96,7 +99,7 @@ async def cmd_boost(message: types.Message):
         await message.answer(
             "⚠️ Sizda faol rol boosterlari yo'q.\n"
             "Ularni Mini App do'konidan sotib olishingiz mumkin!",
-            reply_markup=get_start_keyboard(user_id)
+            reply_markup=get_start_keyboard(user_id, bot_user)
         )
         return
         
