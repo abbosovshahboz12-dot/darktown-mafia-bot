@@ -124,6 +124,13 @@ async def start_game_loop(bot: Bot, game: Game):
 async def night_phase(bot: Bot, game: Game):
     game.phase = "night"
     
+    # Send group night announcement
+    await bot.send_message(
+        game.chat_id,
+        "🌙 **Shahar uzra tun cho'kdi... Barcha tinch aholi shirin uyquda. Mafiya va faol rollar tunda uyg'onmoqda.**\n\n"
+        "_(Harakatlarni bajarish uchun shaxsiy chatga o'ting yoki Mini App-ni oching!)_"
+    )
+    
     # Mute group chat
     await try_mute_chat(bot, game.chat_id, True)
     
@@ -531,11 +538,12 @@ def check_win_conditions(game: Game) -> tuple[bool, Optional[str]]:
 
 async def day_phase(bot: Bot, game: Game):
     game.phase = "day"
+    await try_mute_chat(bot, game.chat_id, False)
     await bot.send_message(
         game.chat_id,
-        "💬 **Munozara boshlandi!**\n"
-        "Shubha ostidagilarni aniqlang va munozara qiling.\n"
-        "⏳ Ovoz berish bosqichi boshlanishiga 60 soniya qoldi."
+        "💬 **Shahar uyg'ondi! Kun boshlandi. Munozara maydoni ochiq.**\n"
+        "Shubha ostidagilarni aniqlang, munozara qiling va gumondorlarni o'rtaga chiqaring.\n"
+        "⏳ Ovoz berish bosqichi boshlanishiga **60 soniya** qoldi."
     )
     game.timer_task = asyncio.create_task(discussion_timer(bot, game, 60))
 
@@ -546,6 +554,7 @@ async def discussion_timer(bot: Bot, game: Game, seconds: int):
 async def start_voting_phase(bot: Bot, game: Game):
     game.phase = "voting"
     game.votes = {}
+    await try_mute_chat(bot, game.chat_id, True)
     
     alive = game.get_alive_players()
     
@@ -676,6 +685,7 @@ async def start_next_night(bot: Bot, game: Game):
 
 async def end_game(bot: Bot, game: Game, winning_faction: str):
     game.phase = "ended"
+    await try_mute_chat(bot, game.chat_id, False)
     
     faction_emojis = {
         "Mafia": "🔴 Mafiya",
