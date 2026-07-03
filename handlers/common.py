@@ -180,8 +180,8 @@ async def cmd_givecoins(message: types.Message):
         return
         
     try:
-        target_uid = int(args[1])
-        amount = int(args[2])
+        target_uid = int(args[1].strip("<>"))
+        amount = int(args[2].strip("<>"))
         await db.add_xp_and_coins(target_uid, 0, amount)
         await message.answer(f"✅ O'yinchi {target_uid} ga **{amount}** Dark Coins berildi!")
     except Exception as e:
@@ -199,8 +199,8 @@ async def cmd_givexp(message: types.Message):
         return
         
     try:
-        target_uid = int(args[1])
-        amount = int(args[2])
+        target_uid = int(args[1].strip("<>"))
+        amount = int(args[2].strip("<>"))
         await db.add_xp_and_coins(target_uid, amount, 0)
         await message.answer(f"✅ O'yinchi {target_uid} ga **{amount}** XP berildi!")
     except Exception as e:
