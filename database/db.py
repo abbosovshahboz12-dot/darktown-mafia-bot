@@ -1,5 +1,6 @@
 import aiosqlite
 import os
+import math
 
 from config import DATABASE_PATH
 DB_PATH = DATABASE_PATH
@@ -73,6 +74,16 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
                 return dict(await cursor2.fetchone())
 
 async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
+    # Sanitize inputs to prevent overflow/unreasonable values
+    if xp_amount > 1_000_000:
+        xp_amount = 1_000_000
+    if xp_amount < 0:
+        xp_amount = 0
+    if coins_amount > 1_000_000:
+        coins_amount = 1_000_000
+    if coins_amount < 0:
+        coins_amount = 0
+        
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT xp, level, coins FROM users WHERE user_id = ?", (user_id,)) as cursor:
@@ -80,19 +91,28 @@ async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
             if not row:
                 return
             
-            new_xp = row['xp'] + xp_amount
-            new_level = row['level']
+            current_xp = row['xp']
+            current_level = row['level']
             new_coins = row['coins'] + coins_amount
             
-            # Level formula: level * 500 XP required to level up
-            xp_needed = new_level * 500
-            leveled_up = False
-            while new_xp >= xp_needed:
-                new_xp -= xp_needed
-                new_level += 1
-                xp_needed = new_level * 500
-                leveled_up = True
+            # Calculate absolute total XP
+            absolute_xp = 250 * current_level * (current_level - 1) + current_xp + xp_amount
+            
+            # Calculate new level mathematically using closed-form quadratic formula
+            new_level = int(0.5 + math.sqrt(0.25 + absolute_xp / 250.0))
+            if new_level < 1:
+                new_level = 1
+            if new_level > 1000: # Limit max level to 1000
+                new_level = 1000
                 
+            # Calculate remaining XP at this new level
+            xp_used_for_level = 250 * new_level * (new_level - 1)
+            new_xp = absolute_xp - xp_used_for_level
+            if new_xp < 0:
+                new_xp = 0
+                
+            leveled_up = new_level > current_level
+            
             await db.execute(
                 "UPDATE users SET xp = ?, level = ?, coins = ? WHERE user_id = ?",
                 (new_xp, new_level, new_coins, user_id)
