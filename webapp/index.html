@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Darktown Mafia</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <span class="logo-icon">🕵️‍♂️</span>
+                <span class="logo-text">DARKTOWN</span>
+            </div>
+            <div class="balance-badge">
+                <span class="coin-icon">🪙</span>
+                <span id="user-coins">0</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-content">
+            
+            <!-- 1. Profile Tab -->
+            <section id="tab-profile" class="tab-content active">
+                <div class="profile-card">
+                    <div class="profile-avatar-container">
+                        <div class="profile-avatar" id="user-avatar">M</div>
+                        <div class="level-badge" id="user-level">Lvl 1</div>
+                    </div>
+                    <h2 class="profile-name" id="user-name">Mafiozi</h2>
+                    <p class="profile-username" id="user-username">@username</p>
+                    
+                    <!-- XP Progress -->
+                    <div class="xp-container">
+                        <div class="xp-labels">
+                            <span>Tajriba (XP)</span>
+                            <span id="xp-text">0 / 500</span>
+                        </div>
+                        <div class="xp-bar-bg">
+                            <div class="xp-bar-fill" id="xp-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats grid -->
+                <div class="section-title">O'yin Statistikasi</div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-val" id="stats-played">0</div>
+                        <div class="stat-lbl">O'yinlar</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="stats-won">0</div>
+                        <div class="stat-lbl">G'alabalar</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="stats-rate">0%</div>
+                        <div class="stat-lbl">Yutuq Foizi</div>
+                    </div>
+                </div>
+
+                <!-- Shield Info -->
+                <div class="shield-status-card" id="shield-card">
+                    <div class="shield-icon">🛡️</div>
+                    <div class="shield-details">
+                        <div class="shield-title">XP Himoya Qalqoni</div>
+                        <div class="shield-desc" id="shield-status">Faol emas</div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" id="btn-activate-shield" style="display: none;">Faollashtirish</button>
+                </div>
+
+                <!-- Wins by Role -->
+                <div class="section-title">Rollar bo'yicha g'alabalar</div>
+                <div class="roles-stats-list" id="roles-stats">
+                    <div class="no-data">Hozircha o'yinlar o'ynalmagan.</div>
+                </div>
+            </section>
+
+            <!-- 2. Shop Tab -->
+            <section id="tab-shop" class="tab-content">
+                <div class="section-title">Darktown Do'koni</div>
+                
+                <div class="shop-grid">
+                    <!-- Shield Item -->
+                    <div class="shop-card">
+                        <div class="item-icon">🛡️</div>
+                        <div class="item-name">XP Qalqoni</div>
+                        <div class="item-desc">Yutqazganingizda XP yo'qotishdan himoya qiladi (1 martalik).</div>
+                        <div class="item-price">🪙 150</div>
+                        <button class="btn btn-primary btn-buy" data-item="shield">Sotib olish</button>
+                    </div>
+
+                    <!-- Mafia Booster -->
+                    <div class="shop-card">
+                        <div class="item-icon">🔴</div>
+                        <div class="item-name">Mafiya Booster</div>
+                        <div class="item-desc">Keyingi o'yinda Mafiya rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price">🪙 250</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_mafia">Sotib olish</button>
+                    </div>
+
+                    <!-- Detective Booster -->
+                    <div class="shop-card">
+                        <div class="item-icon">🔵</div>
+                        <div class="item-name">Komissar Booster</div>
+                        <div class="item-desc">Keyingi o'yinda Komissar rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price">🪙 250</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_detective">Sotib olish</button>
+                    </div>
+
+                    <!-- Doctor Booster -->
+                    <div class="shop-card">
+                        <div class="item-icon">🟡</div>
+                        <div class="item-name">Shifokor Booster</div>
+                        <div class="item-desc">Keyingi o'yinda Shifokor rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price">🪙 200</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_doctor">Sotib olish</button>
+                    </div>
+
+                    <!-- Maniac Booster -->
+                    <div class="shop-card">
+                        <div class="item-icon">🦹</div>
+                        <div class="item-name">Telba Booster</div>
+                        <div class="item-desc">Keyingi o'yinda Telba (Maniac) rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price">🪙 300</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_maniac">Sotib olish</button>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top: 24px;">Sizning Inventaringiz</div>
+                <div class="inventory-list" id="inventory-list">
+                    <div class="no-data">Inventar bo'sh.</div>
+                </div>
+            </section>
+
+            <!-- 3. Leaderboard Tab -->
+            <section id="tab-leaderboard" class="tab-content">
+                <div class="section-title">Global Top O'yinchilar</div>
+                
+                <div class="leaderboard-list" id="leaderboard-list">
+                    <!-- Loader or dynamic content -->
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="app-nav">
+            <button class="nav-item active" data-tab="profile">
+                <span class="nav-icon">👤</span>
+                <span class="nav-lbl">Profil</span>
+            </button>
+            <button class="nav-item" data-tab="shop">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-lbl">Do'kon</span>
+            </button>
+            <button class="nav-item" data-tab="leaderboard">
+                <span class="nav-icon">🏆</span>
+                <span class="nav-lbl">Reyting</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
