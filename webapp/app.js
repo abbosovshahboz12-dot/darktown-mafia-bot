@@ -48,6 +48,8 @@ navItems.forEach(item => {
             loadProfile();
         } else if (tabName === 'match') {
             initCalculator();
+        } else if (tabName === 'admin') {
+            loadAdminStats();
         }
     });
 });
@@ -60,6 +62,10 @@ async function loadProfile() {
         
         const data = await response.json();
         userData = data;
+        
+        if (data.isAdmin) {
+            document.getElementById('nav-admin').style.display = 'inline-block';
+        }
         
         // Render profile details
         document.getElementById('user-name').innerText = data.user.first_name || userFirstName;
@@ -384,3 +390,62 @@ function updateCalculator(playerCount) {
 
 // Initial load
 loadProfile();
+
+// Admin Tab Actions
+async function loadAdminStats() {
+    try {
+        const response = await fetch(`/api/admin/stats?admin_id=${userId}`);
+        if (!response.ok) throw new Error("Admin stats fetch failed");
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('admin-total-users').innerText = data.total_users;
+            document.getElementById('admin-total-plays').innerText = data.total_plays;
+            document.getElementById('admin-active-games').innerText = data.active_games;
+        }
+    } catch (e) {
+        console.error("Admin stats error:", e);
+    }
+}
+
+document.getElementById('admin-submit-btn').addEventListener('click', async () => {
+    const targetIdInput = document.getElementById('admin-target-id');
+    const coinsInput = document.getElementById('admin-give-coins');
+    const xpInput = document.getElementById('admin-give-xp');
+    
+    const targetId = parseInt(targetIdInput.value);
+    const coins = parseInt(coinsInput.value) || 0;
+    const xp = parseInt(xpInput.value) || 0;
+    
+    if (!targetId) {
+        alert("Foydalanuvchi Telegram ID kiritilishi shart!");
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/give', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                admin_id: userId,
+                target_id: targetId,
+                coins: coins,
+                xp: xp
+            })
+        });
+        
+        const resData = await response.json();
+        if (resData.success) {
+            alert(`✅ Muvaffaqiyatli bajarildi! Foydalanuvchi ${targetId} balansiga ${coins} tanga va ${xp} XP yuborildi.`);
+            targetIdInput.value = '';
+            coinsInput.value = '0';
+            xpInput.value = '0';
+            loadAdminStats(); // Refresh stats
+        } else {
+            alert(`⚠️ Xato: ${resData.error}`);
+        }
+    } catch (e) {
+        console.error("Admin action failed:", e);
+        alert("Server bilan aloqada xatolik!");
+    }
+});

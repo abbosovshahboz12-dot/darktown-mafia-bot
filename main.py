@@ -4,7 +4,7 @@ import os
 import sys
 from aiohttp import web
 from aiogram import Bot, Dispatcher
-from config import BOT_TOKEN, PORT
+from config import BOT_TOKEN, PORT, ADMIN_ID
 from database import db
 
 # Import handlers
@@ -24,10 +24,13 @@ async def get_profile_handler(request):
         stats = await db.get_user_stats(user_id)
         inventory = await db.get_inventory(user_id)
         
+        is_admin = (user_id == ADMIN_ID)
+        
         return web.json_response({
             "user": user,
             "stats": stats,
-            "inventory": inventory
+            "inventory": inventory,
+            "isAdmin": is_admin
         })
     except Exception as e:
         logging.error(f"Error in get_profile_handler: {e}")
@@ -100,6 +103,46 @@ async def index_handler(request):
     webapp_dir = os.path.join(os.path.dirname(__file__), "webapp")
     return web.FileResponse(os.path.join(webapp_dir, "index.html"))
 
+async def admin_stats_handler(request):
+    try:
+        admin_id = int(request.query.get("admin_id", 0))
+        if admin_id != ADMIN_ID:
+            return web.json_response({"error": "Ruxsat etilmagan"}, status=403)
+            
+        stats = await db.get_global_stats()
+        from game.manager import game_manager
+        active_games = len(game_manager.games)
+        
+        return web.json_response({
+            "success": True,
+            "total_users": stats["total_users"],
+            "total_plays": stats["total_plays"],
+            "active_games": active_games
+        })
+    except Exception as e:
+        logging.error(f"Error in admin_stats_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_give_handler(request):
+    try:
+        data = await request.json()
+        admin_id = int(data.get("admin_id", 0))
+        if admin_id != ADMIN_ID:
+            return web.json_response({"error": "Ruxsat etilmagan"}, status=403)
+            
+        target_uid = int(data.get("target_id", 0))
+        coins = int(data.get("coins", 0))
+        xp = int(data.get("xp", 0))
+        
+        if not target_uid:
+            return web.json_response({"error": "target_id kiritilishi shart"}, status=400)
+            
+        await db.add_xp_and_coins(target_uid, xp, coins)
+        return web.json_response({"success": True, "message": "Muvaffaqiyatli to'ldirildi!"})
+    except Exception as e:
+        logging.error(f"Error in admin_give_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 # Setup Web Server Routing
 def setup_web_server():
     app = web.Application()
@@ -109,6 +152,8 @@ def setup_web_server():
     app.router.add_post("/api/buy", buy_handler)
     app.router.add_post("/api/activate", activate_handler)
     app.router.add_get("/api/leaderboard", get_leaderboard_handler)
+    app.router.add_get("/api/admin/stats", admin_stats_handler)
+    app.router.add_post("/api/admin/give", admin_give_handler)
     
     # Frontend static files and index
     webapp_dir = os.path.join(os.path.dirname(__file__), "webapp")

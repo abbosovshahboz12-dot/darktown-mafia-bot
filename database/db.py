@@ -195,3 +195,15 @@ async def set_shield(user_id: int, active: bool):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE users SET shield_active = ? WHERE user_id = ?", (1 if active else 0, user_id))
         await db.commit()
+
+async def get_global_stats():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
+            total_users = (await cursor.fetchone())[0]
+        async with db.execute("SELECT SUM(games_played) FROM stats") as cursor:
+            row = await cursor.fetchone()
+            total_plays = row[0] if row[0] is not None else 0
+        return {
+            "total_users": total_users,
+            "total_plays": total_plays
+        }

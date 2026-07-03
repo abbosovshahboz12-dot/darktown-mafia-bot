@@ -3,7 +3,7 @@ from aiogram import Router, F, types
 from aiogram.filters import CommandStart, Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database import db
-from config import WEBAPP_URL
+from config import WEBAPP_URL, ADMIN_ID
 
 router = Router()
 
@@ -144,3 +144,60 @@ async def cb_activate_booster(cb: types.CallbackQuery):
         await cb.answer("Booster faollashtirildi!")
     else:
         await cb.answer("Siz o'yin ishtirokchisi emassiz!", show_alert=True)
+
+@router.message(Command("admin"))
+async def cmd_admin(message: types.Message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        return # Ignore non-admins silently
+        
+    stats = await db.get_global_stats()
+    from game.manager import game_manager
+    active_games = len(game_manager.games)
+    
+    text = (
+        f"👑 **Darktown Bot - Admin Paneli**\n\n"
+        f"👥 Ro'yxatdan o'tgan o'yinchilar: **{stats['total_users']} ta**\n"
+        f"🎮 Umumiy o'yinlar soni: **{stats['total_plays']} ta**\n"
+        f"⚡ Hozirgi faol o'yinlar: **{active_games} ta**\n\n"
+        f"**Buyruqlar**:\n"
+        f"`/givecoins <user_id> <miqdor>` - Foydalanuvchiga tanga berish\n"
+        f"`/givexp <user_id> <miqdor>` - Foydalanuvchiga XP berish"
+    )
+    await message.answer(text, parse_mode="Markdown")
+
+@router.message(Command("givecoins"))
+async def cmd_givecoins(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+        
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer("Format: `/givecoins <user_id> <miqdor>`", parse_mode="Markdown")
+        return
+        
+    try:
+        target_uid = int(args[1])
+        amount = int(args[2])
+        await db.add_xp_and_coins(target_uid, 0, amount)
+        await message.answer(f"✅ O'yinchi {target_uid} ga **{amount}** Dark Coins berildi!")
+    except Exception as e:
+        await message.answer(f"Xato: {e}")
+
+@router.message(Command("givexp"))
+async def cmd_givexp(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+        
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer("Format: `/givexp <user_id> <miqdor>`", parse_mode="Markdown")
+        return
+        
+    try:
+        target_uid = int(args[1])
+        amount = int(args[2])
+        await db.add_xp_and_coins(target_uid, amount, 0)
+        await message.answer(f"✅ O'yinchi {target_uid} ga **{amount}** XP berildi!")
+    except Exception as e:
+        await message.answer(f"Xato: {e}")

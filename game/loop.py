@@ -182,13 +182,19 @@ async def night_phase(bot: Bot, game: Game):
                 await bot.send_message(player.user_id, "🕶️ **Don tekshiruvi**: Komissarni topish uchun kimni tekshirmoqchisiz?", reply_markup=kb.as_markup())
                 
             elif player.role == "Detective":
-                # Check target (not yourself)
-                kb = target_keyboard("det", exclude_id=player.user_id)
-                # Event Fog check
-                if game.event and game.event["key"] == "fog":
-                    await bot.send_message(player.user_id, "🌫️ **Tuman tufayli bugun tunda tekshiruv o'tkaza olmaysiz!**")
-                else:
-                    await bot.send_message(player.user_id, "🔵 **Komissar tekshiruvi**: Rolini aniqlamoqchi bo'lgan o'yinchini tanlang:", reply_markup=kb)
+                # Check option choice keyboard
+                kb = InlineKeyboardBuilder()
+                kb.add(types.InlineKeyboardButton(text="🔍 Tekshirish (Check)", callback_data="det_choice_check"))
+                kb.add(types.InlineKeyboardButton(text="🔫 Otib yuborish (Shoot)", callback_data="det_choice_shoot"))
+                kb.adjust(1)
+                
+                await bot.send_message(
+                    player.user_id,
+                    "🔵 **Komissar harakati**:\n"
+                    "Bugun tunda nima qilmoqchisiz? Tanlang:\n"
+                    "_(Tekshirish majburiy: yoki tekshiring, yoki otib yuboring)_",
+                    reply_markup=kb.as_markup()
+                )
                     
             elif player.role == "Doctor":
                 # Heal target (cannot heal same target unless event epidemic)
@@ -251,7 +257,7 @@ def all_active_roles_acted(game: Game) -> bool:
     # Check if they have chosen
     if len(game.night_actions["mafia"]) < mafia_count:
         return False
-    if detective_alive and not game.night_actions["detective"] and not (game.event and game.event["key"] == "fog"):
+    if detective_alive and not game.night_actions["detective_check"] and not game.night_actions["detective_shoot"]:
         return False
     if don_alive := any(p.role == "Don" for p in alive_players):
         if not game.night_actions["don"]:
@@ -319,11 +325,14 @@ async def process_night(bot: Bot, game: Game):
     else:
         game.last_bodyguard_target = None
             
-    # 4. Process Detective Check
-    detective_check = game.night_actions["detective"]
-    if detective_check:
-        detectives = game.get_players_by_role("Detective")
-        if detectives and detectives[0].is_alive and not detectives[0].is_blocked:
+    # 4. Process Detective Check & Shoot
+    detective_check = game.night_actions["detective_check"]
+    detective_shoot = game.night_actions["detective_shoot"]
+    detectives = game.get_players_by_role("Detective")
+    
+    if detectives and detectives[0].is_alive and not detectives[0].is_blocked:
+        # Check action
+        if detective_check:
             checked_player = game.players.get(detective_check)
             if checked_player:
                 side = "Mafiya" if checked_player.role in ["Mafia", "Don"] else "Tinch aholi"
@@ -336,6 +345,23 @@ async def process_night(bot: Bot, game: Game):
                     )
                 except Exception:
                     pass
+        # Shoot action
+        elif detective_shoot:
+            shoot_player = game.players.get(detective_shoot)
+            if shoot_player:
+                if shoot_player.is_healed:
+                    pass # Saved by doctor
+                elif shoot_player.is_guarded:
+                    # Bodyguard dies instead
+                    bodyguards = game.get_players_by_role("Bodyguard")
+                    alive_guards = [b for b in bodyguards if b.is_alive]
+                    if alive_guards:
+                        bg = alive_guards[0]
+                        bg.is_alive = False
+                        victims.append((bg, "Tansoqchi Komissar o'qidan o'zini fido qildi."))
+                else:
+                    shoot_player.is_alive = False
+                    victims.append((shoot_player, f"Tunda Komissar to'pponchasidan otib o'ldirildi. Rol: **{shoot_player.role}**"))
 
     # 5. Process Don Check
     don_check = game.night_actions["don"]

@@ -206,6 +206,45 @@
                 </div>
             </section>
 
+            <!-- 5. Admin Tab -->
+            <section id="tab-admin" class="tab-content">
+                <div class="section-title">👑 Tizim Admin Paneli</div>
+                
+                <div class="admin-stats-container">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-val" id="admin-total-users">-</div>
+                        <div class="admin-stat-lbl">Jami o'yinchilar</div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-val" id="admin-total-plays">-</div>
+                        <div class="admin-stat-lbl">Jami o'yinlar</div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-val" id="admin-active-games">-</div>
+                        <div class="admin-stat-lbl">Faol o'yinlar</div>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top: 24px;">⚡ Tangalar & XP Yuborish</div>
+                <div class="admin-form-card">
+                    <div class="form-group">
+                        <label for="admin-target-id">Foydalanuvchi Telegram ID:</label>
+                        <input type="number" id="admin-target-id" placeholder="Masalan: 12345678" class="admin-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-give-coins">Dark Coins (Tangalar):</label>
+                        <input type="number" id="admin-give-coins" placeholder="Masalan: 500" value="0" class="admin-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-give-xp">XP (Tajriba):</label>
+                        <input type="number" id="admin-give-xp" placeholder="Masalan: 100" value="0" class="admin-input">
+                    </div>
+                    <button id="admin-submit-btn" class="buy-btn" style="width: 100%; margin-top: 12px; height: 44px; font-weight: 600;">
+                        💰 Balansni To'ldirish
+                    </button>
+                </div>
+            </section>
+
         </main>
 
         <!-- Bottom Navigation Bar -->
@@ -225,6 +264,10 @@
             <button class="nav-item" data-tab="match">
                 <span class="nav-icon">🎲</span>
                 <span class="nav-lbl">O'yin</span>
+            </button>
+            <button class="nav-item" id="nav-admin" data-tab="admin" style="display: none;">
+                <span class="nav-icon">👑</span>
+                <span class="nav-lbl">Admin</span>
             </button>
         </nav>
 

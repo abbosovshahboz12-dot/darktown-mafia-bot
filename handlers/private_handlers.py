@@ -48,7 +48,7 @@ async def register_night_choice(cb: types.CallbackQuery, action_type: str, targe
         if player.role != "Detective":
             await cb.answer("⚠️ Siz Komissar emassiz!", show_alert=True)
             return
-        game.night_actions["detective"] = target_id
+        game.night_actions["detective_check"] = target_id
         await cb.message.edit_text(f"🔵 Siz **{target_player.name}**ni tekshirishni tanladingiz. Tun oxirida natija yuboriladi.")
         
     elif action_type == "doc":
@@ -92,21 +92,60 @@ async def cb_don(cb: types.CallbackQuery):
     target_id = int(cb.data.replace("don_", ""))
     await register_night_choice(cb, "don", target_id)
 
+@router.callback_query(F.data == "det_choice_check")
+async def cb_det_choice_check(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    game = game_manager.get_game_by_player(user_id)
+    if game and game.phase == "night":
+        player = game.players.get(user_id)
+        if player and player.role == "Detective" and player.is_alive:
+            # Check for event Fog
+            if game.event and game.event["key"] == "fog":
+                await cb.answer("🌫️ Qalin tuman sababli bugun tunda tekshiruv o'tkaza olmaysiz!", show_alert=True)
+                return
+                
+            alive_players = game.get_alive_players()
+            kb = InlineKeyboardBuilder()
+            for p in alive_players:
+                if p.user_id != user_id:
+                    kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"det_{p.user_id}"))
+            kb.adjust(2)
+            await cb.message.edit_text("🔍 **Komissar tekshiruvi**: Rolini aniqlamoqchi bo'lgan o'yinchini tanlang:", reply_markup=kb.as_markup())
+            await cb.answer()
+
+@router.callback_query(F.data == "det_choice_shoot")
+async def cb_det_choice_shoot(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    game = game_manager.get_game_by_player(user_id)
+    if game and game.phase == "night":
+        player = game.players.get(user_id)
+        if player and player.role == "Detective" and player.is_alive:
+            alive_players = game.get_alive_players()
+            kb = InlineKeyboardBuilder()
+            for p in alive_players:
+                if p.user_id != user_id:
+                    kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"detshoot_{p.user_id}"))
+            kb.adjust(2)
+            await cb.message.edit_text("🔫 **Komissar o'q otishi**: Kimni otib o'ldirmoqchisiz?", reply_markup=kb.as_markup())
+            await cb.answer()
+
+@router.callback_query(F.data.startswith("detshoot_"))
+async def cb_detshoot(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    target_id = int(cb.data.replace("detshoot_", ""))
+    game = game_manager.get_game_by_player(user_id)
+    if game and game.phase == "night":
+        player = game.players.get(user_id)
+        if player and player.role == "Detective" and player.is_alive:
+            target_player = game.players.get(target_id)
+            if target_player and target_player.is_alive:
+                game.night_actions["detective_shoot"] = target_id
+                await cb.message.edit_text(f"🔫 Siz **{target_player.name}**ni otib o'ldirishni tanladingiz. Tanlov qabul qilindi!")
+                await cb.answer("Tanlov qabul qilindi!")
+
 @router.callback_query(F.data.startswith("det_"))
 async def cb_det(cb: types.CallbackQuery):
-    target_data = cb.data.replace("det_", "")
-    if target_data == "skip":
-        user_id = cb.from_user.id
-        game = game_manager.get_game_by_player(user_id)
-        if game and game.phase == "night":
-            player = game.players.get(user_id)
-            if player and player.role == "Detective" and player.is_alive:
-                game.night_actions["detective"] = "skip"
-                await cb.message.edit_text("🔵 Siz bugun tunda tekshiruv o'tkazishni o'tkazib yubordingiz. Tanlov qabul qilindi!")
-                await cb.answer("Tanlov qabul qilindi!")
-        return
-        
-    target_id = int(target_data)
+    target_id = int(cb.data.replace("det_", ""))
     await register_night_choice(cb, "det", target_id)
 
 @router.callback_query(F.data.startswith("doc_"))
