@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from game.manager import game_manager
 from game.loop import start_game_loop
-from game.models import Player
+from game.models import Player, Game
 from database import db
 
 router = Router()
