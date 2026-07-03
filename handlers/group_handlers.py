@@ -272,3 +272,36 @@ async def vote_callback(cb: types.CallbackQuery, bot: Bot):
     except Exception as e:
         # Ignore "message is not modified" errors
         logging.warning(f"Error updating live voting: {e}")
+
+@router.message(Command("start", "startgame"))
+async def cmd_start_game(message: types.Message, bot: Bot):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    
+    game = game_manager.get_game(chat_id)
+    if not game:
+        await message.answer("⚠️ Guruhda faol o'yin yo'q. Yangi o'yin boshlash uchun `/newgame` yozing.")
+        return
+        
+    if game.phase != "lobby":
+        await message.answer("⚠️ O'yin allaqachon boshlangan!")
+        return
+        
+    # Check if they are the creator (first player) or admin
+    creator_id = list(game.players.keys())[0]
+    if user_id != creator_id:
+        try:
+            member = await bot.get_chat_member(chat_id, user_id)
+            if member.status not in ["creator", "administrator"]:
+                await message.answer("⚠️ Faqat o'yin yaratuvchisi yoki guruh admini o'yinni boshlay oladi!")
+                return
+        except Exception:
+            await message.answer("⚠️ Faqat o'yin yaratuvchisi o'yinni boshlay oladi!")
+            return
+            
+    if len(game.players) < 4:
+        await message.answer("⚠️ O'yinni boshlash uchun kamida 4 ta o'yinchi bo'lishi kerak!")
+        return
+        
+    await message.answer("O'yin boshlanmoqda...")
+    await start_game_loop(bot, game)

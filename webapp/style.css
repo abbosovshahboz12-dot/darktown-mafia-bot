@@ -620,3 +620,111 @@ body {
     font-size: 0.8rem;
     padding: 20px 0;
 }
+
+/* Calculator Tab Styling */
+.calculator-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 20px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    margin-bottom: 20px;
+}
+
+.calc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.player-count-display {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    background: rgba(157, 78, 221, 0.1);
+    padding: 2px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+}
+
+.slider-container {
+    width: 100%;
+}
+
+.player-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.1);
+    outline: none;
+}
+
+.player-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--primary-glow);
+    transition: transform 0.1s;
+}
+
+.player-slider::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+}
+
+.calc-roles-list {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.calc-role-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    padding-bottom: 8px;
+}
+
+.calc-role-item:last-child {
+    border: none;
+    padding-bottom: 0;
+}
+
+/* Roles Guide List */
+.roles-guide-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.guide-item {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 14px 16px;
+}
+
+.guide-header {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--secondary);
+    margin-bottom: 4px;
+}
+
+.guide-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}

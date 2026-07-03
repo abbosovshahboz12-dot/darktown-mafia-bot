@@ -46,6 +46,8 @@ navItems.forEach(item => {
             loadLeaderboard();
         } else if (tabName === 'shop' || tabName === 'profile') {
             loadProfile();
+        } else if (tabName === 'match') {
+            initCalculator();
         }
     });
 });
@@ -282,6 +284,100 @@ document.querySelectorAll('.btn-buy').forEach(btn => {
         buyItem(itemKey);
     });
 });
+
+// Dynamic Role Calculator
+let calculatorInitialized = false;
+
+function initCalculator() {
+    if (calculatorInitialized) return;
+    
+    const slider = document.getElementById('player-slider');
+    const countDisplay = document.getElementById('calc-player-count');
+    
+    slider.addEventListener('input', () => {
+        const count = parseInt(slider.value);
+        countDisplay.innerText = count;
+        updateCalculator(count);
+    });
+    
+    // Initial update
+    updateCalculator(parseInt(slider.value));
+    calculatorInitialized = true;
+}
+
+function updateCalculator(playerCount) {
+    const list = document.getElementById('calc-roles-list');
+    list.innerHTML = '';
+    
+    // Exact logic from game/loop.py
+    let roles = [];
+    if (playerCount === 3) {
+        roles = ["Mafia", "Detective", "Civilian"];
+    } else if (playerCount === 4) {
+        roles = ["Mafia", "Doctor", "Detective", "Civilian"];
+    } else if (playerCount === 5) {
+        roles = ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"];
+    } else if (playerCount === 6) {
+        roles = ["Mafia", "Don", "Doctor", "Detective", "Civilian", "Civilian"];
+    } else if (playerCount === 7) {
+        roles = ["Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Civilian", "Civilian"];
+    } else if (playerCount === 8) {
+        roles = ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Civilian", "Civilian"];
+    } else if (playerCount === 9) {
+        roles = ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian"];
+    } else { // 10+
+        roles = ["Mafia", "Mafia", "Don", "Maniac", "Doctor", "Detective", "Bodyguard", "Courtesan", "Civilian", "Civilian"];
+        while (roles.length < playerCount) {
+            roles.push("Civilian");
+        }
+    }
+    
+    // Count occurrences
+    const roleCounts = {};
+    roles.forEach(r => {
+        roleCounts[r] = (roleCounts[r] || 0) + 1;
+    });
+    
+    const roleEmojis = {
+        "Mafia": "🔴",
+        "Don": "🕶️",
+        "Civilian": "🟢",
+        "Detective": "🔵",
+        "Doctor": "🟡",
+        "Bodyguard": "🛡️",
+        "Courtesan": "🌸",
+        "Maniac": "🦹"
+    };
+    
+    const roleUzNames = {
+        "Mafia": "Mafiya",
+        "Don": "Don (Boshliq)",
+        "Civilian": "Tinch aholi",
+        "Detective": "Komissar (Detective)",
+        "Doctor": "Shifokor",
+        "Bodyguard": "Tansoqchi",
+        "Courtesan": "Kutizanka",
+        "Maniac": "Telba (Maniac)"
+    };
+    
+    for (let r in roleCounts) {
+        const item = document.createElement('div');
+        item.className = 'calc-role-item';
+        
+        const count = roleCounts[r];
+        const emoji = roleEmojis[r] || "🎭";
+        const name = roleUzNames[r] || r;
+        
+        item.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.3rem;">${emoji}</span>
+                <span style="font-weight:600; font-size:0.9rem;">${name}</span>
+            </div>
+            <span style="font-weight:800; color:var(--primary); font-size:0.95rem;">${count} ta</span>
+        `;
+        list.appendChild(item);
+    }
+}
 
 // Initial load
 loadProfile();
