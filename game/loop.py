@@ -8,7 +8,6 @@ from game.models import Game, Player
 from game.events import get_random_event
 from game.manager import game_manager
 from database import db
-from config import STICKER_NIGHT, STICKER_DEATH, STICKER_VICTORY
 
 # Role emojis
 ROLE_EMOJIS = {
@@ -135,10 +134,6 @@ async def night_phase(bot: Bot, game: Game):
     log_game_event(game, "🌙 Tun boshlandi. Rollar tungi harakatda.")
     
     # Send group night announcement
-    try:
-        await bot.send_sticker(game.chat_id, STICKER_NIGHT)
-    except Exception:
-        pass
     await bot.send_message(
         game.chat_id,
         "🌙 **Shahar uzra tun cho'kdi... Barcha tinch aholi shirin uyquda. Mafiya va faol rollar tunda uyg'onmoqda.**\n\n"
@@ -522,12 +517,6 @@ async def process_night(bot: Bot, game: Game):
     for p in alive_players:
         day_text += f"- {p.name}\n"
             
-    if victims:
-        try:
-            await bot.send_sticker(game.chat_id, STICKER_DEATH)
-        except Exception:
-            pass
-            
     await bot.send_message(game.chat_id, day_text, parse_mode="Markdown")
     
     # Check if game ended
@@ -697,19 +686,6 @@ async def process_voting(bot: Bot, game: Game):
             )
             log_game_event(game, f"⚖️ {hanged_player.name} dorda osildi ({hanged_player.role}).")
             
-    hanged_player_dead = False
-    try:
-        if 'hanged_player' in locals() and not hanged_player.is_alive:
-            hanged_player_dead = True
-    except Exception:
-        pass
-        
-    if hanged_player_dead:
-        try:
-            await bot.send_sticker(game.chat_id, STICKER_DEATH)
-        except Exception:
-            pass
-            
     await bot.send_message(game.chat_id, result_text, parse_mode="Markdown")
     
     # Check if game ended
@@ -742,11 +718,6 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
         status = "🟢 Tirik" if p.is_alive else "💀 O'lik"
         role_emoji = ROLE_EMOJIS.get(p.role, "")
         win_text += f"- {p.name}: {role_emoji} {p.role} ({status})\n"
-        
-    try:
-        await bot.send_sticker(game.chat_id, STICKER_VICTORY)
-    except Exception:
-        pass
         
     await bot.send_message(game.chat_id, win_text, parse_mode="Markdown")
     
