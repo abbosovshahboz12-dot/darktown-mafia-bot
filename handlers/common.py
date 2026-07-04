@@ -71,9 +71,26 @@ async def cmd_start(message: types.Message):
             logging.error(f"Error notifying inviter: {e}")
             
     welcome_text = get_text(lang, "start_private", name=first_name)
-    await message.answer(welcome_text, reply_markup=get_start_keyboard(user_id, bot_user), parse_mode="Markdown")
+    
+    shield_status = "🛡️ Active" if user['shield_active'] else "❌ Inactive"
+    if lang == "uz":
+        shield_status = "🛡️ Faol" if user['shield_active'] else "❌ Faol emas"
+    elif lang == "ru":
+        shield_status = "🛡️ Активен" if user['shield_active'] else "❌ Неактивен"
+    elif lang == "kz":
+        shield_status = "🛡️ Белсенді" if user['shield_active'] else "❌ Белсенді емес"
+        
+    status_text = "\n\n" + get_text(
+        lang, "profile_text",
+        level=user['level'],
+        xp=user['xp'],
+        coins=user['coins'],
+        shield=shield_status
+    )
+    
+    await message.answer(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user), parse_mode="Markdown")
 
-@router.message(Command("profile"))
+@router.message(Command("profile", "profil"))
 async def cmd_profile(message: types.Message):
     user_id = message.from_user.id
     user = await db.get_user(user_id, message.from_user.username, message.from_user.full_name)
