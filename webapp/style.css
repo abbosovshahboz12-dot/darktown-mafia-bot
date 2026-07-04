@@ -1136,3 +1136,135 @@ body {
         width: 160px;
     }
 }
+
+/* Matchmaking Pulse Animation */
+@keyframes pulse-anim {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.4);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 15px rgba(0, 242, 254, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0, 242, 254, 0);
+    }
+}
+
+/* Interactive Card Flip */
+.card-flip-container {
+    perspective: 1000px;
+    width: 180px;
+    height: 260px;
+    margin: 20px auto;
+}
+.card-flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.8s;
+    transform-style: preserve-3d;
+}
+.card-flip-inner.flipped {
+    transform: rotateY(180deg);
+}
+.card-front, .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+/* WebApp Interactive Grid and Panels */
+.game-players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.webapp-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    margin-bottom: 20px;
+}
+.player-card-interactive {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.player-card-interactive:hover {
+    transform: translateY(-2px);
+    border-color: #00f2fe;
+    box-shadow: 0 4px 12px rgba(0, 242, 254, 0.2);
+}
+.player-card-interactive.dead {
+    opacity: 0.5;
+    background: rgba(0,0,0,0.3);
+    border-color: rgba(255,255,255,0.05);
+    cursor: not-allowed;
+}
+.player-card-interactive.dead:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: rgba(255,255,255,0.05);
+}
+.player-card-interactive.voted {
+    border-color: #ffc439;
+    box-shadow: 0 4px 12px rgba(255, 196, 57, 0.2);
+}
+.player-card-interactive.targeted {
+    border-color: #ff0055;
+    box-shadow: 0 4px 12px rgba(255, 0, 85, 0.2);
+}
+
+/* Chat Message Bubbles */
+.chat-bubble {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 12px;
+    max-width: 85%;
+    word-wrap: break-word;
+    margin-bottom: 4px;
+}
+.chat-bubble.system {
+    background: rgba(255, 196, 57, 0.1);
+    border-left: 3px solid #ffc439;
+    max-width: 100%;
+    font-style: italic;
+}
+.chat-bubble.mafia {
+    background: rgba(255, 0, 85, 0.1);
+    border-left: 3px solid #ff0055;
+    max-width: 85%;
+}
+.chat-bubble-sender {
+    font-weight: 700;
+    margin-bottom: 2px;
+    color: #ffc439;
+}
+.chat-bubble-text {
+    color: #fff;
+}
+.chat-bubble-time {
+    font-size: 9px;
+    color: #64748b;
+    text-align: right;
+    margin-top: 4px;
+}
+.daily-spin-promo-card:hover {
+    transform: translateY(-2px);
+    border-color: #ffc439;
+    box-shadow: 0 6px 24px rgba(255, 140, 0, 0.25);
+}
+.daily-spin-promo-card:active {
+    transform: translateY(0);
+}

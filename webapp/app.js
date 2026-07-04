@@ -955,6 +955,86 @@ function updateLang(lang) {
     // Calculator labels
     const calcTitle = document.querySelector('#match-calc-view .section-title');
     if (calcTitle) calcTitle.innerText = "🎮 " + t("calc_title");
+    
+    // Dynamic translations for new interactive game & friends elements
+    const playLocales = {
+        uz: {
+            friends_title: "👥 Do'stlar",
+            wheel_promo_title: "Omad G'ildiragi (Beta)",
+            wheel_promo_desc: "Har 24 soatda aylantirib, tasodifiy boosterlar va tangalar yutib oling!",
+            wheel_modal_title: "🎡 Omad G'ildiragi",
+            btn_spin_wheel: "Aylantirish",
+            btn_matchmake_start: "🎮 O'yin Qidirish",
+            lbl_searching: "O'yin qidirilmoqda...",
+            lbl_lobby_matched: "O'yin Topildi!",
+            lbl_reveal_hint: "Karta ustiga bosib rolingizni oching!",
+            lbl_self_role: "Rolingiz:",
+            lbl_arena_players: "👥 Tirik o'yinchilar",
+            lbl_arena_chat: "💬 O'yin Chati"
+        },
+        ru: {
+            friends_title: "👥 Друзья",
+            wheel_promo_title: "Колесо Удачи (Бета)",
+            wheel_promo_desc: "Крутите каждые 24 часа и выигрывайте случайные бустеры и монеты!",
+            wheel_modal_title: "🎡 Колесо Удачи",
+            btn_spin_wheel: "Крутить",
+            btn_matchmake_start: "🎮 Найти игру",
+            lbl_searching: "Поиск игры...",
+            lbl_lobby_matched: "Игра Найдена!",
+            lbl_reveal_hint: "Нажмите на карту, чтобы открыть роль!",
+            lbl_self_role: "Ваша роль:",
+            lbl_arena_players: "👥 Живые игроки",
+            lbl_arena_chat: "💬 Игровой чат"
+        },
+        en: {
+            friends_title: "👥 Friends",
+            wheel_promo_title: "Wheel of Fortune (Beta)",
+            wheel_promo_desc: "Spin every 24 hours and win random boosters and coins!",
+            wheel_modal_title: "🎡 Wheel of Fortune",
+            btn_spin_wheel: "Spin",
+            btn_matchmake_start: "🎮 Find Game",
+            lbl_searching: "Searching for game...",
+            lbl_lobby_matched: "Game Found!",
+            lbl_reveal_hint: "Click on card to reveal your role!",
+            lbl_self_role: "Your role:",
+            lbl_arena_players: "👥 Alive players",
+            lbl_arena_chat: "💬 Game Chat"
+        },
+        kz: {
+            friends_title: "👥 Достар",
+            wheel_promo_title: "Бақыт дөңгелегі (Бета)",
+            wheel_promo_desc: "Әр 24 сағат сайын айналдырып, кездейсоқ бустерлер мен монеталар ұтып алыңыз!",
+            wheel_modal_title: "🎡 Бақыт дөңгелегі",
+            btn_spin_wheel: "Айналдыру",
+            btn_matchmake_start: "🎮 Ойын іздеу",
+            lbl_searching: "Ойын ізделуде...",
+            lbl_lobby_matched: "Ойын табылды!",
+            lbl_reveal_hint: "Рөліңізді ашу үшін картаны басыңыз!",
+            lbl_self_role: "Рөліңіз:",
+            lbl_arena_players: "👥 Тірі ойыншылар",
+            lbl_arena_chat: "💬 Ойын чаты"
+        }
+    };
+
+    const pl = playLocales[lang] || playLocales.uz;
+    
+    const updateElText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+    };
+
+    updateElText('lbl-friends-title', pl.friends_title);
+    updateElText('lbl-wheel-promo-title', pl.wheel_promo_title);
+    updateElText('lbl-wheel-promo-desc', pl.wheel_promo_desc);
+    updateElText('lbl-wheel-modal-title', pl.wheel_modal_title);
+    updateElText('btn-spin-wheel', pl.btn_spin_wheel);
+    updateElText('btn-matchmake-start', pl.btn_matchmake_start);
+    updateElText('lbl-searching', pl.lbl_searching);
+    updateElText('lbl-lobby-matched', pl.lbl_lobby_matched);
+    updateElText('lbl-reveal-hint', pl.lbl_reveal_hint);
+    updateElText('lbl-self-role', pl.lbl_self_role);
+    updateElText('lbl-arena-players', pl.lbl_arena_players);
+    updateElText('lbl-arena-chat', pl.lbl_arena_chat);
 }
 
 function renderAchievements(stats, level) {
@@ -1205,8 +1285,589 @@ document.addEventListener('click', (e) => {
         const pack = e.target.getAttribute('data-pack');
         startTelegramStarsPayment(pack);
     }
+    }
     if (e.target.classList.contains('btn-card-pay')) {
         const coins = e.target.getAttribute('data-coins');
         startCardPayment(coins);
     }
 });
+
+// Initialize Friends and tab logic on load
+setTimeout(() => {
+    loadFriends();
+}, 1000);
+
+// --- Match Mode Switcher ---
+function switchMatchMode(mode) {
+    const calcBtn = document.getElementById('btn-mode-calc');
+    const playBtn = document.getElementById('btn-mode-play');
+    const calcView = document.getElementById('match-calc-view');
+    const playView = document.getElementById('match-webapp-game-view');
+    
+    if (mode === 'calc') {
+        calcBtn.classList.add('active');
+        calcBtn.style.color = '#fff';
+        playBtn.classList.remove('active');
+        playBtn.style.color = '#94a3b8';
+        calcView.style.display = 'block';
+        playView.style.display = 'none';
+    } else {
+        playBtn.classList.add('active');
+        playBtn.style.color = '#fff';
+        calcBtn.classList.remove('active');
+        calcBtn.style.color = '#94a3b8';
+        calcView.style.display = 'none';
+        playView.style.display = 'block';
+    }
+}
+
+// --- Friends API Helpers ---
+async function loadFriends() {
+    try {
+        const response = await fetch(`/api/friends?user_id=${userId}`);
+        const data = await response.json();
+        
+        const friendsList = document.getElementById('friends-list');
+        const incomingContainer = document.getElementById('incoming-requests-container');
+        const incomingList = document.getElementById('incoming-requests-list');
+        
+        friendsList.innerHTML = '';
+        incomingList.innerHTML = '';
+        
+        // Render Incoming Requests
+        if (data.incoming && data.incoming.length > 0) {
+            incomingContainer.style.display = 'block';
+            data.incoming.forEach(req => {
+                const div = document.createElement('div');
+                div.style = 'display:flex; justify-content:space-between; align-items:center; background:rgba(255,196,57,0.1); border:1px solid rgba(255,196,57,0.2); padding:8px 12px; border-radius:8px;';
+                div.innerHTML = `
+                    <span style="font-size:13px; color:#fff; font-weight:600;">${req.first_name} (@${req.username || ''})</span>
+                    <button class="btn btn-primary btn-sm" onclick="acceptFriend(${req.user_id})" style="padding:4px 8px; font-size:11px;">Tasdiqlash</button>
+                `;
+                incomingList.appendChild(div);
+            });
+        } else {
+            incomingContainer.style.display = 'none';
+        }
+        
+        // Render Friends
+        if (data.friends && data.friends.length > 0) {
+            data.friends.forEach(f => {
+                const statusSymbol = f.online ? '🟢' : '⚫';
+                const statusText = f.online ? 'Online' : 'Offline';
+                const div = document.createElement('div');
+                div.style = 'display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 14px; border-radius:10px;';
+                div.innerHTML = `
+                    <div style="display:flex; flex-direction:column; text-align:left;">
+                        <span style="font-size:14px; font-weight:700; color:#fff;">${f.first_name}</span>
+                        <span style="font-size:11px; color:#94a3b8;">@${f.username || ''}</span>
+                    </div>
+                    <span style="font-size:12px; font-weight:600; color:${f.online ? '#10b981' : '#64748b'}">${statusSymbol} ${statusText}</span>
+                `;
+                friendsList.appendChild(div);
+            });
+        } else {
+            friendsList.innerHTML = `<div class="no-data" id="lbl-no-friends">Do'stlar ro'yxati bo'sh.</div>`;
+        }
+    } catch (e) {
+        console.error("Error in loadFriends:", e);
+    }
+}
+
+async function sendFriendRequest() {
+    const input = document.getElementById('input-friend-username');
+    const username = input.value.trim();
+    if (!username) return;
+    
+    try {
+        const response = await fetch('/api/friends/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, friend_username: username })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert("Do'stlik so'rovi muvaffaqiyatli yuborildi!");
+            input.value = '';
+            loadFriends();
+        } else {
+            alert("Xatolik: " + data.error);
+        }
+    } catch (e) {
+        alert("Server bilan aloqa uzildi.");
+    }
+}
+
+async function acceptFriend(requesterId) {
+    try {
+        const response = await fetch('/api/friends/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, requester_id: requesterId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert("Do'stlik so'rovi qabul qilindi!");
+            loadFriends();
+            loadProfile(); // refresh booster/balances if needed
+        } else {
+            alert("Xatolik: " + data.error);
+        }
+    } catch (e) {
+        alert("Server xatosi.");
+    }
+}
+
+// --- Wheel of Fortune Spin Logic ---
+let isSpinning = false;
+let currentWheelAngle = 0;
+const wheelRewards = ["🪙 20", "🪙 50", "🪙 100", "🛡️ Qalqon", "🔴 Mafia", "🔵 Komissar"];
+const wheelColors = ["#1e1b4b", "#311042", "#1e1b4b", "#311042", "#1e1b4b", "#311042"];
+
+function openWheelModal() {
+    document.getElementById('wheel-modal').style.display = 'flex';
+    drawWheel(0);
+}
+
+function closeWheelModal() {
+    if (isSpinning) return;
+    document.getElementById('wheel-modal').style.display = 'none';
+}
+
+function drawWheel(angle) {
+    const canvas = document.getElementById('wheel-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const numSegments = wheelRewards.length;
+    const arcSize = (2 * Math.PI) / numSegments;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    for (let i = 0; i < numSegments; i++) {
+        const segmentAngle = angle + (i * arcSize);
+        
+        ctx.fillStyle = wheelColors[i];
+        ctx.beginPath();
+        ctx.moveTo(130, 130);
+        ctx.arc(130, 130, 130, segmentAngle, segmentAngle + arcSize);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add white dividing border lines
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw rewards labels text inside segments
+        ctx.save();
+        ctx.fillStyle = "#ffc439";
+        ctx.font = "bold 13px Outfit, system-ui";
+        ctx.translate(130, 130);
+        ctx.rotate(segmentAngle + arcSize / 2);
+        ctx.textAlign = "right";
+        ctx.fillText(wheelRewards[i], 110, 5);
+        ctx.restore();
+    }
+}
+
+async function spinWheel() {
+    if (isSpinning) return;
+    
+    try {
+        const response = await fetch('/api/wheel/spin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await response.json();
+        
+        if (data.success === false && data.error === 'wheel_claimed') {
+            const hr = Math.floor(data.seconds_left / 3600);
+            const mn = Math.floor((data.seconds_left % 3600) / 60);
+            alert(`Siz bugungi imkoniyatdan foydalangansiz! Keyingi aylantirish: ${hr} soat ${mn} daqiqadan so'ng.`);
+            return;
+        }
+        
+        isSpinning = true;
+        document.getElementById('btn-spin-wheel').disabled = true;
+        
+        const targetIndex = data.reward_index;
+        const numSegments = wheelRewards.length;
+        const segmentArc = (2 * Math.PI) / numSegments;
+        
+        // Target angle points to pointer at top (1.5 * Math.PI angle)
+        const targetAngle = (1.5 * Math.PI) - (targetIndex * segmentArc) - (segmentArc / 2);
+        
+        // Full rotations + final target offset
+        const finalAngle = (Math.PI * 2 * 6) + targetAngle;
+        
+        let start = null;
+        const duration = 4000; // 4 seconds animation
+        
+        function animate(timestamp) {
+            if (!start) start = timestamp;
+            const elapsed = timestamp - start;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Ease-out cubic formula
+            const easeOutProgress = 1 - Math.pow(1 - progress, 3);
+            const currentAngle = easeOutProgress * finalAngle;
+            
+            drawWheel(currentAngle);
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                isSpinning = false;
+                alert(`🎡 Tabriklaymiz! Siz yutdingiz:\n\n${data.reward_text}`);
+                document.getElementById('btn-spin-wheel').disabled = false;
+                closeWheelModal();
+                loadProfile(); // refresh balance/inventory
+            }
+        }
+        
+        requestAnimationFrame(animate);
+        
+    } catch (e) {
+        alert("Xatolik yuz berdi. Iltimos qayta urinib ko'ring.");
+        isSpinning = false;
+    }
+}
+
+// --- Interactive Matchmaking / WebApp Game Arena Loop ---
+let webappGameId = null;
+let webappPollingInterval = null;
+let matchmakePollingInterval = null;
+
+async function startMatchmaking() {
+    try {
+        const response = await fetch('/api/game/matchmake/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('btn-matchmake-start').style.display = 'none';
+            document.getElementById('webapp-matchmake-searching-info').style.display = 'block';
+            
+            // Start polling matchmaking queue
+            if (matchmakePollingInterval) clearInterval(matchmakePollingInterval);
+            matchmakePollingInterval = setInterval(pollMatchmakingStatus, 3000);
+            pollMatchmakingStatus();
+        } else {
+            if (data.error === 'already_in_game') {
+                // Reconnect to active game immediately!
+                webappGameId = data.game_id;
+                switchToGameState('arena');
+            } else {
+                alert("Matchmaker xatosi: " + data.error);
+            }
+        }
+    } catch (e) {
+        alert("Ulanish xatosi.");
+    }
+}
+
+async function cancelMatchmaking() {
+    try {
+        await fetch('/api/game/matchmake/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        
+        if (matchmakePollingInterval) clearInterval(matchmakePollingInterval);
+        document.getElementById('btn-matchmake-start').style.display = 'block';
+        document.getElementById('webapp-matchmake-searching-info').style.display = 'none';
+    } catch (e) {}
+}
+
+async function pollMatchmakingStatus() {
+    try {
+        const response = await fetch(`/api/game/matchmake/status?user_id=${userId}`);
+        const data = await response.json();
+        
+        if (data.status === 'matched') {
+            if (matchmakePollingInterval) clearInterval(matchmakePollingInterval);
+            webappGameId = data.game_id;
+            
+            // Go to matched lobby state
+            switchToGameState('lobby');
+            startLobbyCountdown();
+        } else if (data.status === 'searching') {
+            document.getElementById('matchmake-queue-count').innerText = data.queue_length;
+        }
+    } catch (e) {}
+}
+
+function switchToGameState(state) {
+    document.getElementById('webapp-state-matchmake').style.display = (state === 'matchmake') ? 'block' : 'none';
+    document.getElementById('webapp-state-lobby').style.display = (state === 'lobby') ? 'block' : 'none';
+    document.getElementById('webapp-state-carddeal').style.display = (state === 'carddeal') ? 'block' : 'none';
+    document.getElementById('webapp-state-arena').style.display = (state === 'arena') ? 'block' : 'none';
+}
+
+function startLobbyCountdown() {
+    let secondsLeft = 10;
+    const timerEl = document.getElementById('webapp-lobby-timer');
+    timerEl.innerText = secondsLeft;
+    
+    const interval = setInterval(() => {
+        secondsLeft--;
+        timerEl.innerText = secondsLeft;
+        if (secondsLeft <= 0) {
+            clearInterval(interval);
+            // Go to card reveal deal state
+            switchToGameState('carddeal');
+            resetCardFlipState();
+        }
+    }, 1000);
+}
+
+function resetCardFlipState() {
+    const inner = document.getElementById('role-card-inner');
+    inner.classList.remove('flipped');
+    
+    // Set default card back reveal hint info
+    fetch(`/api/webapp-game/status?game_id=${webappGameId}&user_id=${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            const icons = { Mafia: "🔴", Don: "🕶️", Detective: "🔵", Doctor: "🟡", Citizen: "🟢" };
+            document.getElementById('webapp-role-card-icon').innerText = icons[data.self_role] || "🎭";
+            document.getElementById('webapp-role-card-name').innerText = data.self_role;
+        });
+}
+
+function flipRoleCard() {
+    const inner = document.getElementById('role-card-inner');
+    if (inner.classList.contains('flipped')) return;
+    
+    inner.classList.add('flipped');
+    document.getElementById('lbl-reveal-hint').innerText = "O'yinga o'tish kutilmoqda...";
+    
+    setTimeout(() => {
+        switchToGameState('arena');
+        // Start live game polling loop
+        if (webappPollingInterval) clearInterval(webappPollingInterval);
+        webappPollingInterval = setInterval(pollWebappGame, 3000);
+        pollWebappGame();
+    }, 3000);
+}
+
+async function pollWebappGame() {
+    if (!webappGameId) return;
+    
+    try {
+        // 1. Fetch game status
+        const statusRes = await fetch(`/api/webapp-game/status?game_id=${webappGameId}&user_id=${userId}`);
+        const statusData = await statusRes.json();
+        
+        if (statusData.error) {
+            // Game ended or not found
+            if (webappPollingInterval) clearInterval(webappPollingInterval);
+            switchToGameState('matchmake');
+            document.getElementById('btn-matchmake-start').style.display = 'block';
+            document.getElementById('webapp-matchmake-searching-info').style.display = 'none';
+            webappGameId = null;
+            return;
+        }
+        
+        // 2. Fetch game chat messages
+        const msgsRes = await fetch(`/api/webapp-game/messages?game_id=${webappGameId}&user_id=${userId}`);
+        const msgsData = await msgsRes.json();
+        
+        // 3. Update UI arena
+        updateWebappArena(statusData, msgsData.messages);
+        
+        // If ended, trigger end state clean up
+        if (statusData.phase === 'ended') {
+            if (webappPollingInterval) clearInterval(webappPollingInterval);
+            setTimeout(() => {
+                alert("O'yin yakunlandi! Natijalar bot tomonidan shaxsiy chatga yuborildi.");
+                switchToGameState('matchmake');
+                document.getElementById('btn-matchmake-start').style.display = 'block';
+                document.getElementById('webapp-matchmake-searching-info').style.display = 'none';
+                webappGameId = null;
+                loadProfile(); // refresh reward balances
+            }, 6000);
+        }
+        
+    } catch (e) {
+        console.error("Error in pollWebappGame:", e);
+    }
+}
+
+function updateWebappArena(status, messages) {
+    // 1. Update Timer & Phase Badges
+    const badge = document.getElementById('webapp-arena-phase-badge');
+    const phaseNames = {
+        lobby: "KUTISH ZALI",
+        night: "🌙 TUN",
+        day_discussion: "🌅 KUN (MUNOZARA)",
+        voting: "🗳️ OVOZ BERISH",
+        ended: "🏁 YAKUNLANDI"
+    };
+    badge.innerText = phaseNames[status.phase] || status.phase.toUpperCase();
+    
+    // Dynamic theme colors for phase badge
+    if (status.phase === 'night') {
+        badge.style.background = '#ff0055';
+    } else if (status.phase === 'day_discussion') {
+        badge.style.background = '#10b981';
+    } else if (status.phase === 'voting') {
+        badge.style.background = '#ffc439';
+        badge.style.color = '#000';
+    } else {
+        badge.style.background = '#64748b';
+        badge.style.color = '#fff';
+    }
+    
+    document.getElementById('webapp-arena-my-role').innerText = status.self_role;
+    document.getElementById('webapp-arena-timer-sec').innerText = status.seconds_left;
+    
+    // 2. Render Player cards grid
+    renderWebappPlayers(status.players, status.phase, status.self_role, status.self_is_alive);
+    
+    // 3. Update Chat Box
+    updateWebappChat(messages, status.self_role);
+}
+
+function renderWebappPlayers(players, phase, selfRole, selfIsAlive) {
+    const grid = document.getElementById('webapp-arena-players-grid');
+    grid.innerHTML = '';
+    
+    const roleIcons = { Mafia: "🔴", Don: "🕶️", Detective: "🔵", Doctor: "🟡", Citizen: "🟢", Unknown: "🎭" };
+    
+    players.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'player-card-interactive';
+        if (!p.is_alive) div.classList.add('dead');
+        if (p.has_voted) div.classList.add('voted');
+        if (p.target_id) div.classList.add('targeted');
+        
+        const avatar = p.is_alive ? (roleIcons[p.role] || "👤") : "🪦";
+        const roleLabel = p.user_id === userId ? `(${p.role})` : (p.role !== 'Unknown' ? `(${p.role})` : '');
+        
+        div.innerHTML = `
+            <div style="font-size:28px;">${avatar}</div>
+            <div style="font-size:13px; font-weight:700; color:#fff; margin-top:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.first_name}</div>
+            <div style="font-size:10px; color:#ffc439; font-weight:600; margin-top:2px;">${roleLabel}</div>
+        `;
+        
+        // Add click actions for active roles and voting
+        if (selfIsAlive && p.is_alive && p.user_id !== userId) {
+            div.addEventListener('click', () => {
+                if (phase === 'night') {
+                    // Check if self is active night role
+                    if (selfRole === 'Mafia' || selfRole === 'Detective' || selfRole === 'Doctor') {
+                        if (confirm(`${p.first_name} ni tungi nishon sifatida tanlaysizmi?`)) {
+                            submitWebappAction(p.user_id);
+                        }
+                    } else {
+                        alert("Tinch aholi tunda uxlashi kerak!");
+                    }
+                } else if (phase === 'voting') {
+                    if (confirm(`${p.first_name} ga ovoz berasizmi?`)) {
+                        submitWebappVote(p.user_id);
+                    }
+                }
+            });
+        }
+        
+        grid.appendChild(div);
+    });
+}
+
+async function submitWebappAction(targetId) {
+    try {
+        const response = await fetch('/api/webapp-game/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game_id: webappGameId, user_id: userId, target_id: targetId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert("Tungi harakat qabul qilindi!");
+            pollWebappGame();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) {}
+}
+
+async function submitWebappVote(targetId) {
+    try {
+        const response = await fetch('/api/webapp-game/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game_id: webappGameId, user_id: userId, target_id: targetId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert("Ovoz berildi!");
+            pollWebappGame();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) {}
+}
+
+async function sendWebappChatMessage() {
+    const input = document.getElementById('webapp-arena-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    try {
+        const response = await fetch('/api/webapp-game/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game_id: webappGameId, user_id: userId, text: text })
+        });
+        const data = await response.json();
+        if (data.success) {
+            input.value = '';
+            pollWebappGame();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) {}
+}
+
+function updateWebappChat(messages, selfRole) {
+    const chatBox = document.getElementById('webapp-arena-chat-box');
+    chatBox.innerHTML = '';
+    
+    if (messages && messages.length > 0) {
+        messages.forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'chat-bubble';
+            if (m.sender === 'Tizim') div.classList.add('system');
+            if (m.is_mafia) div.classList.add('mafia');
+            
+            const senderHTML = m.sender === 'Tizim' ? '' : `<div class="chat-bubble-sender">${m.sender} ${m.is_mafia ? '🔴 (Mafia chat)' : ''}</div>`;
+            div.innerHTML = `
+                ${senderHTML}
+                <div class="chat-bubble-text">${m.text}</div>
+                <div class="chat-bubble-time">${m.timestamp || ''}</div>
+            `;
+            chatBox.appendChild(div);
+        });
+        
+        // Auto scroll to bottom
+        chatBox.scrollTop = chatBox.scrollHeight;
+    } else {
+        chatBox.innerHTML = `<div class="no-data">Chat xabarlari yo'q.</div>`;
+    }
+}
+
+// Bind Enter key to webapp chat input
+setTimeout(() => {
+    const chatIn = document.getElementById('webapp-arena-chat-input');
+    if (chatIn) {
+        chatIn.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendWebappChatMessage();
+        });
+    }
+}, 2000);

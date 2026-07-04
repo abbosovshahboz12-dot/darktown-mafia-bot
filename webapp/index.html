@@ -113,12 +113,38 @@
                 <div class="section-title">Rollar bo'yicha g'alabalar</div>
                 <div class="roles-stats-list" id="roles-stats">
                     <div class="no-data">Hozircha o'yinlar o'ynalmagan.</div>
+                <!-- Friends Section -->
+                <div class="section-title" id="lbl-friends-title" style="margin-top: 24px;">👥 Do'stlar</div>
+                <div class="friends-container" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius:14px; padding:16px; margin-bottom:20px; text-align:left;">
+                    <!-- Add friend username input -->
+                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                        <input type="text" id="input-friend-username" placeholder="Do'st userneymi (masalan: username)" class="form-input" style="flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:8px 12px; color:#fff; font-size:13px;">
+                        <button class="btn btn-primary" id="btn-add-friend" style="padding: 8px 16px; font-size: 13px; font-weight:600;" onclick="sendFriendRequest()">Qo'shish</button>
+                    </div>
+                    
+                    <!-- Incoming requests -->
+                    <div id="incoming-requests-container" style="margin-bottom:12px; display:none;">
+                        <div style="font-size:12px; color:#ffc439; font-weight:700; margin-bottom:6px;">Do'stlik so'rovlari:</div>
+                        <div id="incoming-requests-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                    </div>
+                    
+                    <!-- Friends list -->
+                    <div id="friends-list" style="display:flex; flex-direction:column; gap:8px;">
+                        <div class="no-data" id="lbl-no-friends">Do'stlar ro'yxati bo'sh.</div>
+                    </div>
                 </div>
             </section>
 
             <!-- 2. Shop Tab -->
             <section id="tab-shop" class="tab-content">
                 <div class="section-title" id="lbl-shop-title">Darktown Do'koni</div>
+                
+                <!-- Daily Spin Card -->
+                <div class="daily-spin-promo-card" id="btn-open-wheel" style="background: linear-gradient(135deg, rgba(255, 196, 57, 0.15) 0%, rgba(255, 140, 0, 0.15) 100%); border: 1px solid rgba(255, 196, 57, 0.3); border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 20px rgba(255, 140, 0, 0.15); transition: all 0.3s ease; position: relative; overflow: hidden;" onclick="openWheelModal()">
+                    <div style="font-size: 32px; margin-bottom: 8px; filter: drop-shadow(0 0 8px rgba(255, 196, 57, 0.5));">🎡</div>
+                    <div style="font-size: 16px; font-weight: 800; color: #ffc439;" id="lbl-wheel-promo-title">Omad G'ildiragi (Beta)</div>
+                    <div style="font-size: 12px; color: #cbd5e1; margin-top: 4px;" id="lbl-wheel-promo-desc">Har 24 soatda aylantirib, tasodifiy boosterlar va tangalar yutib oling!</div>
+                </div>
                 
                 <div class="shop-grid">
                     <!-- Shield Item -->
@@ -242,6 +268,13 @@
 
             <!-- 4. Match Tab -->
             <section id="tab-match" class="tab-content">
+                <!-- Segmented Control to toggle between Group tools and Interactive play -->
+                <div class="match-mode-selector" style="display:flex; background:rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius:10px; padding:4px; margin-bottom:20px;">
+                    <button class="mode-btn active" id="btn-mode-calc" style="flex:1; background:none; border:none; color:#fff; padding:8px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;" onclick="switchMatchMode('calc')">🎲 Kalkulyator</button>
+                    <button class="mode-btn" id="btn-mode-play" style="flex:1; background:none; border:none; color:#94a3b8; padding:8px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;" onclick="switchMatchMode('play')">🎮 Interaktiv O'yin</button>
+                </div>
+
+                <!-- Group Calculator View -->
                 <div id="match-calc-view">
                     <div class="section-title">🎲 Rol taqsimoti kalkulyatori</div>
                     
@@ -297,6 +330,89 @@
                     </div>
                 </div>
 
+                <!-- Webapp Interactive Matchroom View -->
+                <div id="match-webapp-game-view" style="display:none;">
+                    <!-- 1. Queue Matchmaking State -->
+                    <div id="webapp-state-matchmake" class="webapp-panel" style="text-align:center; padding:30px 20px;">
+                        <div class="pulse-ring-container" style="position:relative; width:100px; height:100px; margin:0 auto 20px;">
+                            <div class="pulse-ring" style="width:100%; height:100%; border-radius:50%; background:rgba(0, 242, 254, 0.15); border: 2px solid #00f2fe; animation: pulse-anim 2s infinite;"></div>
+                            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:32px;">🕵️‍♂️</div>
+                        </div>
+                        
+                        <div id="webapp-matchmake-status" style="font-size:18px; font-weight:800; color:#fff;">Interaktiv O'yin Qidirish</div>
+                        <div style="font-size:13px; color:#94a3b8; margin:8px 0 20px;" id="webapp-matchmake-desc">Hozir o'ynash tugmasini bosing va o'yin xonasiga qo'shiling.</div>
+                        
+                        <button class="buy-btn" id="btn-matchmake-start" style="width:100%; height:46px; font-weight:700;" onclick="startMatchmaking()">🎮 O'yin Qidirish</button>
+                        
+                        <div id="webapp-matchmake-searching-info" style="display:none; margin-top:20px;">
+                            <div style="font-size:14px; color:#00f2fe; font-weight:700;" id="lbl-searching">O'yin qidirilmoqda...</div>
+                            <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Navbatdagi o'yinchilar: <span id="matchmake-queue-count">0</span>/5</div>
+                            <button class="btn btn-secondary" style="margin-top:15px; width:100%;" onclick="cancelMatchmaking()">Bekor qilish</button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Game Lobby State -->
+                    <div id="webapp-state-lobby" class="webapp-panel" style="display:none; text-align:center; padding:30px 20px;">
+                        <div style="font-size:40px; margin-bottom:12px;">🎭</div>
+                        <div style="font-size:20px; font-weight:800; color:#00f2fe;" id="lbl-lobby-matched">O'yin Topildi!</div>
+                        <div style="font-size:14px; color:#e2e8f0; margin-top:8px;">O'yin boshlanmoqda. Rollar taqsimlanmoqda...</div>
+                        <div style="font-size:28px; font-weight:800; color:#ffc439; margin-top:20px;" id="webapp-lobby-timer">10</div>
+                    </div>
+
+                    <!-- 3. Card Deal State (Role Reveal Animation) -->
+                    <div id="webapp-state-carddeal" class="webapp-panel" style="display:none; text-align:center; padding:30px 20px;">
+                        <div class="card-flip-container" style="perspective:1000px; width:180px; height:260px; margin:0 auto 20px; cursor:pointer;" onclick="flipRoleCard()">
+                            <div class="card-flip-inner" id="role-card-inner" style="position:relative; width:100%; height:100%; text-align:center; transition:transform 0.8s; transform-style:preserve-3d; transform: rotateY(0deg);">
+                                <!-- Card Front (Back of the card visually) -->
+                                <div class="card-front" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; background:linear-gradient(135deg, #1e1b4b 0%, #311042 100%); border: 2px solid #ffc439; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                                    <div style="font-size:48px; filter: drop-shadow(0 0 10px rgba(255,196,57,0.3));">🕵️‍♂️</div>
+                                    <div style="font-size:12px; color:#ffc439; font-weight:800; margin-top:12px; letter-spacing:1px;">DARKTOWN</div>
+                                </div>
+                                <!-- Card Back (Revealed role) -->
+                                <div class="card-back" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; background:#12131a; border: 2px solid #00f2fe; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; transform:rotateY(180deg); box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                                    <div style="font-size:56px;" id="webapp-role-card-icon">🕵️‍♂️</div>
+                                    <div style="font-size:18px; font-weight:800; color:#fff; margin-top:12px;" id="webapp-role-card-name">Komissar</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="font-size:14px; color:#94a3b8; font-weight:600;" id="lbl-reveal-hint">Karta ustiga bosib rolingizni oching!</div>
+                    </div>
+
+                    <!-- 4. Game Arena State -->
+                    <div id="webapp-state-arena" class="webapp-panel" style="display:none;">
+                        <!-- Arena Header -->
+                        <div class="game-header-card" style="margin-bottom:15px; position:relative;">
+                            <div class="game-phase-badge" id="webapp-arena-phase-badge">🌙 TUN</div>
+                            <div class="game-role-info">
+                                <span id="lbl-self-role">Rolingiz:</span>
+                                <span id="webapp-arena-my-role" class="game-role-text">🕵️‍♂️ Komissar</span>
+                            </div>
+                            <div style="font-size:12px; color:#ff8c00; font-weight:700; margin-top:4px;" id="webapp-arena-timer-desc">Faza yakunlanishiga: <span id="webapp-arena-timer-sec">00</span>s</div>
+                        </div>
+
+                        <!-- Arena Players Grid -->
+                        <div class="section-title" id="lbl-arena-players">👥 Tirik o'yinchilar</div>
+                        <div class="game-players-grid" id="webapp-arena-players-grid" style="margin-bottom:20px;">
+                            <!-- Players list here -->
+                        </div>
+
+                        <!-- Arena Interactive Chat Box -->
+                        <div class="section-title" id="lbl-arena-chat">💬 O'yin Chati</div>
+                        <div class="webapp-chat-container" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                            <!-- Chat message display -->
+                            <div id="webapp-arena-chat-box" style="height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; font-size:12px; text-align:left;">
+                                <div class="no-data">Chat xabarlari yo'q.</div>
+                            </div>
+                            <!-- Chat Input -->
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="webapp-arena-chat-input" placeholder="Xabar yozing..." style="flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; padding:10px; font-size:13px;">
+                                <button class="btn btn-primary" id="btn-webapp-arena-send" style="padding:10px 16px;" onclick="sendWebappChatMessage()">➡️</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group Active Game Live Status (formerly match-active-game-view) -->
                 <div id="match-active-game-view" style="display:none;">
                     <div class="game-header-card">
                         <div class="game-phase-badge" id="game-phase-badge">🌙 TUN</div>
@@ -397,6 +513,26 @@
             </button>
         </nav>
 
+    </div>
+
+    <!-- Wheel of Fortune Modal -->
+    <div class="modal-overlay" id="wheel-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(10px); padding: 20px;">
+        <div class="modal-content" style="background: #12131a; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 24px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.5); position: relative;">
+            <button id="btn-close-wheel" style="position: absolute; top: 12px; right: 16px; background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer;" onclick="closeWheelModal()">&times;</button>
+            <h3 style="font-size: 20px; font-weight: 800; color: #ffc439; margin-top: 10px;" id="lbl-wheel-modal-title">🎡 Omad G'ildiragi</h3>
+            
+            <!-- Spinning Canvas Wheel -->
+            <div style="position: relative; width: 260px; height: 260px; margin: 20px auto;">
+                <canvas id="wheel-canvas" width="260" height="260" style="width: 260px; height: 260px; border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.4);"></canvas>
+                <!-- Pointer -->
+                <div style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 20px solid #ff0055; z-index: 10;"></div>
+                <!-- Center Pin -->
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; background: #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.5); z-index: 5;"></div>
+            </div>
+            
+            <button class="btn btn-primary" id="btn-spin-wheel" style="width: 100%; height: 46px; font-size: 16px; font-weight: 700; background: linear-gradient(135deg, #ffc439 0%, #ff8c00 100%); border: none; border-radius: 10px; cursor: pointer; color:#000;" onclick="spinWheel()">Aylantirish</button>
+            <div id="wheel-timer" style="display: none; font-size: 14px; font-weight: 600; color: #94a3b8; margin-top: 10px;">Keyingi imkoniyat: <span id="wheel-time-left">24:00</span></div>
+        </div>
     </div>
 
     <!-- Scripts -->
