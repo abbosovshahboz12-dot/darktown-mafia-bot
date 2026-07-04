@@ -250,17 +250,52 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
     game.players[user_id] = player
     
     # Update lobby text
+    lang = await db.get_group_language(chat_id)
     players_list = "\n".join([f"{i}. {p.name}" for i, p in enumerate(game.players.values(), 1)])
+    
+    if lang == "ru":
+        lobby_text = (
+            f"🎮 **Игра Мафия Darktown**\n\n"
+            f"Создана новая игра! Игроки собираются.\n\n"
+            f"👥 **Список игроков ({len(game.players)})**:\n"
+            f"{players_list}\n\n"
+            f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
+        )
+        join_confirm = "Вы успешно присоединились!"
+    elif lang == "en":
+        lobby_text = (
+            f"🎮 **Darktown Mafia Game**\n\n"
+            f"New game created! Players are gathering.\n\n"
+            f"👥 **Player List ({len(game.players)})**:\n"
+            f"{players_list}\n\n"
+            f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
+        )
+        join_confirm = "You have joined successfully!"
+    elif lang == "kz":
+        lobby_text = (
+            f"🎮 **Darktown Мафия Ойыны**\n\n"
+            f"Жаңа ойын құрылды! Ойыншылар жиналуда.\n\n"
+            f"👥 **Ойыншылар тізімі ({len(game.players)})**:\n"
+            f"{players_list}\n\n"
+            f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
+        )
+        join_confirm = "Сіз ойынға сәтті қосылдыңыз!"
+    else:
+        lobby_text = (
+            f"🎮 **Darktown Mafiya O'yini**\n\n"
+            f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda.\n\n"
+            f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
+            f"{players_list}\n\n"
+            f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
+        )
+        join_confirm = "Siz muvaffaqiyatli qo'shildingiz!"
+        
     await cb.message.edit_text(
-        f"🎮 **Darktown Mafiya O'yini**\n\n"
-        f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda.\n\n"
-        f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
-        f"{players_list}\n\n"
-        f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!",
-        reply_markup=get_lobby_keyboard(),
+        lobby_text,
+        reply_markup=get_lobby_keyboard(lang),
         parse_mode="Markdown"
     )
-    await cb.answer("Siz muvaffaqiyatli qo'shildingiz!")
+    await cb.answer(join_confirm)
 
 @router.callback_query(F.data == "lobby_start")
 async def lobby_start_callback(cb: types.CallbackQuery, bot: Bot):
@@ -307,47 +342,111 @@ async def lobby_start_callback(cb: types.CallbackQuery, bot: Bot):
 async def cmd_leave(message: types.Message):
     chat_id = message.chat.id
     user_id = message.from_user.id
+    lang = await db.get_group_language(chat_id)
     
     game = game_manager.get_game(chat_id)
     if not game:
-        await message.answer("Ushbu guruhda faol o'yin yo'q.")
+        err_msg = "Ushbu guruhda faol o'yin yo'q."
+        if lang == "ru":
+            err_msg = "В этой группе нет активной игры."
+        elif lang == "en":
+            err_msg = "No active game in this group."
+        elif lang == "kz":
+            err_msg = "Бұл топта белсенді ойын жоқ."
+        await message.answer(err_msg)
         return
         
     if user_id not in game.players:
-        await message.answer("Siz o'yin ishtirokchisi emassiz.")
+        err_msg = "Siz o'yin ishtirokchisi emassiz."
+        if lang == "ru":
+            err_msg = "Вы не являетесь участником игры."
+        elif lang == "en":
+            err_msg = "You are not a participant of this game."
+        elif lang == "kz":
+            err_msg = "Сіз ойынның қатысушысы емессіз."
+        await message.answer(err_msg)
         return
         
     if game.phase == "lobby":
         del game.players[user_id]
         if not game.players:
             game_manager.remove_game(chat_id)
-            await message.answer("Lobby bo'shab qoldi. O'yin bekor qilindi.")
+            cancel_msg = "Lobby bo'shab qoldi. O'yin bekor qilindi."
+            if lang == "ru":
+                cancel_msg = "Лобби опустело. Игра отменена."
+            elif lang == "en":
+                cancel_msg = "Lobby is empty. Game cancelled."
+            elif lang == "kz":
+                cancel_msg = "Лобби бос қалды. Ойын тоқтатылды."
+            await message.answer(cancel_msg)
             return
             
         players_list = "\n".join([f"{i}. {p.name}" for i, p in enumerate(game.players.values(), 1)])
-        # Update lobby message
+        
+        if lang == "ru":
+            lobby_text = (
+                f"🎮 **Игра Мафия Darktown**\n\n"
+                f"Создана новая игра! Игроки собираются.\n\n"
+                f"👥 **Список игроков ({len(game.players)})**:\n"
+                f"{players_list}\n\n"
+                f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
+            )
+            leave_confirm = f"🚶 **{message.from_user.full_name}** вышел из лобби."
+        elif lang == "en":
+            lobby_text = (
+                f"🎮 **Darktown Mafia Game**\n\n"
+                f"New game created! Players are gathering.\n\n"
+                f"👥 **Player List ({len(game.players)})**:\n"
+                f"{players_list}\n\n"
+                f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
+            )
+            leave_confirm = f"🚶 **{message.from_user.full_name}** left the lobby."
+        elif lang == "kz":
+            lobby_text = (
+                f"🎮 **Darktown Мафия Ойыны**\n\n"
+                f"Жаңа ойын құрылды! Ойыншылар жиналуда.\n\n"
+                f"👥 **Ойыншылар тізімі ({len(game.players)})**:\n"
+                f"{players_list}\n\n"
+                f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
+            )
+            leave_confirm = f"🚶 **{message.from_user.full_name}** лоббиден шықты."
+        else:
+            lobby_text = (
+                f"🎮 **Darktown Mafiya O'yini**\n\n"
+                f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda.\n\n"
+                f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
+                f"{players_list}\n\n"
+                f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
+            )
+            leave_confirm = f"🚶 **{message.from_user.full_name}** lobby'dan chiqdi."
+
         try:
             await message.bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=game.lobby_message_id,
-                text=f"🎮 **Darktown Mafiya O'yini**\n\n"
-                     f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda.\n\n"
-                     f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
-                     f"{players_list}\n\n"
-                     f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!",
-                reply_markup=get_lobby_keyboard(),
+                text=lobby_text,
+                reply_markup=get_lobby_keyboard(lang),
                 parse_mode="Markdown"
             )
         except Exception:
             pass
-        await message.answer(f"🚶 **{message.from_user.full_name}** lobby'dan chiqdi.")
+        await message.answer(leave_confirm)
         
     else:
         # Player quit during game
         player = game.players[user_id]
         if player.is_alive:
             player.is_alive = False
-            await message.answer(f"💀 **{player.name}** o'yinni tark etdi va vafot etdi. Uning roli: **{player.role}**")
+            
+            leave_msg = f"💀 **{player.name}** o'yinni tark etdi va vafot etdi. Uning roli: **{player.role}**"
+            if lang == "ru":
+                leave_msg = f"💀 **{player.name}** покинул игру и погиб. Его роль: **{player.role}**"
+            elif lang == "en":
+                leave_msg = f"💀 **{player.name}** left the game and died. His role: **{player.role}**"
+            elif lang == "kz":
+                leave_msg = f"💀 **{player.name}** ойыннан шығып, қайтыс болды. Оның рөлі: **{player.role}**"
+                
+            await message.answer(leave_msg)
             
             # Check win conditions
             from game.loop import check_win_conditions, end_game
