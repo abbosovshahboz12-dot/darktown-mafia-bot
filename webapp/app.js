@@ -707,7 +707,27 @@ const LOCALES = {
         "calc_title": "🎮 Mafiya Balans Kalkulyatori",
         "calc_lbl_players": "O'yinchilar soni",
         "calc_roles_distribution": "👥 Kutilayotgan rollar taqsimoti",
-        "calc_roles_guide": "🎭 Rol qoidalari va tavsiflari"
+        "calc_roles_guide": "🎭 Rol qoidalari va tavsiflari",
+        "nav_profile": "Profil",
+        "nav_shop": "Do'kon",
+        "nav_leaderboard": "Reyting",
+        "nav_match": "O'yin",
+        "nav_admin": "Admin",
+        "lbl_shop": "Darktown Do'koni",
+        "lbl_leaderboard_title": "Global Top O'yinchilar",
+        "shop_shield_name": "XP Qalqoni",
+        "shop_shield_desc": "Yutqazganingizda XP yo'qotishdan himoya qiladi (1 martalik).",
+        "shop_mafia_name": "Mafiya Booster",
+        "shop_mafia_desc": "Keyingi o'yinda Mafiya rolini olish imkoniyatini oshiradi.",
+        "shop_det_name": "Komissar Booster",
+        "shop_det_desc": "Keyingi o'yinda Komissar rolini olish imkoniyatini oshiradi.",
+        "shop_doc_name": "Shifokor Booster",
+        "shop_doc_desc": "Keyingi o'yinda Shifokor rolini olish imkoniyatini oshiradi.",
+        "shop_maniac_name": "Telba Booster",
+        "shop_maniac_desc": "Keyingi o'yinda Telba (Maniac) rolini olish imkoniyatini oshiradi.",
+        "coin_pack_desc": "Mini App do'koni uchun {count} tanga.",
+        "btn_pay_stars": "⭐️ Telegram Stars",
+        "btn_pay_card": "💳 Visa / PayPal"
     },
     ru: {
         "title_profile": "👤 Профиль",
@@ -736,7 +756,27 @@ const LOCALES = {
         "calc_title": "🎮 Калькулятор Баланса Мафии",
         "calc_lbl_players": "Количество игроков",
         "calc_roles_distribution": "👥 Ожидаемое распределение ролей",
-        "calc_roles_guide": "🎭 Правила и описание ролей"
+        "calc_roles_guide": "🎭 Правила и описание ролей",
+        "nav_profile": "Профиль",
+        "nav_shop": "Магазин",
+        "nav_leaderboard": "Рейтинг",
+        "nav_match": "Игра",
+        "nav_admin": "Админ",
+        "lbl_shop": "Магазин Darktown",
+        "lbl_leaderboard_title": "Глобальный Топ Игроков",
+        "shop_shield_name": "Щит XP",
+        "shop_shield_desc": "Защищает от потери опыта при поражении (одноразовый).",
+        "shop_mafia_name": "Бустер Мафии",
+        "shop_mafia_desc": "Увеличивает шанс получить роль Мафии в следующей игре.",
+        "shop_det_name": "Бустер Комиссара",
+        "shop_det_desc": "Увеличивает шанс получить роль Комиссара в следующей игре.",
+        "shop_doc_name": "Бустер Доктора",
+        "shop_doc_desc": "Увеличивает шанс получить роль Доктора в следующей игре.",
+        "shop_maniac_name": "Бустер Маньяка",
+        "shop_maniac_desc": "Увеличивает шанс получить роль Маньяка в следующей игре.",
+        "coin_pack_desc": "Для покупок в магазине {count} монет.",
+        "btn_pay_stars": "⭐️ Telegram Stars",
+        "btn_pay_card": "💳 Visa / PayPal"
     },
     en: {
         "title_profile": "👤 Profile",
@@ -765,7 +805,27 @@ const LOCALES = {
         "calc_title": "🎮 Mafia Balance Calculator",
         "calc_lbl_players": "Number of players",
         "calc_roles_distribution": "👥 Expected Role Distribution",
-        "calc_roles_guide": "🎭 Role Rules & Descriptions"
+        "calc_roles_guide": "🎭 Role Rules & Descriptions",
+        "nav_profile": "Profile",
+        "nav_shop": "Shop",
+        "nav_leaderboard": "Leaderboard",
+        "nav_match": "Play",
+        "nav_admin": "Admin",
+        "lbl_shop": "Darktown Shop",
+        "lbl_leaderboard_title": "Global Top Players",
+        "shop_shield_name": "XP Shield",
+        "shop_shield_desc": "Protects from losing XP when you lose (1-time use).",
+        "shop_mafia_name": "Mafia Booster",
+        "shop_mafia_desc": "Increases the chance of getting the Mafia role in the next game.",
+        "shop_det_name": "Detective Booster",
+        "shop_det_desc": "Increases the chance of getting the Detective role in the next game.",
+        "shop_doc_name": "Doctor Booster",
+        "shop_doc_desc": "Increases the chance of getting the Doctor role in the next game.",
+        "shop_maniac_name": "Maniac Booster",
+        "shop_maniac_desc": "Increases the chance of getting the Maniac role in the next game.",
+        "coin_pack_desc": "Get {count} coins for the Mini App shop.",
+        "btn_pay_stars": "⭐️ Telegram Stars",
+        "btn_pay_card": "💳 Visa / PayPal"
     },
     kz: {
         "title_profile": "👤 Профиль",
@@ -794,7 +854,27 @@ const LOCALES = {
         "calc_title": "🎮 Мафия Баланс Калькуляторы",
         "calc_lbl_players": "Ойыншылар саны",
         "calc_roles_distribution": "👥 Күтілетін рөлдерді бөлу",
-        "calc_roles_guide": "🎭 Рөлдердің ережелері мен сипаттамасы"
+        "calc_roles_guide": "🎭 Рөлдердің ережелері мен сипаттамасы",
+        "nav_profile": "Профиль",
+        "nav_shop": "Дүкен",
+        "nav_leaderboard": "Рейтинг",
+        "nav_match": "Ойын",
+        "nav_admin": "Админ",
+        "lbl_shop": "Darktown Дүкені",
+        "lbl_leaderboard_title": "Глобалды Үздік Ойыншылар",
+        "shop_shield_name": "XP Қалқаны",
+        "shop_shield_desc": "Ұтылған кезде тәжірибені (XP) жоғалтудан қорғайды (1 реттік).",
+        "shop_mafia_name": "Мафия Бустері",
+        "shop_mafia_desc": "Келесі ойында Мафия рөлін алу мүмкіндігін арттырады.",
+        "shop_det_name": "Комиссар Бустерi",
+        "shop_det_desc": "Келесі ойында Комиссар рөлін алу мүмкіндігін арттырады.",
+        "shop_doc_name": "Дәрігер Бустерi",
+        "shop_doc_desc": "Келесі ойында Дәрігер рөлін алу мүмкіндігін арттырады.",
+        "shop_maniac_name": "Маньяк Бустерi",
+        "shop_maniac_desc": "Келесі ойында Маньяк рөлін алу мүмкіндігін арттырады.",
+        "coin_pack_desc": "Дүкен үшін {count} монета.",
+        "btn_pay_stars": "⭐️ Telegram Stars",
+        "btn_pay_card": "💳 Visa / PayPal"
     }
 };
 
@@ -828,6 +908,49 @@ function updateLang(lang) {
     document.getElementById('lbl-players-title').innerText = t("lbl_players_title");
     document.getElementById('lbl-game-logs-title').innerText = t("lbl_game_logs_title");
     document.getElementById('lbl-ghost-chat-title').innerText = t("lbl_ghost_chat_title");
+    
+    // Bottom nav bar labels
+    document.getElementById('nav-lbl-profile').innerText = t("nav_profile");
+    document.getElementById('nav-lbl-shop').innerText = t("nav_shop");
+    document.getElementById('nav-lbl-leaderboard').innerText = t("nav_leaderboard");
+    document.getElementById('nav-lbl-match').innerText = t("nav_match");
+    if (document.getElementById('nav-lbl-admin')) {
+        document.getElementById('nav-lbl-admin').innerText = t("nav_admin");
+    }
+    
+    // Shop labels
+    document.getElementById('lbl-shop-title').innerText = t("lbl_shop");
+    document.getElementById('shop-item-shield-name').innerText = t("shop_shield_name");
+    document.getElementById('shop-item-shield-desc').innerText = t("shop_shield_desc");
+    document.getElementById('shop-item-shield-btn').innerText = t("btn_buy");
+    
+    document.getElementById('shop-item-mafia-name').innerText = t("shop_mafia_name");
+    document.getElementById('shop-item-mafia-desc').innerText = t("shop_mafia_desc");
+    document.getElementById('shop-item-mafia-btn').innerText = t("btn_buy");
+    
+    document.getElementById('shop-item-det-name').innerText = t("shop_det_name");
+    document.getElementById('shop-item-det-desc').innerText = t("shop_det_desc");
+    document.getElementById('shop-item-det-btn').innerText = t("btn_buy");
+    
+    document.getElementById('shop-item-doc-name').innerText = t("shop_doc_name");
+    document.getElementById('shop-item-doc-desc').innerText = t("shop_doc_desc");
+    document.getElementById('shop-item-doc-btn').innerText = t("btn_buy");
+    
+    document.getElementById('shop-item-maniac-name').innerText = t("shop_maniac_name");
+    document.getElementById('shop-item-maniac-desc').innerText = t("shop_maniac_desc");
+    document.getElementById('shop-item-maniac-btn').innerText = t("btn_buy");
+    
+    // Coin packages
+    document.getElementById('lbl-pack1-desc').innerText = t("coin_pack_desc").replace("{count}", "100");
+    document.getElementById('lbl-pack2-desc').innerText = t("coin_pack_desc").replace("{count}", "500");
+    document.getElementById('lbl-pack3-desc').innerText = t("coin_pack_desc").replace("{count}", "1000");
+    
+    // Payment buttons
+    document.querySelectorAll('.btn-stars').forEach(btn => btn.innerText = t("btn_pay_stars"));
+    document.querySelectorAll('.btn-card').forEach(btn => btn.innerText = t("btn_pay_card"));
+    
+    // Leaderboard title
+    document.getElementById('lbl-leaderboard-title').innerText = t("lbl_leaderboard_title");
     
     // Calculator labels
     const calcTitle = document.querySelector('#match-calc-view .section-title');

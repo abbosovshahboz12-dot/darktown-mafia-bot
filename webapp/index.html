@@ -118,52 +118,52 @@
 
             <!-- 2. Shop Tab -->
             <section id="tab-shop" class="tab-content">
-                <div class="section-title">Darktown Do'koni</div>
+                <div class="section-title" id="lbl-shop-title">Darktown Do'koni</div>
                 
                 <div class="shop-grid">
                     <!-- Shield Item -->
                     <div class="shop-card">
                         <div class="item-icon">🛡️</div>
-                        <div class="item-name">XP Qalqoni</div>
-                        <div class="item-desc">Yutqazganingizda XP yo'qotishdan himoya qiladi (1 martalik).</div>
-                        <div class="item-price">🪙 150</div>
-                        <button class="btn btn-primary btn-buy" data-item="shield">Sotib olish</button>
+                        <div class="item-name" id="shop-item-shield-name">XP Qalqoni</div>
+                        <div class="item-desc" id="shop-item-shield-desc">Yutqazganingizda XP yo'qotishdan himoya qiladi (1 martalik).</div>
+                        <div class="item-price" id="shop-item-shield-price">🪙 150</div>
+                        <button class="btn btn-primary btn-buy" data-item="shield" id="shop-item-shield-btn">Sotib olish</button>
                     </div>
 
                     <!-- Mafia Booster -->
                     <div class="shop-card">
                         <div class="item-icon">🔴</div>
-                        <div class="item-name">Mafiya Booster</div>
-                        <div class="item-desc">Keyingi o'yinda Mafiya rolini olish imkoniyatini oshiradi.</div>
-                        <div class="item-price">🪙 250</div>
-                        <button class="btn btn-primary btn-buy" data-item="booster_mafia">Sotib olish</button>
+                        <div class="item-name" id="shop-item-mafia-name">Mafiya Booster</div>
+                        <div class="item-desc" id="shop-item-mafia-desc">Keyingi o'yinda Mafiya rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price" id="shop-item-mafia-price">🪙 250</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_mafia" id="shop-item-mafia-btn">Sotib olish</button>
                     </div>
 
                     <!-- Detective Booster -->
                     <div class="shop-card">
                         <div class="item-icon">🔵</div>
-                        <div class="item-name">Komissar Booster</div>
-                        <div class="item-desc">Keyingi o'yinda Komissar rolini olish imkoniyatini oshiradi.</div>
-                        <div class="item-price">🪙 250</div>
-                        <button class="btn btn-primary btn-buy" data-item="booster_detective">Sotib olish</button>
+                        <div class="item-name" id="shop-item-det-name">Komissar Booster</div>
+                        <div class="item-desc" id="shop-item-det-desc">Keyingi o'yinda Komissar rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price" id="shop-item-det-price">🪙 250</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_detective" id="shop-item-det-btn">Sotib olish</button>
                     </div>
 
                     <!-- Doctor Booster -->
                     <div class="shop-card">
                         <div class="item-icon">🟡</div>
-                        <div class="item-name">Shifokor Booster</div>
-                        <div class="item-desc">Keyingi o'yinda Shifokor rolini olish imkoniyatini oshiradi.</div>
-                        <div class="item-price">🪙 200</div>
-                        <button class="btn btn-primary btn-buy" data-item="booster_doctor">Sotib olish</button>
+                        <div class="item-name" id="shop-item-doc-name">Shifokor Booster</div>
+                        <div class="item-desc" id="shop-item-doc-desc">Keyingi o'yinda Shifokor rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price" id="shop-item-doc-price">🪙 200</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_doctor" id="shop-item-doc-btn">Sotib olish</button>
                     </div>
 
                     <!-- Maniac Booster -->
                     <div class="shop-card">
                         <div class="item-icon">🦹</div>
-                        <div class="item-name">Telba Booster</div>
-                        <div class="item-desc">Keyingi o'yinda Telba (Maniac) rolini olish imkoniyatini oshiradi.</div>
-                        <div class="item-price">🪙 300</div>
-                        <button class="btn btn-primary btn-buy" data-item="booster_maniac">Sotib olish</button>
+                        <div class="item-name" id="shop-item-maniac-name">Telba Booster</div>
+                        <div class="item-desc" id="shop-item-maniac-desc">Keyingi o'yinda Telba (Maniac) rolini olish imkoniyatini oshiradi.</div>
+                        <div class="item-price" id="shop-item-maniac-price">🪙 300</div>
+                        <button class="btn btn-primary btn-buy" data-item="booster_maniac" id="shop-item-maniac-btn">Sotib olish</button>
                     </div>
                 </div>
 
@@ -180,9 +180,9 @@
                         <div class="item-name">100 Dark Coins</div>
                         <div class="item-desc" id="lbl-pack1-desc">Mini App do'koni uchun 100 tanga.</div>
                         <div class="item-price" id="lbl-pack1-price">⭐️ 50 Stars / $1.00</div>
-                        <div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:12px;">
-                            <button class="btn btn-primary btn-checkout" data-pack="coins_100" style="padding: 6px 12px; font-size: 12px;">⭐️ Telegram Stars</button>
-                            <button class="btn btn-secondary btn-card-pay" data-coins="100" style="padding: 6px 12px; font-size: 12px;">💳 Visa / PayPal</button>
+                        <div style="display:flex; flex-direction:column; gap:8px; width:100%; margin-top:12px;">
+                            <button class="btn-pay-option btn-stars btn-checkout" data-pack="coins_100">⭐️ Telegram Stars</button>
+                            <button class="btn-pay-option btn-card btn-card-pay" data-coins="100">💳 Visa / PayPal</button>
                         </div>
                     </div>
                     <div class="shop-card">
@@ -190,9 +190,9 @@
                         <div class="item-name">500 Dark Coins</div>
                         <div class="item-desc" id="lbl-pack2-desc">Mini App do'koni uchun 500 tanga.</div>
                         <div class="item-price" id="lbl-pack2-price">⭐️ 200 Stars / $4.00</div>
-                        <div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:12px;">
-                            <button class="btn btn-primary btn-checkout" data-pack="coins_500" style="padding: 6px 12px; font-size: 12px;">⭐️ Telegram Stars</button>
-                            <button class="btn btn-secondary btn-card-pay" data-coins="500" style="padding: 6px 12px; font-size: 12px;">💳 Visa / PayPal</button>
+                        <div style="display:flex; flex-direction:column; gap:8px; width:100%; margin-top:12px;">
+                            <button class="btn-pay-option btn-stars btn-checkout" data-pack="coins_500">⭐️ Telegram Stars</button>
+                            <button class="btn-pay-option btn-card btn-card-pay" data-coins="500">💳 Visa / PayPal</button>
                         </div>
                     </div>
                     <div class="shop-card">
@@ -200,9 +200,9 @@
                         <div class="item-name">1000 Dark Coins</div>
                         <div class="item-desc" id="lbl-pack3-desc">Mini App do'koni uchun 1000 tanga.</div>
                         <div class="item-price" id="lbl-pack3-price">⭐️ 350 Stars / $7.00</div>
-                        <div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:12px;">
-                            <button class="btn btn-primary btn-checkout" data-pack="coins_1000" style="padding: 6px 12px; font-size: 12px;">⭐️ Telegram Stars</button>
-                            <button class="btn btn-secondary btn-card-pay" data-coins="1000" style="padding: 6px 12px; font-size: 12px;">💳 Visa / PayPal</button>
+                        <div style="display:flex; flex-direction:column; gap:8px; width:100%; margin-top:12px;">
+                            <button class="btn-pay-option btn-stars btn-checkout" data-pack="coins_1000">⭐️ Telegram Stars</button>
+                            <button class="btn-pay-option btn-card btn-card-pay" data-coins="1000">💳 Visa / PayPal</button>
                         </div>
                     </div>
                 </div>
@@ -210,7 +210,7 @@
 
             <!-- 3. Leaderboard Tab -->
             <section id="tab-leaderboard" class="tab-content">
-                <div class="section-title">Global Top O'yinchilar</div>
+                <div class="section-title" id="lbl-leaderboard-title">Global Top O'yinchilar</div>
                 
                 <div class="leaderboard-list" id="leaderboard-list">
                     <!-- Loader or dynamic content -->
@@ -354,23 +354,23 @@
         <nav class="app-nav">
             <button class="nav-item active" data-tab="profile">
                 <span class="nav-icon">👤</span>
-                <span class="nav-lbl">Profil</span>
+                <span class="nav-lbl" id="nav-lbl-profile">Profil</span>
             </button>
             <button class="nav-item" data-tab="shop">
                 <span class="nav-icon">🛒</span>
-                <span class="nav-lbl">Do'kon</span>
+                <span class="nav-lbl" id="nav-lbl-shop">Do'kon</span>
             </button>
             <button class="nav-item" data-tab="leaderboard">
                 <span class="nav-icon">🏆</span>
-                <span class="nav-lbl">Reyting</span>
+                <span class="nav-lbl" id="nav-lbl-leaderboard">Reyting</span>
             </button>
             <button class="nav-item" data-tab="match">
                 <span class="nav-icon">🎲</span>
-                <span class="nav-lbl">O'yin</span>
+                <span class="nav-lbl" id="nav-lbl-match">O'yin</span>
             </button>
             <button class="nav-item" id="nav-admin" data-tab="admin" style="display: none;">
                 <span class="nav-icon">👑</span>
-                <span class="nav-lbl">Admin</span>
+                <span class="nav-lbl" id="nav-lbl-admin">Admin</span>
             </button>
         </nav>
 
