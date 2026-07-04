@@ -951,3 +951,48 @@ body {
 .action-btn-mini.vote {
     background: var(--secondary);
 }
+
+/* Achievements Badges list scrollbar styling */
+.achievements-list::-webkit-scrollbar {
+    height: 4px;
+}
+.achievements-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.01);
+}
+.achievements-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+/* Action Cards hover effect */
+.action-card {
+    transition: var(--transition);
+}
+.action-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Ghost Chat list styling */
+.ghost-chat-container::-webkit-scrollbar {
+    width: 4px;
+}
+.ghost-chat-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.01);
+}
+.ghost-chat-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+/* Live game logs scrollbar styling */
+.game-logs-container::-webkit-scrollbar {
+    width: 4px;
+}
+.game-logs-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.01);
+}
+.game-logs-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}

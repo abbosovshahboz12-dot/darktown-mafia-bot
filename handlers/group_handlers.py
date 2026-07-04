@@ -7,20 +7,29 @@ from game.manager import game_manager
 from game.loop import start_game_loop
 from game.models import Player, Game
 from database import db
+from locales import get_text
+from config import ADMIN_ID
 
 router = Router()
 
 # Only process group and supergroup messages
 router.message.filter(F.chat.type.in_({"group", "supergroup"}))
 
-def get_lobby_keyboard() -> types.InlineKeyboardMarkup:
+def get_lobby_keyboard(lang: str) -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.add(types.InlineKeyboardButton(text="📥 O'yinga qo'shilish", callback_data="join_game"))
-    kb.add(types.InlineKeyboardButton(text="🚀 O'yinni boshlash", callback_data="lobby_start"))
+    kb.add(types.InlineKeyboardButton(
+        text="📥 Join Game" if lang == "en" else "📥 Присоединиться" if lang == "ru" else "📥 Ойынға қосылу" if lang == "kz" else "📥 O'yinga qo'shilish", 
+        callback_data="join_game"
+    ))
+    kb.add(types.InlineKeyboardButton(
+        text="🚀 Start Game" if lang == "en" else "🚀 Начать игру" if lang == "ru" else "🚀 Ойынды бастау" if lang == "kz" else "🚀 O'yinni boshlash", 
+        callback_data="lobby_start"
+    ))
     kb.adjust(1)
     return kb.as_markup()
 
 async def lobby_timer(bot: Bot, game: Game):
+    lang = await db.get_group_language(game.chat_id)
     try:
         for sec in range(120, 0, -1):
             await asyncio.sleep(1)
@@ -29,15 +38,45 @@ async def lobby_timer(bot: Bot, game: Game):
             if sec in [90, 60, 30, 15, 5]:
                 try:
                     players_list = "\n".join([f"{i}. {p.name}" for i, p in enumerate(game.players.values(), 1)])
+                    
+                    if lang == "ru":
+                        text = (
+                            f"🎮 **Игра Мафия Darktown**\n\n"
+                            f"Игроки собираются. До начала осталось **{sec} секунд**!\n\n"
+                            f"👥 **Список игроков ({len(game.players)})**:\n"
+                            f"{players_list}\n\n"
+                            f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
+                        )
+                    elif lang == "en":
+                        text = (
+                            f"🎮 **Darktown Mafia Game**\n\n"
+                            f"Players are gathering. **{sec} seconds** remaining!\n\n"
+                            f"👥 **Player List ({len(game.players)})**:\n"
+                            f"{players_list}\n\n"
+                            f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
+                        )
+                    elif lang == "kz":
+                        text = (
+                            f"🎮 **Darktown Мафия Ойыны**\n\n"
+                            f"Ойыншылар жиналуда. Ойынның басталуына **{sec} секунд** қалды!\n\n"
+                            f"👥 **Ойыншылар тізімі ({len(game.players)})**:\n"
+                            f"{players_list}\n\n"
+                            f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
+                        )
+                    else:
+                        text = (
+                            f"🎮 **Darktown Mafiya O'yini**\n\n"
+                            f"O'yinchilar yig'ilmoqda. Kirish tugashiga **{sec} soniya** qoldi!\n\n"
+                            f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
+                            f"{players_list}\n\n"
+                            f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
+                        )
+                        
                     await bot.edit_message_text(
                         chat_id=game.chat_id,
                         message_id=game.lobby_message_id,
-                        text=f"🎮 **Darktown Mafiya O'yini**\n\n"
-                             f"O'yinchilar yig'ilmoqda. Kirish tugashiga **{sec} soniya** qoldi!\n\n"
-                             f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
-                             f"{players_list}\n\n"
-                             f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!",
-                        reply_markup=get_lobby_keyboard(),
+                        text=text,
+                        reply_markup=get_lobby_keyboard(lang),
                         parse_mode="Markdown"
                     )
                 except Exception:
@@ -47,14 +86,32 @@ async def lobby_timer(bot: Bot, game: Game):
                 await bot.edit_message_reply_markup(chat_id=game.chat_id, message_id=game.lobby_message_id, reply_markup=None)
             except Exception:
                 pass
-            await bot.send_message(game.chat_id, "⏰ Vaqt tugadi! O'yin avtomatik ravishda boshlanmoqda...")
+            
+            start_msg = "⏰ Vaqt tugadi! O'yin avtomatik ravishda boshlanmoqda..."
+            if lang == "ru":
+                start_msg = "⏰ Время вышло! Игра начинается автоматически..."
+            elif lang == "en":
+                start_msg = "⏰ Time is up! The game is starting automatically..."
+            elif lang == "kz":
+                start_msg = "⏰ Уақыт бітті! Ойын автоматты түрде басталуда..."
+                
+            await bot.send_message(game.chat_id, start_msg)
             await start_game_loop(bot, game)
         else:
             try:
                 await bot.edit_message_reply_markup(chat_id=game.chat_id, message_id=game.lobby_message_id, reply_markup=None)
             except Exception:
                 pass
-            await bot.send_message(game.chat_id, "⚠️ 2 daqiqa tugadi. O'yinchi soni yetarli emas (kamida 5 ta bo'lishi kerak). O'yin bekor qilindi.")
+                
+            cancel_msg = "⚠️ 2 daqiqa tugadi. O'yinchi soni yetarli emas (kamida 5 ta bo'lishi kerak). O'yin bekor qilindi."
+            if lang == "ru":
+                cancel_msg = "⚠️ 2 минуты истекли. Недостаточно игроков (необходимо минимум 5). Игра отменена."
+            elif lang == "en":
+                cancel_msg = "⚠️ 2 minutes expired. Not enough players (minimum 5 required). Game cancelled."
+            elif lang == "kz":
+                cancel_msg = "⚠️ 2 минут бітті. Ойыншылар саны жеткіліксіз (кемінде 5 қажет). Ойын тоқтатылды."
+                
+            await bot.send_message(game.chat_id, cancel_msg)
             game_manager.remove_game(game.chat_id)
     except asyncio.CancelledError:
         pass
@@ -62,12 +119,20 @@ async def lobby_timer(bot: Bot, game: Game):
 @router.message(Command("newgame"))
 async def cmd_newgame(message: types.Message, bot: Bot):
     chat_id = message.chat.id
+    lang = await db.get_group_language(chat_id)
     
     # Check if a game already exists
     existing = game_manager.get_game(chat_id)
     if existing:
         if existing.phase != "ended":
-            await message.answer("⚠️ Ushbu guruhda allaqachon faol o'yin ketmoqda!")
+            err_msg = "⚠️ Ushbu guruhda allaqachon faol o'yin ketmoqda!"
+            if lang == "ru":
+                err_msg = "⚠️ В этой группе уже идет активная игра!"
+            elif lang == "en":
+                err_msg = "⚠️ An active game is already running in this group!"
+            elif lang == "kz":
+                err_msg = "⚠️ Бұл топта белсенді ойын жүріп жатыр!"
+            await message.answer(err_msg)
             return
             
     # Create game
@@ -82,7 +147,14 @@ async def cmd_newgame(message: types.Message, bot: Bot):
     # Check if user is in another game
     other_game = game_manager.get_game_by_player(user_id)
     if other_game:
-        await message.answer(f"⚠️ Siz boshqa bir guruhda o'yindasiz! Undan chiqish uchun o'sha guruhda `/leave` yozing.")
+        err_msg = f"⚠️ Siz boshqa bir guruhda o'yindasiz! Undan chiqish uchun o'sha guruhda `/leave` yozing."
+        if lang == "ru":
+            err_msg = f"⚠️ Вы играете в другой группе! Чтобы выйти, напишите `/leave` в той группе."
+        elif lang == "en":
+            err_msg = f"⚠️ You are in a game in another group! Type `/leave` in that group to exit."
+        elif lang == "kz":
+            err_msg = f"⚠️ Сіз басқа топта ойындасыз! Одан шығу үшін сол топта `/leave` деп жазыңыз."
+        await message.answer(err_msg)
         game_manager.remove_game(chat_id)
         return
         
@@ -92,13 +164,42 @@ async def cmd_newgame(message: types.Message, bot: Bot):
     player = Player(user_id, name, username)
     game.players[user_id] = player
     
+    if lang == "ru":
+        lobby_text = (
+            f"🎮 **Игра Мафия Darktown**\n\n"
+            f"Создана новая игра! Игроки собираются. До начала осталось **120 секунд**!\n\n"
+            f"👥 **Список игроков (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
+        )
+    elif lang == "en":
+        lobby_text = (
+            f"🎮 **Darktown Mafia Game**\n\n"
+            f"New game created! Players are gathering. **120 seconds** remaining!\n\n"
+            f"👥 **Player List (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
+        )
+    elif lang == "kz":
+        lobby_text = (
+            f"🎮 **Darktown Мафия Ойыны**\n\n"
+            f"Жаңа ойын құрылды! Ойыншылар жиналуда. Ойынның басталуына **120 секунд** қалды!\n\n"
+            f"👥 **Ойыншылар тізімі (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
+        )
+    else:
+        lobby_text = (
+            f"🎮 **Darktown Mafiya O'yini**\n\n"
+            f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda. Kirish tugashiga **120 soniya** qoldi!\n\n"
+            f"👥 **O'yinchilar ro'yxati (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
+        )
+        
     lobby_msg = await message.answer(
-        f"🎮 **Darktown Mafiya O'yini**\n\n"
-        f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda. Kirish tugashiga **120 soniya** qoldi!\n\n"
-        f"👥 **O'yinchilar ro'yxati (1)**:\n"
-        f"1. {name}\n\n"
-        f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!",
-        reply_markup=get_lobby_keyboard(),
+        lobby_text,
+        reply_markup=get_lobby_keyboard(lang),
         parse_mode="Markdown"
     )
     game.lobby_message_id = lobby_msg.message_id
@@ -349,47 +450,76 @@ async def cmd_start_game(message: types.Message, bot: Bot):
 
 @router.message(Command("help"))
 async def cmd_group_help(message: types.Message):
-    help_text = (
-        "ℹ️ **Darktown Mafia Bot - Guruh Yordami**\n\n"
-        "Guruhda asinxron mafiya o'yinlarini o'ynash uchun quyidagi buyruqlardan foydalaning:\n\n"
-        "/newgame - Yangi o'yin (lobi) yaratish. (Lobi 2 daqiqa davomida ochiq bo'ladi va kamida 5 kishi yig'ilgach boshlanadi).\n"
-        "/start yoki /startgame - Yig'ilgan o'yinchilar bilan o'yinni darhol boshlash (faqat lobi yaratuvchisi yoki admin uchun).\n"
-        "/leave - Lobidan yoki o'yindan chiqish.\n"
-        "/rules - O'yin va guruh qoidalari bilan tanishish\n"
-        "/friend - Rasmiy guruh va do'stlar kanallar ro'yxati"
-    )
-    await message.answer(help_text, parse_mode="Markdown")
+    lang = await db.get_group_language(message.chat.id)
+    await message.answer(get_text(lang, "group_help_text"), parse_mode="Markdown")
 
 @router.message(Command("rules", "qoidalar"))
 async def cmd_group_rules(message: types.Message):
-    rules_text = (
-        "📖 **O'yin va Guruh Qoidalari**\n\n"
-        "**🎮 O'YIN QOIDALARI**:\n"
-        "1. **Maqsad**:\n"
-        "   * **Tinch aholi**: Barcha Mafiya va Telbalarni topib dorda osish.\n"
-        "   * **Mafiya**: Shahar ahlini yo'qotib, son jihatdan tenglashish.\n"
-        "   * **Telba (Maniac)**: Yakka o'zi tirik qolgan so'nggi o'yinchi bo'lish.\n"
-        "2. **Bosqichlar**:\n"
-        "   * **🌙 Tun**: Faol rollar o'z qobiliyatlarini ishga soladilar (o'ldirish, davolash, tekshirish).\n"
-        "   * **🌅 Kun**: Tungi yo'qotishlar va vasiyatnomalar o'qiladi. O'yinchilar munozara olib boradilar.\n"
-        "   * **🗳️ Ovoz berish**: Gumondorni dorda osish uchun ovoz beriladi. Ko'p ovoz olgan o'yinchi osiladi.\n\n"
-        "**⚠️ GURUH QOIDALARI**:\n"
-        "1. Kurash madaniyatli bo'lishi kerak. Haqorat va so'kinish qat'iyan man etiladi.\n"
-        "2. O'yin boshlangach uni tashlab ketish (afk bo'lish) boshqalarning o'yinini buzadi. Bunday o'yinchilar jazolanadi.\n"
-        "3. O'yin vaqtida o'lganlar guruhda yozishi yoki faol o'yinchilar roliga aralashishi taqiqlanadi."
-    )
-    await message.answer(rules_text, parse_mode="Markdown")
+    lang = await db.get_group_language(message.chat.id)
+    await message.answer(get_text(lang, "rules_text"), parse_mode="Markdown")
 
 @router.message(Command("friend"))
 async def cmd_group_friend(message: types.Message):
+    lang = await db.get_group_language(message.chat.id)
+    
     kb = InlineKeyboardBuilder()
-    kb.add(types.InlineKeyboardButton(text="🎮 Rasmiy O'yin Guruhi", url="https://t.me/+jJAWhi60hLxjZjI6"))
-    kb.add(types.InlineKeyboardButton(text="📢 Admin Kanali", url="https://t.me/sh_abbosov"))
+    kb.add(types.InlineKeyboardButton(text="🎮 Rasmiy O'yin Guruhi" if lang=="uz" else "🎮 Официальная группа" if lang=="ru" else "🎮 Official Game Group" if lang=="en" else "🎮 Ресми ойын тобы", url="https://t.me/+jJAWhi60hLxjZjI6"))
+    kb.add(types.InlineKeyboardButton(text="📢 Admin Kanali" if lang=="uz" else "📢 Канал Админа" if lang=="ru" else "📢 Admin Channel" if lang=="en" else "📢 Админ арнасы", url="https://t.me/sh_abbosov"))
     kb.adjust(1)
     
     await message.answer(
-        "🤝 **Do'stlarimiz va Hamkorlarimiz kanallari**\n\n"
-        "Quyidagi tugmalar orqali rasmiy guruhimizga va foydali kanallarga qo'shilishingiz mumkin:",
+        get_text(lang, "friend_text"),
         reply_markup=kb.as_markup(),
         parse_mode="Markdown"
     )
+
+@router.message(Command("lang", "language"))
+async def cmd_group_lang(message: types.Message, bot: Bot):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    
+    # Check if sender is group admin or bot admin
+    try:
+        chat_member = await bot.get_chat_member(chat_id, user_id)
+        is_admin = chat_member.status in ["administrator", "creator"] or user_id == ADMIN_ID
+    except Exception:
+        is_admin = user_id == ADMIN_ID
+        
+    group_lang = await db.get_group_language(chat_id)
+    
+    if not is_admin:
+        await message.answer(get_text(group_lang, "only_admin_lang"))
+        return
+        
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="🇺🇿 O'zbekcha", callback_data=f"grplang_{chat_id}_uz"))
+    kb.add(types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data=f"grplang_{chat_id}_ru"))
+    kb.add(types.InlineKeyboardButton(text="🇺🇸 English", callback_data=f"grplang_{chat_id}_en"))
+    kb.add(types.InlineKeyboardButton(text="🇰🇿 Қазақша", callback_data=f"grplang_{chat_id}_kz"))
+    kb.adjust(2)
+    
+    await message.answer(
+        get_text(group_lang, "lang_select"),
+        reply_markup=kb.as_markup()
+    )
+
+@router.callback_query(F.data.startswith("grplang_"))
+async def cb_group_setlang(cb: types.CallbackQuery, bot: Bot):
+    parts = cb.data.split("_")
+    chat_id = int(parts[1])
+    lang = parts[2]
+    
+    # Check if the user clicking is still an admin
+    try:
+        chat_member = await bot.get_chat_member(chat_id, cb.from_user.id)
+        is_admin = chat_member.status in ["administrator", "creator"] or cb.from_user.id == ADMIN_ID
+    except Exception:
+        is_admin = cb.from_user.id == ADMIN_ID
+        
+    if not is_admin:
+        await cb.answer(get_text(lang, "only_admin_lang"), show_alert=True)
+        return
+        
+    await db.set_group_language(chat_id, lang)
+    await cb.answer(get_text(lang, "lang_changed"), show_alert=True)
+    await cb.message.edit_text(get_text(lang, "lang_changed"))

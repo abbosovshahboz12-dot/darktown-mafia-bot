@@ -3,7 +3,8 @@ import logging
 import os
 import sys
 from aiohttp import web
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
+from datetime import datetime
 from config import BOT_TOKEN, PORT, ADMIN_ID
 from database import db
 
@@ -198,7 +199,8 @@ async def get_game_status_handler(request):
             "myRole": player.role,
             "isAlive": player.is_alive,
             "players": players_list,
-            "event": game.event
+            "event": game.event,
+            "logs": getattr(game, 'logs', [])
         })
     except Exception as e:
         logging.error(f"Error in get_game_status_handler: {e}")
@@ -334,6 +336,277 @@ async def post_game_vote_handler(request):
         logging.error(f"Error in post_game_vote_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+# In-memory Ghost Chat store
+ghost_chats = {}
+
+async def set_language_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        lang = data.get("language")
+        if not user_id or lang not in ["uz", "ru", "en", "kz"]:
+            return web.json_response({"error": "Noto'g'ri ma'lumotlar"}, status=400)
+            
+        await db.set_user_language(user_id, lang)
+        return web.json_response({"success": True, "message": "Language updated!"})
+    except Exception as e:
+        logging.error(f"Error in set_language_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def daily_claim_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        success, coins_earned, err = await db.claim_daily_reward(user_id)
+        if success:
+            return web.json_response({"success": True, "coins": coins_earned, "message": "Kunlik bonus olindi!"})
+        else:
+            return web.json_response({"success": False, "error": err})
+    except Exception as e:
+        logging.error(f"Error in daily_claim_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def checkout_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        package_key = data.get("package_key")
+        
+        packages = {
+            "coins_100": {"name": "100 Dark Coins", "description": "100 ta tanga paketi", "price_stars": 50, "coins": 100},
+            "coins_500": {"name": "500 Dark Coins", "description": "500 ta tanga paketi", "price_stars": 200, "coins": 500},
+            "coins_1000": {"name": "1000 Dark Coins", "description": "1000 ta tanga paketi", "price_stars": 350, "coins": 1000}
+        }
+        
+        if not user_id or package_key not in packages:
+            return web.json_response({"error": "Noto'g'ri so'rov"}, status=400)
+            
+        pkg = packages[package_key]
+        bot = request.app['bot']
+        
+        # Prices in Telegram Stars (currency = "XTR")
+        prices = [types.LabeledPrice(label=pkg["name"], amount=pkg["price_stars"])]
+        
+        invoice_link = await bot.create_invoice_link(
+            title=pkg["name"],
+            description=pkg["description"],
+            payload=package_key,
+            provider_token="", # Stars
+            currency="XTR",
+            prices=prices
+        )
+        
+        return web.json_response({"success": True, "invoice_link": invoice_link})
+    except Exception as e:
+        logging.error(f"Error in checkout_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def mock_payment_handler(request):
+    user_id = request.query.get("user_id", "0")
+    coins = request.query.get("coins", "100")
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Darktown Visa/PayPal Payment Simulation</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{
+                background: #0d0e15;
+                color: #e2e8f0;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+            }}
+            .card-container {{
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 16px;
+                padding: 30px;
+                width: 100%;
+                max-width: 400px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                text-align: center;
+            }}
+            h2 {{ color: #00f2fe; margin-bottom: 20px; }}
+            .input-group {{
+                margin-bottom: 15px;
+                text-align: left;
+            }}
+            label {{
+                display: block;
+                font-size: 12px;
+                color: #94a3b8;
+                margin-bottom: 5px;
+            }}
+            input {{
+                width: 100%;
+                padding: 10px;
+                background: rgba(0, 0, 0, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                color: #fff;
+                box-sizing: border-box;
+            }}
+            .pay-btn {{
+                background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+                color: #fff;
+                border: none;
+                padding: 12px 20px;
+                font-size: 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                width: 100%;
+                margin-top: 20px;
+                font-weight: bold;
+            }}
+            .paypal-btn {{
+                background: #ffc439;
+                color: #012169;
+                margin-top: 10px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="card-container">
+            <h2>💳 Premium To'lov (Beta)</h2>
+            <p style="font-size:14px;color:#ff5400;margin-bottom:20px;font-weight:bold;">
+                ⚠️ Beta test rejimi: Ushbu to'lov turi hozircha ishlamaydi!
+            </p>
+            <p style="font-size:12px;color:#94a3b8;margin-bottom:20px;">
+                Siz <strong>{coins} Dark Coins</strong> sotib olmoqchi bo'ldingiz.<br>
+                Hozirda Visa/Mastercard va PayPal to'lovlari faqat namoyish uchun.
+            </p>
+            
+            <div class="input-group">
+                <label>Karta Raqami</label>
+                <input type="text" placeholder="4000 1234 5678 9010" value="4000 1234 5678 9010" disabled>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <div class="input-group" style="flex:1;">
+                    <label>Muddati</label>
+                    <input type="text" placeholder="12/28" value="12/28" disabled>
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>CVV</label>
+                    <input type="password" placeholder="***" value="123" disabled>
+                </div>
+            </div>
+            
+            <button class="pay-btn" onclick="submitPayment('visa')">Visa / Mastercard bilan to'lash</button>
+            <button class="pay-btn paypal-btn" onclick="submitPayment('paypal')">PayPal orqali to'lash</button>
+        </div>
+
+        <script>
+            function submitPayment(method) {{
+                alert("⚠️ Ushbu to'lov turi vaqtincha ishlamaydi (BETA)!");
+                if (window.Telegram && window.Telegram.WebApp) {{
+                    window.Telegram.WebApp.close();
+                }} else {{
+                    window.close();
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    return web.Response(text=html, content_type="text/html")
+
+async def mock_payment_success_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        coins = int(data.get("coins", 0))
+        
+        if not user_id or coins <= 0:
+            return web.json_response({"error": "Noto'g'ri so'rov"}, status=400)
+            
+        await db.add_xp_and_coins(user_id, 0, coins)
+        
+        try:
+            bot = request.app['bot']
+            lang = await db.get_user_language(user_id)
+            msg = f"💳 **Karta orqali xarid!** Hisobingizga **{coins}** Dark Coins qo'shildi."
+            if lang == "ru":
+                msg = f"💳 **Покупка по карте!** На ваш баланс зачислено **{coins}** Dark Coins."
+            elif lang == "en":
+                msg = f"💳 **Card Purchase!** **{coins}** Dark Coins have been added to your balance."
+            elif lang == "kz":
+                msg = f"💳 **Карта арқылы сатып алу!** Балансыңызға **{coins}** Dark Coins қосылды."
+            await bot.send_message(user_id, msg, parse_mode="Markdown")
+        except Exception:
+            pass
+            
+        return web.json_response({"success": True})
+    except Exception as e:
+        logging.error(f"Error in mock_payment_success_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def ghost_chat_send_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        text = data.get("text", "").strip()
+        
+        if not user_id or not text:
+            return web.json_response({"error": "user_id va matn kiritilishi shart"}, status=400)
+            
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game:
+            return web.json_response({"error": "Siz faol o'yinda emassiz!"}, status=400)
+            
+        player = game.players.get(user_id)
+        if not player or player.is_alive:
+            return web.json_response({"error": "Faqat vafot etgan (arvoxlar) chatga yozishi mumkin!"}, status=400)
+            
+        chat_id = game.chat_id
+        if chat_id not in ghost_chats:
+            ghost_chats[chat_id] = []
+            
+        msg = {
+            "sender": player.name,
+            "text": text,
+            "timestamp": datetime.now().strftime("%H:%M")
+        }
+        ghost_chats[chat_id].append(msg)
+        
+        if len(ghost_chats[chat_id]) > 50:
+            ghost_chats[chat_id].pop(0)
+            
+        return web.json_response({"success": True})
+    except Exception as e:
+        logging.error(f"Error in ghost_chat_send_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def ghost_chat_messages_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game:
+            return web.json_response({"messages": []})
+            
+        chat_id = game.chat_id
+        msgs = ghost_chats.get(chat_id, [])
+        return web.json_response({"messages": msgs})
+    except Exception as e:
+        logging.error(f"Error in ghost_chat_messages_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 # Setup Web Server Routing
 def setup_web_server():
     app = web.Application()
@@ -348,6 +621,13 @@ def setup_web_server():
     app.router.add_get("/api/game/status", get_game_status_handler)
     app.router.add_post("/api/game/action", post_game_action_handler)
     app.router.add_post("/api/game/vote", post_game_vote_handler)
+    app.router.add_post("/api/profile/language", set_language_handler)
+    app.router.add_post("/api/daily-claim", daily_claim_handler)
+    app.router.add_post("/api/payment/checkout", checkout_handler)
+    app.router.add_get("/payment/mock", mock_payment_handler)
+    app.router.add_post("/api/payment/mock-success", mock_payment_success_handler)
+    app.router.add_post("/api/game/ghost-chat/send", ghost_chat_send_handler)
+    app.router.add_get("/api/game/ghost-chat/messages", ghost_chat_messages_handler)
     
     # Frontend static files and index
     webapp_dir = os.path.join(os.path.dirname(__file__), "webapp")

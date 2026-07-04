@@ -1,6 +1,7 @@
 import aiosqlite
 import os
 import math
+from datetime import datetime
 
 from config import DATABASE_PATH
 DB_PATH = DATABASE_PATH
@@ -44,6 +45,28 @@ async def init_db():
             )
         """)
         
+        # Group Settings table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS group_settings (
+                chat_id INTEGER PRIMARY KEY,
+                language TEXT DEFAULT 'uz'
+            )
+        """)
+        
+        # Migrations for existing database
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'uz'")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN referred_by INTEGER")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN last_daily_claim TEXT")
+        except Exception:
+            pass
+            
         await db.commit()
 
 async def get_user(user_id: int, username: str = None, first_name: str = None):
@@ -229,3 +252,94 @@ async def get_global_stats():
             "total_users": total_users,
             "total_plays": total_plays
         }
+
+async def set_user_language(user_id: int, lang: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE users SET language = ? WHERE user_id = ?", (lang, user_id))
+        await db.commit()
+
+async def get_user_language(user_id: int) -> str:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row['language'] if row and row['language'] else 'uz'
+
+async def set_group_language(chat_id: int, lang: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO group_settings (chat_id, language) VALUES (?, ?) "
+            "ON CONFLICT(chat_id) DO UPDATE SET language = excluded.language",
+            (chat_id, lang)
+        )
+        await db.commit()
+
+async def get_group_language(chat_id: int) -> str:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT language FROM group_settings WHERE chat_id = ?", (chat_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row['language'] if row and row['language'] else 'uz'
+
+async def get_chat_language(chat_id: int) -> str:
+    if chat_id < 0:
+        return await get_group_language(chat_id)
+    else:
+        return await get_user_language(chat_id)
+
+async def claim_daily_reward(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT coins, last_daily_claim FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                return False, 0, "Foydalanuvchi topilmadi."
+            
+            now = datetime.now()
+            last_claim_str = row['last_daily_claim']
+            if last_claim_str:
+                try:
+                    last_claim = datetime.fromisoformat(last_claim_str)
+                    delta = now - last_claim
+                    if delta.total_seconds() < 86400:
+                        seconds_left = int(86400 - delta.total_seconds())
+                        hours = seconds_left // 3600
+                        minutes = (seconds_left % 3600) // 60
+                        return False, 0, f"keyingi_bonus_kutish_{hours}_{minutes}"
+                except Exception:
+                    pass
+            
+            bonus_coins = 50
+            await db.execute(
+                "UPDATE users SET coins = coins + ?, last_daily_claim = ? WHERE user_id = ?",
+                (bonus_coins, now.isoformat(), user_id)
+            )
+            await db.commit()
+            return True, bonus_coins, None
+
+async def add_referral(invitee_id: int, inviter_id: int) -> bool:
+    if invitee_id == inviter_id:
+        return False
+        
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT referred_by FROM users WHERE user_id = ?", (invitee_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                await db.execute(
+                    "INSERT INTO users (user_id, username, first_name, xp, level, coins, referred_by) "
+                    "VALUES (?, ?, ?, 0, 1, 150, ?)",
+                    (invitee_id, f"User{invitee_id}", "Mafiozi", inviter_id)
+                )
+                await db.execute("UPDATE users SET coins = coins + 50 WHERE user_id = ?", (inviter_id,))
+                await db.commit()
+                return True
+            
+            if row['referred_by'] is None:
+                await db.execute("UPDATE users SET referred_by = ? WHERE user_id = ?", (inviter_id, invitee_id))
+                await db.execute("UPDATE users SET coins = coins + 50 WHERE user_id = ?", (invitee_id,))
+                await db.execute("UPDATE users SET coins = coins + 50 WHERE user_id = ?", (inviter_id,))
+                await db.commit()
+                return True
+                
+            return False

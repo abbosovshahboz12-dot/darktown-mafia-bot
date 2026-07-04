@@ -144,6 +144,11 @@ async function loadProfile() {
         // Render inventory
         renderInventory(data.inventory, shieldActive);
         
+        // Update localization and fields
+        updateLang(data.user.language || 'uz');
+        updateDailyClaimTimer(data.user.last_daily_claim);
+        renderAchievements(data.stats, data.user.level);
+        
     } catch (e) {
         console.error(e);
     }
@@ -534,6 +539,24 @@ async function loadActiveGame() {
             grid.appendChild(skipCard);
         }
         
+        // Render game logs
+        const logsDiv = document.getElementById('game-logs');
+        if (data.logs && data.logs.length > 0) {
+            logsDiv.innerHTML = data.logs.map(log => `<div>${log}</div>`).join('');
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        } else {
+            logsDiv.innerHTML = `<div style="color:var(--text-muted); text-align:center;">${currentLang === 'ru' ? 'Событий пока нет.' : currentLang === 'en' ? 'No events yet.' : currentLang === 'kz' ? 'Әзірге оқиғалар жоқ.' : 'Hozircha voqealar yo\'q.'}</div>`;
+        }
+        
+        // Render ghost chat
+        const ghostChatSection = document.getElementById('ghost-chat-section');
+        if (!data.isAlive) {
+            ghostChatSection.style.display = 'block';
+            loadGhostChatMessages();
+        } else {
+            ghostChatSection.style.display = 'none';
+        }
+        
     } catch (e) {
         console.error("Active game fetch error:", e);
     }
@@ -650,5 +673,417 @@ document.getElementById('admin-submit-btn').addEventListener('click', async () =
     } catch (e) {
         console.error("Admin action failed:", e);
         alert("Server bilan aloqada xatolik!");
+    }
+});
+
+// Localization system
+let currentLang = "uz";
+
+const LOCALES = {
+    uz: {
+        "title_profile": "👤 Profil",
+        "lbl_games": "O'yinlar",
+        "lbl_wins": "G'alabalar",
+        "lbl_win_rate": "Yutuq Foizi",
+        "lbl_shield_active": "Faol (tajriba himoyalangan)",
+        "lbl_shield_inactive": "Faol emas",
+        "lbl_no_data": "Hozircha o'yinlar o'ynalmagan.",
+        "lbl_buy_coins": "🪙 Tanga sotib olish",
+        "lbl_inventory": "Sizning Inventaringiz",
+        "lbl_daily_claim": "Kunlik Bonus",
+        "lbl_daily_claim_time": "Hozir olish",
+        "lbl_ref_title": "👥 Taklifnoma Tizimi",
+        "lbl_ref_desc": "Do'stlaringizni taklif qiling va har biri uchun +50 tanga bonus oling!",
+        "btn_copy_ref": "Havolani nusxalash",
+        "lbl_achievements_title": "Erishilgan Yutuqlar",
+        "lbl_stats_title": "O'yin Statistikasi",
+        "lbl_ghost_chat_title": "👻 Arvoxlar Chati (Ghost Chat)",
+        "lbl_game_logs_title": "📜 O'yin voqealari",
+        "lbl_players_title": "👥 O'yinchilar maydoni",
+        "msg_copied": "Havola buferga nusxalandi!",
+        "msg_already_claimed": "Kunlik bonus allaqachon olingan!",
+        "btn_buy": "Sotib olish",
+        "btn_activate": "Faollashtirish",
+        "calc_title": "🎮 Mafiya Balans Kalkulyatori",
+        "calc_lbl_players": "O'yinchilar soni",
+        "calc_roles_distribution": "👥 Kutilayotgan rollar taqsimoti",
+        "calc_roles_guide": "🎭 Rol qoidalari va tavsiflari"
+    },
+    ru: {
+        "title_profile": "👤 Профиль",
+        "lbl_games": "Игры",
+        "lbl_wins": "Победы",
+        "lbl_win_rate": "Процент побед",
+        "lbl_shield_active": "Активен (опыт защищен)",
+        "lbl_shield_inactive": "Не активен",
+        "lbl_no_data": "Игр пока нет.",
+        "lbl_buy_coins": "🪙 Купить монеты",
+        "lbl_inventory": "Ваш Инвентарь",
+        "lbl_daily_claim": "Ежедневный Бонус",
+        "lbl_daily_claim_time": "Забрать",
+        "lbl_ref_title": "👥 Реферальная Система",
+        "lbl_ref_desc": "Приглашайте друзей и получайте +50 монет за каждого!",
+        "btn_copy_ref": "Копировать ссылку",
+        "lbl_achievements_title": "Достижения",
+        "lbl_stats_title": "Статистика Игры",
+        "lbl_ghost_chat_title": "👻 Чат Призраков (Ghost Chat)",
+        "lbl_game_logs_title": "📜 События игры",
+        "lbl_players_title": "👥 Игровое поле",
+        "msg_copied": "Ссылка скопирована в буфер!",
+        "msg_already_claimed": "Ежедневный бонус уже получен!",
+        "btn_buy": "Купить",
+        "btn_activate": "Активировать",
+        "calc_title": "🎮 Калькулятор Баланса Мафии",
+        "calc_lbl_players": "Количество игроков",
+        "calc_roles_distribution": "👥 Ожидаемое распределение ролей",
+        "calc_roles_guide": "🎭 Правила и описание ролей"
+    },
+    en: {
+        "title_profile": "👤 Profile",
+        "lbl_games": "Games",
+        "lbl_wins": "Wins",
+        "lbl_win_rate": "Win Rate",
+        "lbl_shield_active": "Active (XP protected)",
+        "lbl_shield_inactive": "Inactive",
+        "lbl_no_data": "No games played yet.",
+        "lbl_buy_coins": "🪙 Buy Coins",
+        "lbl_inventory": "Your Inventory",
+        "lbl_daily_claim": "Daily Reward",
+        "lbl_daily_claim_time": "Claim Now",
+        "lbl_ref_title": "👥 Referral Program",
+        "lbl_ref_desc": "Invite friends and get +50 coins for each referral!",
+        "btn_copy_ref": "Copy Invite Link",
+        "lbl_achievements_title": "Achievements",
+        "lbl_stats_title": "Game Stats",
+        "lbl_ghost_chat_title": "👻 Ghost Chat",
+        "lbl_game_logs_title": "📜 Game events",
+        "lbl_players_title": "👥 Player Field",
+        "msg_copied": "Link copied to clipboard!",
+        "msg_already_claimed": "Daily reward already claimed!",
+        "btn_buy": "Buy",
+        "btn_activate": "Activate",
+        "calc_title": "🎮 Mafia Balance Calculator",
+        "calc_lbl_players": "Number of players",
+        "calc_roles_distribution": "👥 Expected Role Distribution",
+        "calc_roles_guide": "🎭 Role Rules & Descriptions"
+    },
+    kz: {
+        "title_profile": "👤 Профиль",
+        "lbl_games": "Ойындар",
+        "lbl_wins": "Жеңістер",
+        "lbl_win_rate": "Жеңіс Пайызы",
+        "lbl_shield_active": "Белсенді (XP қорғалған)",
+        "lbl_shield_inactive": "Белсенді емес",
+        "lbl_no_data": "Әзірге ойындар жоқ.",
+        "lbl_buy_coins": "🪙 Монета сатып алу",
+        "lbl_inventory": "Сіздің Инвентарыңыз",
+        "lbl_daily_claim": "Күнделікті Бонус",
+        "lbl_daily_claim_time": "Қазір алу",
+        "lbl_ref_title": "👥 Шақыру Жүйесі",
+        "lbl_ref_desc": "Достарыңызды шақырыңыз және әрқайсысы үшін +50 монета алыңыз!",
+        "btn_copy_ref": "Сілтемені Көшіру",
+        "lbl_achievements_title": "Қол Жеткізілген Жетістіктер",
+        "lbl_stats_title": "Ойын Статистикасы",
+        "lbl_ghost_chat_title": "👻 Елестер Чаттары (Ghost Chat)",
+        "lbl_game_logs_title": "📜 Ойын оқиғалары",
+        "lbl_players_title": "👥 Ойыншылар алаңы",
+        "msg_copied": "Сілтеме көшірілді!",
+        "msg_already_claimed": "Күнделікті бонус алынған!",
+        "btn_buy": "Сатып алу",
+        "btn_activate": "Белсендіру",
+        "calc_title": "🎮 Мафия Баланс Калькуляторы",
+        "calc_lbl_players": "Ойыншылар саны",
+        "calc_roles_distribution": "👥 Күтілетін рөлдерді бөлу",
+        "calc_roles_guide": "🎭 Рөлдердің ережелері мен сипаттамасы"
+    }
+};
+
+function t(key) {
+    const group = LOCALES[currentLang] || LOCALES.uz;
+    return group[key] || key;
+}
+
+function updateLang(lang) {
+    if (!LOCALES[lang]) lang = "uz";
+    currentLang = lang;
+    
+    // Update select element
+    document.getElementById('select-lang').value = lang;
+    
+    // Update dropdown label text
+    const langNames = { uz: "O'zbekcha", ru: "Русский", en: "English", kz: "Қазақша" };
+    document.getElementById('lbl-profile-lang').innerText = "Til: " + langNames[lang];
+    
+    // Profile labels
+    document.getElementById('lbl-daily-claim').innerText = t("lbl_daily_claim");
+    document.getElementById('lbl-ref-title').innerText = t("lbl_ref_title");
+    document.getElementById('lbl-ref-desc').innerText = t("lbl_ref_desc");
+    document.getElementById('btn-copy-ref').innerText = t("btn_copy_ref");
+    document.getElementById('lbl-achievements-title').innerText = t("lbl_achievements_title");
+    document.getElementById('lbl-stats-title').innerText = t("lbl_stats_title");
+    document.getElementById('lbl-inventory-title').innerText = t("lbl_inventory");
+    document.getElementById('lbl-buy-coins-title').innerText = t("lbl_buy_coins");
+    
+    // Game Arena labels
+    document.getElementById('lbl-players-title').innerText = t("lbl_players_title");
+    document.getElementById('lbl-game-logs-title').innerText = t("lbl_game_logs_title");
+    document.getElementById('lbl-ghost-chat-title').innerText = t("lbl_ghost_chat_title");
+    
+    // Calculator labels
+    const calcTitle = document.querySelector('#match-calc-view .section-title');
+    if (calcTitle) calcTitle.innerText = "🎮 " + t("calc_title");
+}
+
+function renderAchievements(stats, level) {
+    const container = document.getElementById('achievements-container');
+    container.innerHTML = '';
+    
+    // Check stats
+    let totalWins = 0;
+    let mafiaWins = 0;
+    let detectiveWins = 0;
+    let doctorWins = 0;
+    let bodyguardWins = 0;
+    let maniacWins = 0;
+    
+    if (stats && stats.length > 0) {
+        stats.forEach(s => {
+            totalWins += s.games_won;
+            const role = s.role.toLowerCase();
+            if (role === 'mafia' || role === 'don') mafiaWins += s.games_won;
+            if (role === 'detective') detectiveWins += s.games_won;
+            if (role === 'doctor') doctorWins += s.games_won;
+            if (role === 'bodyguard') bodyguardWins += s.games_won;
+            if (role === 'maniac') maniacWins += s.games_won;
+        });
+    }
+    
+    const achievements = [
+        { id: "first_win", name: "Birinchi G'alaba", name_ru: "Первая Победа", name_en: "First Win", name_kz: "Бірінші Жеңіс", desc: "1 ta o'yinda g'alaba qozonish", desc_ru: "Выиграть 1 игру", desc_en: "Win 1 game", desc_kz: "1 ойында жеңіске жету", icon: "🏆", active: totalWins >= 1 },
+        { id: "mafia_veteran", name: "Mafiya Veterani", name_ru: "Ветеран Мафии", name_en: "Mafia Veteran", name_kz: "Мафия Ардагері", desc: "Mafiya/Don sifatida 5 ta g'alaba", desc_ru: "5 побед за Мафию/Дона", desc_en: "5 wins as Mafia/Don", desc_kz: "Мафия/Дон ретінде 5 жеңіс", icon: "🕶️", active: mafiaWins >= 5 },
+        { id: "detective_holmes", name: "Komissar Xolms", name_ru: "Комиссар Холмс", name_en: "Detective Holmes", name_kz: "Комиссар Холмс", desc: "Komissar sifatida 5 ta g'alaba", desc_ru: "5 побед за Комиссара", desc_en: "5 wins as Detective", desc_kz: "Комиссар ретінде 5 жеңіс", icon: "🔍", active: detectiveWins >= 5 },
+        { id: "guardian_angel", name: "Himoyachi Farishta", name_ru: "Ангел-Хранитель", name_en: "Guardian Angel", name_kz: "Қорғаушы Періште", desc: "Shifokor/Tansoqchi sifatida 5 ta g'alaba", desc_ru: "5 побед за Доктора/Телохранителя", desc_en: "5 wins as Doctor/Bodyguard", desc_kz: "Дәрігер/Қорғаушы ретінде 5 жеңіс", icon: "👼", active: (doctorWins + bodyguardWins) >= 5 },
+        { id: "serial_killer", name: "Telba Qotil", name_ru: "Безумный Убийца", name_en: "Maniac Killer", name_kz: "Жынды Қанішер", desc: "Telba sifatida 5 ta g'alaba", desc_ru: "5 побед за Маньяка", desc_en: "5 wins as Maniac", desc_kz: "Маньяк ретінде 5 жеңіс", icon: "🔪", active: maniacWins >= 5 },
+        { id: "lvl_10", name: "Tajribali Jangchi", name_ru: "Опытный Боец", name_en: "Seasoned Fighter", name_kz: "Тәжірибелі Жауынгер", desc: "10-darajaga erishish", desc_ru: "Достичь 10 уровня", desc_en: "Reach Level 10", desc_kz: "10-деңгейге жету", icon: "🎖️", active: level >= 10 },
+        { id: "lvl_100", name: "Afsonaviy Master", name_ru: "Легендарный Мастер", name_en: "Legendary Master", name_kz: "Аңызға айналған Шебер", desc: "100-darajaga erishish", desc_ru: "Достичь 100 уровня", desc_en: "Reach Level 100", desc_kz: "100-деңгейге жету", icon: "👑", active: level >= 100 }
+    ];
+    
+    achievements.forEach(ach => {
+        const item = document.createElement('div');
+        item.className = 'achievement-badge';
+        item.style.opacity = ach.active ? '1' : '0.35';
+        item.style.filter = ach.active ? 'none' : 'grayscale(100%)';
+        item.style.background = ach.active ? 'rgba(0, 242, 254, 0.1)' : 'rgba(255, 255, 255, 0.02)';
+        item.style.border = ach.active ? '1px solid rgba(0, 242, 254, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)';
+        item.style.padding = '10px';
+        item.style.borderRadius = '12px';
+        item.style.minWidth = '110px';
+        item.style.textAlign = 'center';
+        item.style.fontSize = '11px';
+        
+        let display_name = ach.name;
+        let display_desc = ach.desc;
+        if (currentLang === 'ru') { display_name = ach.name_ru; display_desc = ach.desc_ru; }
+        else if (currentLang === 'en') { display_name = ach.name_en; display_desc = ach.desc_en; }
+        else if (currentLang === 'kz') { display_name = ach.name_kz; display_desc = ach.desc_kz; }
+        
+        item.innerHTML = `
+            <div style="font-size:24px; margin-bottom:4px;">${ach.icon}</div>
+            <div style="font-weight:bold; color:${ach.active ? '#fff' : '#94a3b8'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${display_name}</div>
+            <div style="font-size:9px; color:#64748b; margin-top:2px;">${display_desc}</div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function updateDailyClaimTimer(lastClaimTimestamp) {
+    const claimTimeLabel = document.getElementById('lbl-daily-claim-time');
+    const claimCard = document.getElementById('daily-claim-card');
+    
+    if (!lastClaimTimestamp) {
+        claimTimeLabel.innerText = currentLang === 'ru' ? 'Получить' : currentLang === 'en' ? 'Claim' : currentLang === 'kz' ? 'Алу' : 'Hozir olish';
+        claimTimeLabel.style.color = '#10b981';
+        claimCard.style.pointerEvents = 'auto';
+        claimCard.style.opacity = '1';
+        return;
+    }
+    
+    const lastClaim = new Date(lastClaimTimestamp);
+    const now = new Date();
+    const diffMs = now - lastClaim;
+    const diffHrs = diffMs / (1000 * 60 * 60);
+    
+    if (diffHrs >= 24) {
+        claimTimeLabel.innerText = currentLang === 'ru' ? 'Получить' : currentLang === 'en' ? 'Claim' : currentLang === 'kz' ? 'Алу' : 'Hozir olish';
+        claimTimeLabel.style.color = '#10b981';
+        claimCard.style.pointerEvents = 'auto';
+        claimCard.style.opacity = '1';
+    } else {
+        const remainingMs = (24 * 60 * 60 * 1000) - diffMs;
+        const hrs = Math.floor(remainingMs / (1000 * 60 * 60));
+        const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        let text = `${hrs}soat ${mins}min`;
+        if (currentLang === 'ru') text = `Через ${hrs}ч ${mins}м`;
+        else if (currentLang === 'en') text = `In ${hrs}h ${mins}m`;
+        else if (currentLang === 'kz') text = `${hrs}с ${mins}м кейін`;
+        
+        claimTimeLabel.innerText = text;
+        claimTimeLabel.style.color = '#94a3b8';
+        claimCard.style.opacity = '0.6';
+    }
+}
+
+async function loadGhostChatMessages() {
+    try {
+        const response = await fetch(`/api/game/ghost-chat/messages?user_id=${userId}`);
+        if (!response.ok) throw new Error("Ghost messages fetch failed");
+        const data = await response.json();
+        
+        const container = document.getElementById('ghost-messages');
+        container.innerHTML = '';
+        if (data.messages && data.messages.length > 0) {
+            data.messages.forEach(msg => {
+                const item = document.createElement('div');
+                item.style.padding = '4px 8px';
+                item.style.borderRadius = '8px';
+                item.style.background = 'rgba(255,255,255,0.03)';
+                item.style.fontSize = '12px';
+                item.innerHTML = `
+                    <span style="color:#a78bfa; font-weight:bold;">${msg.sender}:</span>
+                    <span style="color:#e2e8f0; margin-left:4px;">${msg.text}</span>
+                    <span style="float:right; font-size:9px; color:#64748b; margin-top:2px;">${msg.timestamp}</span>
+                `;
+                container.appendChild(item);
+            });
+            container.scrollTop = container.scrollHeight;
+        } else {
+            container.innerHTML = `<div style="color:#64748b; text-align:center; margin-top:20px; font-size:12px;">${currentLang === 'ru' ? 'Чат пуст. Призраки молчат...' : currentLang === 'en' ? 'Chat empty. Ghosts are silent...' : currentLang === 'kz' ? 'Чат бос. Елестер үнсіз...' : 'Chat bo\'sh. Arvoxlar sukut saqlashmoqda...'}</div>`;
+        }
+    } catch (e) {
+        console.error("Ghost chat fetch error:", e);
+    }
+}
+
+async function sendGhostChatMessage() {
+    const input = document.getElementById('ghost-input');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    try {
+        const response = await fetch('/api/game/ghost-chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                text: text
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            input.value = '';
+            loadGhostChatMessages();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) {
+        console.error("Ghost message send error:", e);
+    }
+}
+
+async function startTelegramStarsPayment(packageKey) {
+    try {
+        const response = await fetch('/api/payment/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                package_key: packageKey
+            })
+        });
+        const data = await response.json();
+        if (data.success && data.invoice_link) {
+            tg.openInvoice(data.invoice_link, function(status) {
+                if (status === 'paid') {
+                    alert("🎉");
+                    loadProfile();
+                }
+            });
+        } else {
+            alert(data.error || "Invoice error");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Server bilan aloqada xatolik!");
+    }
+}
+
+function startCardPayment(coins) {
+    const url = `${window.location.origin}/payment/mock?user_id=${userId}&coins=${coins}`;
+    tg.openLink(url);
+}
+
+// Add event listeners for profile activities
+document.getElementById('select-lang').addEventListener('change', async (e) => {
+    const selected = e.target.value;
+    updateLang(selected);
+    try {
+        await fetch('/api/profile/language', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, language: selected })
+        });
+    } catch (err) {
+        console.error("Language save failed:", err);
+    }
+});
+
+document.getElementById('daily-claim-card').addEventListener('click', async () => {
+    try {
+        const response = await fetch('/api/daily-claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(`🎉 +${data.coins} Dark Coins!`);
+            loadProfile();
+        } else {
+            alert(`⚠️ ${data.error}`);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+document.getElementById('btn-copy-ref').addEventListener('click', () => {
+    const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
+    navigator.clipboard.writeText(link).then(() => {
+        alert(t("msg_copied"));
+    }).catch(err => {
+        const tempInput = document.createElement("input");
+        tempInput.value = link;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput);
+        alert(t("msg_copied"));
+    });
+});
+
+document.getElementById('btn-send-ghost').addEventListener('click', sendGhostChatMessage);
+document.getElementById('ghost-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendGhostChatMessage();
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('btn-checkout')) {
+        const pack = e.target.getAttribute('data-pack');
+        startTelegramStarsPayment(pack);
+    }
+    if (e.target.classList.contains('btn-card-pay')) {
+        const coins = e.target.getAttribute('data-coins');
+        startCardPayment(coins);
     }
 });

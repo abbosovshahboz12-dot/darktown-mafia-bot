@@ -95,6 +95,13 @@ async def assign_roles(game: Game, bot: Bot):
         except Exception as e:
             logging.error(f"Could not send role to user {player.user_id}: {e}")
 
+def log_game_event(game: Game, text: str):
+    if not hasattr(game, "logs"):
+        game.logs = []
+    game.logs.append(text)
+    if len(game.logs) > 30:
+        game.logs.pop(0)
+
 async def try_mute_chat(bot: Bot, chat_id: int, mute: bool):
     try:
         if mute:
@@ -113,6 +120,7 @@ async def try_mute_chat(bot: Bot, chat_id: int, mute: bool):
 async def start_game_loop(bot: Bot, game: Game):
     # Assign roles
     await assign_roles(game, bot)
+    log_game_event(game, "🎭 O'yin boshlandi. Rollar taqsimlandi.")
     await bot.send_message(
         game.chat_id,
         "🎭 **Rollar taqsimlandi!** Har bir o'yinchiga o'z roli shaxsiy chatda yuborildi.\n\n"
@@ -123,6 +131,7 @@ async def start_game_loop(bot: Bot, game: Game):
 
 async def night_phase(bot: Bot, game: Game):
     game.phase = "night"
+    log_game_event(game, "🌙 Tun boshlandi. Rollar tungi harakatda.")
     
     # Send group night announcement
     await bot.send_message(
@@ -473,19 +482,23 @@ async def process_night(bot: Bot, game: Game):
 
     # Day announcement text
     day_text = "🌅 **Tong otdi! Darktown shahri uyg'ondi...**\n\n"
+    log_game_event(game, "🌅 Kun boshlandi.")
     
     # Check if there is a random event
     game.event = get_random_event()
     if game.event:
         day_text += f"📣 **Bugungi Shahar Hodisasi**:\n**{game.event['name']}**\n_{game.event['description']}_\n\n"
+        log_game_event(game, f"📣 Hodisa: {game.event['name']}")
         
     if not victims:
         day_text += "✨ **Ajoyib yangilik! Bugun tunda hech kim halok bo'lmadi.**\n\n"
+        log_game_event(game, "✨ Tunda talofatlar bo'lmadi.")
     else:
         day_text += "💀 **Tungi yo'qotishlar**:\n"
         for vic, details in victims:
             role_emoji = ROLE_EMOJIS.get(vic.role, "")
             day_text += f"- {vic.name} ({role_emoji} {vic.role}): {details}\n"
+            log_game_event(game, f"💀 {vic.name} o'ldirildi ({vic.role}).")
         day_text += "\n"
         
         # Add last words
@@ -618,6 +631,7 @@ async def process_voting(bot: Bot, game: Game):
         
     if not vote_tally:
         result_text += "\n🤷‍♂️ Hech kim ovoz bermadi. Bugun hech kim osilmaydi."
+        log_game_event(game, "🤷‍♂️ Ovozlar berilmadi, hech kim osilmadi.")
         await bot.send_message(game.chat_id, result_text)
         # Go to next night
         await start_next_night(bot, game)
@@ -655,11 +669,13 @@ async def process_voting(bot: Bot, game: Game):
             )
         else:
             result_text += "\n⚖️ Ovozlar teng bo'lib qoldi. Bugun hech kim osilmaydi."
+            log_game_event(game, "⚖️ Ovozlar teng, hech kim osilmadi.")
     else:
         hanged_id = top_candidates[0]
         # Check if skip votes are greater than candidate votes
         if skip_votes >= max_votes:
             result_text += "\n⏩ Ko'pchilik ovoz bermaslikni tanladi. Bugun hech kim osilmaydi."
+            log_game_event(game, "⏩ Ovoz berilmaslik tanlandi, hech kim osilmadi.")
         else:
             hanged_player = game.players[hanged_id]
             hanged_player.is_alive = False
@@ -668,6 +684,7 @@ async def process_voting(bot: Bot, game: Game):
                 f"\n⚖️ Ko'pchilikning qarori bilan **{hanged_player.name}** dorga osildi!\n"
                 f"Uning roli: {role_emoji} **{hanged_player.role}**"
             )
+            log_game_event(game, f"⚖️ {hanged_player.name} dorda osildi ({hanged_player.role}).")
             
     await bot.send_message(game.chat_id, result_text, parse_mode="Markdown")
     
@@ -685,6 +702,7 @@ async def start_next_night(bot: Bot, game: Game):
 
 async def end_game(bot: Bot, game: Game, winning_faction: str):
     game.phase = "ended"
+    log_game_event(game, f"🏁 O'yin yakunlandi! G'olib: {winning_faction}")
     await try_mute_chat(bot, game.chat_id, False)
     
     faction_emojis = {
