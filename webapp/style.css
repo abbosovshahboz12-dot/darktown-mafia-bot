@@ -1029,3 +1029,107 @@ body {
     background: rgba(255, 255, 255, 0.1);
     transform: translateY(-1px);
 }
+
+/* Coin Package Card Styles */
+.coins-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+.coin-package-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+.coin-package-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(0, 242, 254, 0.2);
+    transform: translateY(-2px);
+}
+.coin-info-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.coin-icon {
+    font-size: 32px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.coin-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+.coin-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+}
+.coin-desc {
+    font-size: 12px;
+    color: #94a3b8;
+}
+.coin-action-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.coin-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: #00f2fe;
+    text-align: left;
+}
+.coin-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+/* Horizontal Layout on wider screens */
+@media (min-width: 600px) {
+    .coin-package-card {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .coin-info-group {
+        flex: 1;
+    }
+    .coin-action-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 20px;
+        justify-content: flex-end;
+    }
+    .coin-price {
+        text-align: right;
+        min-width: 120px;
+    }
+    .coin-buttons {
+        flex-direction: row;
+        width: auto;
+        gap: 10px;
+    }
+    .btn-pay-option {
+        width: 160px;
+    }
+}
