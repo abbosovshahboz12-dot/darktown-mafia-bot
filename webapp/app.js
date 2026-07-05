@@ -718,14 +718,39 @@ async function leaveParty() {
     }
 }
 
+function copyTextToClipboard(text, successMessage) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert(successMessage);
+        }).catch(() => {
+            fallbackCopy(text, successMessage);
+        });
+    } else {
+        fallbackCopy(text, successMessage);
+    }
+}
+
+function fallbackCopy(text, successMessage) {
+    const tempInput = document.createElement("textarea");
+    tempInput.value = text;
+    tempInput.style.position = "fixed"; // Avoid scrolling
+    document.body.appendChild(tempInput);
+    tempInput.focus();
+    tempInput.select();
+    try {
+        document.execCommand("copy");
+        alert(successMessage);
+    } catch (err) {
+        console.error("Fallback copy failed:", err);
+        alert("Nusxalang: " + text);
+    }
+    document.body.removeChild(tempInput);
+}
+
 function copyPartyLink() {
     if (!currentPartyId) return;
     const link = `https://t.me/darktownuz_bot?start=${currentPartyId}`;
-    navigator.clipboard.writeText(link).then(() => {
-        alert("Taklif havolasi nusxalandi!");
-    }).catch(() => {
-        alert(link);
-    });
+    copyTextToClipboard(link, "Taklif havolasi nusxalandi!");
 }
 
 // Matchmaking and Room custom creation
@@ -1584,17 +1609,7 @@ document.getElementById('daily-claim-card').addEventListener('click', async () =
 
 document.getElementById('btn-copy-ref').addEventListener('click', () => {
     const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
-    navigator.clipboard.writeText(link).then(() => {
-        alert(t("msg_copied"));
-    }).catch(err => {
-        const tempInput = document.createElement("input");
-        tempInput.value = link;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempInput);
-        alert(t("msg_copied"));
-    });
+    copyTextToClipboard(link, t("msg_copied"));
 });
 
 document.getElementById('btn-send-ghost').addEventListener('click', sendGhostChatMessage);
@@ -1603,12 +1618,15 @@ document.getElementById('ghost-input').addEventListener('keypress', (e) => {
 });
 
 document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('btn-checkout')) {
-        const pack = e.target.getAttribute('data-pack');
+    const checkoutBtn = e.target.closest('.btn-checkout');
+    const cardPayBtn = e.target.closest('.btn-card-pay');
+    
+    if (checkoutBtn) {
+        const pack = checkoutBtn.getAttribute('data-pack');
         startTelegramStarsPayment(pack);
     }
-    if (e.target.classList.contains('btn-card-pay')) {
-        const coins = e.target.getAttribute('data-coins');
+    if (cardPayBtn) {
+        const coins = cardPayBtn.getAttribute('data-coins');
         startCardPayment(coins);
     }
 });
