@@ -4,29 +4,58 @@ window.onerror = function(message, source, lineno, colno, error) {
     return false;
 };
 
-// Initialize Telegram WebApp
-const tg = window.Telegram.WebApp;
-tg.expand();
-tg.ready();
+// Safe DOM event listener helper to prevent script halts
+window.safeAddListener = function(id, event, callback) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener(event, callback);
+    } else {
+        console.warn(`[SafeListener] Element ID '${id}' not found, skipping.`);
+    }
+};
+
+// Safe Telegram WebApp SDK initialization
+const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+
+if (tg) {
+    try {
+        tg.expand();
+        tg.ready();
+    } catch(e) {
+        console.error("tg expand/ready error:", e);
+    }
+}
 
 // Apply Telegram theme colors if desired
-document.documentElement.style.setProperty('--bg-color', tg.backgroundColor || '#0d071b');
+if (tg && tg.backgroundColor) {
+    document.documentElement.style.setProperty('--bg-color', tg.backgroundColor);
+} else {
+    document.documentElement.style.setProperty('--bg-color', '#0d071b');
+}
 
 // Determine current user ID
 // Try from Telegram initData first, then fallback to URL parameter (for browser testing)
-let userId = 0;
+let userId = 7759713314; // Sh.Abbosov Telegram ID
 let userFirstName = "Sh.Abbosov";
-let userUsername = "";
+let userUsername = "sh_abbosov";
 
-if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     userId = tg.initDataUnsafe.user.id;
     userFirstName = tg.initDataUnsafe.user.first_name;
     userUsername = tg.initDataUnsafe.user.username || "";
 } else {
     // Fallback to URL query parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    userId = parseInt(urlParams.get('user_id')) || 7759713314; // Sh.Abbosov Telegram ID
-    userUsername = "sh_abbosov";
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryUid = urlParams.get('user_id');
+        if (queryUid) userId = parseInt(queryUid);
+        const queryName = urlParams.get('first_name');
+        if (queryName) userFirstName = queryName;
+        const queryUser = urlParams.get('username');
+        if (queryUser) userUsername = queryUser;
+    } catch(e) {
+        console.error("URL parsing error:", e);
+    }
 }
 
 // Global state
@@ -35,7 +64,7 @@ let currentRoomId = null;
 let currentPartyId = null;
 
 // Auto-join party if start parameter contains party ID
-if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
     const param = tg.initDataUnsafe.start_param;
     if (param.startsWith('party_')) {
         autoJoinParty(param);
@@ -1570,11 +1599,15 @@ async function startTelegramStarsPayment(packageKey) {
 
 function startCardPayment(coins) {
     const url = `${window.location.origin}/payment/mock?user_id=${userId}&coins=${coins}`;
-    tg.openLink(url);
+    if (tg) {
+        tg.openLink(url);
+    } else {
+        window.open(url, '_blank');
+    }
 }
 
-// Add event listeners for profile activities
-document.getElementById('select-lang').addEventListener('change', async (e) => {
+// Add event listeners for profile activities using safeAddListener helper
+safeAddListener('select-lang', 'change', async (e) => {
     const selected = e.target.value;
     updateLang(selected);
     try {
@@ -1588,7 +1621,7 @@ document.getElementById('select-lang').addEventListener('change', async (e) => {
     }
 });
 
-document.getElementById('daily-claim-card').addEventListener('click', async () => {
+safeAddListener('daily-claim-card', 'click', async () => {
     try {
         const response = await fetch('/api/daily-claim', {
             method: 'POST',
@@ -1607,13 +1640,13 @@ document.getElementById('daily-claim-card').addEventListener('click', async () =
     }
 });
 
-document.getElementById('btn-copy-ref').addEventListener('click', () => {
+safeAddListener('btn-copy-ref', 'click', () => {
     const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
     copyTextToClipboard(link, t("msg_copied"));
 });
 
-document.getElementById('btn-send-ghost').addEventListener('click', sendGhostChatMessage);
-document.getElementById('ghost-input').addEventListener('keypress', (e) => {
+safeAddListener('btn-send-ghost', 'click', sendGhostChatMessage);
+safeAddListener('ghost-input', 'keypress', (e) => {
     if (e.key === 'Enter') sendGhostChatMessage();
 });
 
@@ -1632,28 +1665,28 @@ document.addEventListener('click', (e) => {
 });
 
 // Matchmaking & Party Event Listeners
-document.getElementById('btn-create-party').addEventListener('click', createParty);
-document.getElementById('btn-copy-party-link').addEventListener('click', copyPartyLink);
-document.getElementById('btn-leave-party').addEventListener('click', leaveParty);
-document.getElementById('btn-auto-match').addEventListener('click', autoMatchmaking);
+safeAddListener('btn-create-party', 'click', createParty);
+safeAddListener('btn-copy-party-link', 'click', copyPartyLink);
+safeAddListener('btn-leave-party', 'click', leaveParty);
+safeAddListener('btn-auto-match', 'click', autoMatchmaking);
 
-document.getElementById('btn-toggle-create-opts').addEventListener('click', () => {
+safeAddListener('btn-toggle-create-opts', 'click', () => {
     const opts = document.getElementById('room-create-opts');
     opts.style.display = opts.style.display === 'none' ? 'block' : 'none';
 });
 
-document.getElementById('room-is-private').addEventListener('change', (e) => {
+safeAddListener('room-is-private', 'change', (e) => {
     const pinGroup = document.getElementById('room-pin-group');
     pinGroup.style.display = e.target.checked ? 'block' : 'none';
 });
 
-document.getElementById('btn-submit-create-room').addEventListener('click', submitCreateRoom);
-document.getElementById('btn-submit-join-room').addEventListener('click', submitJoinRoom);
-document.getElementById('btn-lobby-leave').addEventListener('click', leaveRoom);
-document.getElementById('btn-lobby-start').addEventListener('click', startRoom);
-document.getElementById('btn-active-game-leave').addEventListener('click', leaveRoom);
+safeAddListener('btn-submit-create-room', 'click', submitCreateRoom);
+safeAddListener('btn-submit-join-room', 'click', submitJoinRoom);
+safeAddListener('btn-lobby-leave', 'click', leaveRoom);
+safeAddListener('btn-lobby-start', 'click', startRoom);
+safeAddListener('btn-active-game-leave', 'click', leaveRoom);
 
-document.getElementById('btn-send-room-day').addEventListener('click', sendRoomDayChatMessage);
-document.getElementById('room-day-chat-input').addEventListener('keypress', (e) => {
+safeAddListener('btn-send-room-day', 'click', sendRoomDayChatMessage);
+safeAddListener('room-day-chat-input', 'keypress', (e) => {
     if (e.key === 'Enter') sendRoomDayChatMessage();
 });
