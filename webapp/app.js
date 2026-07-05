@@ -87,7 +87,7 @@ navItems.forEach(item => {
 // Load Profile and Stats
 async function loadProfile() {
     try {
-        const response = await fetch(`/api/profile?user_id=${userId}`);
+        const response = await fetch(`/api/profile?user_id=${userId}&username=${encodeURIComponent(userUsername)}&first_name=${encodeURIComponent(userFirstName)}`);
         if (!response.ok) throw new Error("Profile fetch failed");
         
         const data = await response.json();

@@ -18,10 +18,13 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 async def get_profile_handler(request):
     try:
         user_id = int(request.query.get("user_id", 0))
+        username = request.query.get("username")
+        first_name = request.query.get("first_name")
+        
         if not user_id:
             return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
             
-        user = await db.get_user(user_id)
+        user = await db.get_user(user_id, username, first_name)
         stats = await db.get_user_stats(user_id)
         inventory = await db.get_inventory(user_id)
         
