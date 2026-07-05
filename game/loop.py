@@ -898,5 +898,35 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
         
     await bot.send_message(game.chat_id, rewards_text, parse_mode="Markdown")
     
+    # Reset room in DB back to lobby and schedule 5-minute auto-close timer
+    room_id = getattr(game, 'room_id', None)
+    if room_id:
+        async def reset_room_to_lobby():
+            try:
+                import aiosqlite
+                # Reset room status to lobby in SQLite
+                async with aiosqlite.connect(db.DB_PATH) as conn:
+                    await conn.execute("UPDATE rooms SET status = 'lobby' WHERE room_id = ?", (room_id,))
+                    await conn.execute("UPDATE room_players SET role = 'Civilian', is_alive = 1, afk_streak = 0 WHERE room_id = ?", (room_id,))
+                    await conn.commit()
+                
+                # Sleep for 5 minutes (300 seconds)
+                await asyncio.sleep(300)
+                
+                # Check if still in lobby and auto-close if inactive
+                async with aiosqlite.connect(db.DB_PATH) as conn:
+                    conn.row_factory = aiosqlite.Row
+                    async with conn.execute("SELECT status FROM rooms WHERE room_id = ?", (room_id,)) as cursor:
+                        row = await cursor.fetchone()
+                        if row and row['status'] == 'lobby':
+                            await conn.execute("UPDATE rooms SET status = 'finished' WHERE room_id = ?", (room_id,))
+                            await conn.execute("DELETE FROM room_players WHERE room_id = ?", (room_id,))
+                            await conn.commit()
+                            logging.info(f"Room {room_id} auto-closed after 5 minutes of inactivity.")
+            except Exception as e:
+                logging.error(f"Error resetting room {room_id} to lobby: {e}")
+                
+        asyncio.create_task(reset_room_to_lobby())
+        
     # Remove game
     game_manager.remove_game(game.chat_id)

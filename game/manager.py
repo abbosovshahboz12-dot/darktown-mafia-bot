@@ -21,7 +21,11 @@ class GameManager:
             game = self.games[chat_id]
             if game.timer_task:
                 game.timer_task.cancel()
-            del self.games[chat_id]
+            room_id = getattr(game, 'room_id', None)
+            if room_id and room_id in self.games:
+                del self.games[room_id]
+            if chat_id in self.games:
+                del self.games[chat_id]
 
     def get_game_by_player(self, user_id: int) -> Optional[Game]:
         for game in self.games.values():
