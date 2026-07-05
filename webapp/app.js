@@ -1,3 +1,9 @@
+// Global Error Handler for debugging
+window.onerror = function(message, source, lineno, colno, error) {
+    alert("JS Error: " + message + " on line " + lineno);
+    return false;
+};
+
 // Initialize Telegram WebApp
 const tg = window.Telegram.WebApp;
 tg.expand();
@@ -669,6 +675,7 @@ async function loadPartyStatus() {
 }
 
 async function createParty() {
+    alert("Partiya yaratish tugmasi bosildi! Yuborilayotgan User ID: " + userId);
     try {
         const response = await fetch('/api/party/create', {
             method: 'POST',
@@ -677,12 +684,14 @@ async function createParty() {
         });
         const data = await response.json();
         if (data.success) {
+            alert("Partiya muvaffaqiyatli yaratildi!");
             loadPartyStatus();
         } else {
-            alert(data.error);
+            alert("Xatolik: " + data.error);
         }
     } catch(e) {
         console.error(e);
+        alert("API xatosi: " + e.message);
     }
 }
 
@@ -702,6 +711,7 @@ async function leaveParty() {
         }
     } catch(e) {
         console.error(e);
+        alert("API xatosi: " + e.message);
     }
 }
 
@@ -717,6 +727,7 @@ function copyPartyLink() {
 
 // Matchmaking and Room custom creation
 async function autoMatchmaking() {
+    alert("Avto Matching tugmasi bosildi! Yuborilayotgan User ID: " + userId);
     try {
         // Query public rooms first
         const response = await fetch('/api/rooms/list');
@@ -725,6 +736,7 @@ async function autoMatchmaking() {
         if (data.rooms && data.rooms.length > 0) {
             // Join the first open public room
             const firstRoom = data.rooms[0];
+            alert("Ochiq xona topildi: #" + firstRoom.room_id + ". Qo'shilmoqda...");
             const joinRes = await fetch('/api/rooms/join', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -738,6 +750,7 @@ async function autoMatchmaking() {
         }
         
         // No open room found, automatically create one
+        alert("Ochiq xonalar yo'q. Yangi ochiq xona yaratilmoqda...");
         const createRes = await fetch('/api/rooms/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -745,12 +758,14 @@ async function autoMatchmaking() {
         });
         const createData = await createRes.json();
         if (createData.success) {
+            alert("Yangi xona yaratildi: #" + createData.room_id);
             loadActiveGame();
         } else {
-            alert(createData.error);
+            alert("Xatolik: " + createData.error);
         }
     } catch(e) {
         console.error(e);
+        alert("API xatosi: " + e.message);
     }
 }
 
