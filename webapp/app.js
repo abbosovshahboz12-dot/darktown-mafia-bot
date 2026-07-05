@@ -278,14 +278,14 @@ async function buyItem(itemKey) {
         const resData = await response.json();
         
         if (response.ok) {
-            tg.showAlert(`🎉 ${resData.message}`);
+            alert(`🎉 ${resData.message}`);
             loadProfile();
         } else {
-            tg.showAlert(`⚠️ ${resData.error || "Xatolik yuz berdi"}`);
+            alert(`⚠️ ${resData.error || "Xatolik yuz berdi"}`);
         }
     } catch (e) {
         console.error(e);
-        tg.showAlert("⚠️ Serverga ulanishda xato!");
+        alert("⚠️ Serverga ulanishda xato!");
     }
 }
 
@@ -301,10 +301,10 @@ async function activateShield() {
         const resData = await response.json();
         
         if (response.ok) {
-            tg.showAlert("🛡️ Qalqon faollashtirildi!");
+            alert("🛡️ Qalqon faollashtirildi!");
             loadProfile();
         } else {
-            tg.showAlert(`⚠️ ${resData.error}`);
+            alert(`⚠️ ${resData.error}`);
         }
     } catch (e) {
         console.error(e);
