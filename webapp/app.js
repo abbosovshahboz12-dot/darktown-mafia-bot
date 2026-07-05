@@ -446,12 +446,14 @@ async function loadActiveGame() {
             lobbyView.style.display = 'block';
             roomLobbyView.style.display = 'none';
             gameView.style.display = 'none';
+            document.querySelector('.app-nav').style.display = 'flex';
             loadPartyStatus();
             loadPublicRoomsList();
             return;
         }
         
         currentRoomId = data.room_id;
+        document.querySelector('.app-nav').style.display = 'none';
         
         // Waiting room lobby (phase === 'lobby')
         if (data.phase === "lobby") {
@@ -1631,6 +1633,7 @@ document.getElementById('btn-submit-create-room').addEventListener('click', subm
 document.getElementById('btn-submit-join-room').addEventListener('click', submitJoinRoom);
 document.getElementById('btn-lobby-leave').addEventListener('click', leaveRoom);
 document.getElementById('btn-lobby-start').addEventListener('click', startRoom);
+document.getElementById('btn-active-game-leave').addEventListener('click', leaveRoom);
 
 document.getElementById('btn-send-room-day').addEventListener('click', sendRoomDayChatMessage);
 document.getElementById('room-day-chat-input').addEventListener('keypress', (e) => {
