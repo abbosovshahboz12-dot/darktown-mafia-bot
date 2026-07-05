@@ -11,6 +11,15 @@
     <link rel="stylesheet" href="/static/style.css?v=12">
 </head>
 <body>
+    <!-- Banned Overlay Screen -->
+    <div id="banned-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0d071b; color:#fff; z-index:99999; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; font-family:'Outfit', sans-serif;">
+        <span style="font-size:4rem; margin-bottom:20px;">🚫</span>
+        <h2 style="color:#ff3b30; font-size:24px; font-weight:800; margin-bottom:12px;">Siz Bloklangansiz!</h2>
+        <p style="color:#94a3b8; font-size:14px; max-width:320px; line-height:1.6;">
+            O'yin qoidalarini buzganingiz sababli profilingiz vaqtinchalik yoki butunlay bloklangan. Qayta tiklash uchun guruh administratoriga murojaat qiling.
+        </p>
+    </div>
+
     <div class="app-container">
         
         <!-- Header -->
@@ -477,6 +486,44 @@
                     <button id="admin-submit-btn" class="buy-btn" style="width: 100%; margin-top: 12px; height: 44px; font-weight: 600;">
                         💰 Balansni To'ldirish
                     </button>
+                </div>
+
+                <div class="section-title" style="margin-top: 24px;">📢 Tizimli Reklama Yuborish</div>
+                <div class="admin-form-card">
+                    <div class="form-group">
+                        <label for="admin-broadcast-text">Xabar Matni (Markdown):</label>
+                        <textarea id="admin-broadcast-text" placeholder="Reklama matnini shu yerga yozing..." class="admin-input" style="width:100%; min-height:80px; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:13px; font-family:inherit; padding:10px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-broadcast-image">Rasm Havolasi (Image URL - ixtiyoriy):</label>
+                        <input type="text" id="admin-broadcast-image" placeholder="https://example.com/image.jpg" class="admin-input" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:13px; padding:10px;">
+                    </div>
+                    <button id="admin-broadcast-btn" class="buy-btn" style="width: 100%; margin-top: 12px; height: 44px; font-weight: 600;">
+                        📢 Xabar Tarqatish
+                    </button>
+                </div>
+
+                <div class="section-title" style="margin-top: 24px;">🚫 Foydalanuvchini Bloklash (Ban)</div>
+                <div class="admin-form-card">
+                    <div class="form-group">
+                        <label for="admin-ban-target-id">Foydalanuvchi Telegram ID:</label>
+                        <input type="number" id="admin-ban-target-id" placeholder="Masalan: 12345678" class="admin-input" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:13px; padding:10px;">
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:12px;">
+                        <button id="admin-ban-btn" class="btn btn-danger" style="flex:1; height:44px; font-weight: 600;">
+                            🚫 Ban Qilish
+                        </button>
+                        <button id="admin-unban-btn" class="btn btn-secondary" style="flex:1; height:44px; font-weight: 600;">
+                            🟢 Bandan Chiqarish
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top: 24px;">🕹️ Faol O'yin Xonalari Monitor</div>
+                <div id="admin-active-rooms-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:30px;">
+                    <div style="font-size:12px; color:#94a3b8; padding:20px; background:rgba(255,255,255,0.01); border-radius:12px; border:1px dashed rgba(255,255,255,0.05); text-align:center;">
+                        Hozircha hech qanday faol o'yin xonalari yo'q.
+                    </div>
                 </div>
             </section>
 

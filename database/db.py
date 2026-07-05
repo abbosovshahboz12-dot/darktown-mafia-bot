@@ -102,6 +102,10 @@ async def init_db():
             await db.execute("ALTER TABLE users ADD COLUMN last_daily_claim TEXT")
         except Exception:
             pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
+        except Exception:
+            pass
             
         await db.commit()
 
@@ -570,3 +574,21 @@ async def get_user_party(user_id: int):
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM parties WHERE member_id = ?", (user_id,)) as cursor:
             return await cursor.fetchone()
+
+async def ban_user(user_id: int, ban: bool):
+    async with aiosqlite.connect(DB_PATH) as db:
+        val = 1 if ban else 0
+        await db.execute("UPDATE users SET banned = ? WHERE user_id = ?", (val, user_id))
+        await db.commit()
+
+async def is_user_banned(user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT banned FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return (row[0] == 1) if row else False
+
+async def get_all_user_ids() -> list[int]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT user_id FROM users") as cursor:
+            rows = await cursor.fetchall()
+            return [r[0] for r in rows]

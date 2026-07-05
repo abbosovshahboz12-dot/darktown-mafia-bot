@@ -25,6 +25,11 @@ async def get_profile_handler(request):
             return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
             
         user = await db.get_user(user_id, username, first_name)
+        
+        # Check if user is banned
+        if user.get('banned', 0) == 1:
+            return web.json_response({"banned": True})
+            
         stats = await db.get_user_stats(user_id)
         inventory = await db.get_inventory(user_id)
         
@@ -147,24 +152,126 @@ async def admin_give_handler(request):
         logging.error(f"Error in admin_give_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
-async def admin_give_handler(request):
+async def admin_broadcast_handler(request):
     try:
         data = await request.json()
-        admin_id = int(data.get("admin_id", 0))
-        if admin_id != ADMIN_ID:
-            return web.json_response({"error": "Ruxsat etilmagan"}, status=403)
-            
-        target_uid = int(data.get("target_id", 0))
-        coins = int(data.get("coins", 0))
-        xp = int(data.get("xp", 0))
+        user_id = int(data.get("user_id", 0))
+        text = data.get("text", "").strip()
+        image_url = data.get("image_url", "").strip()
         
-        if not target_uid:
-            return web.json_response({"error": "target_id kiritilishi shart"}, status=400)
+        if user_id != ADMIN_ID:
+            return web.json_response({"error": "Siz admin emassiz!"}, status=403)
             
-        await db.add_xp_and_coins(target_uid, xp, coins)
-        return web.json_response({"success": True, "message": "Muvaffaqiyatli to'ldirildi!"})
+        if not text:
+            return web.json_response({"error": "Matn kiritilishi shart!"}, status=400)
+            
+        bot = request.app['bot']
+        user_ids = await db.get_all_user_ids()
+        
+        async def broadcast_task():
+            success_count = 0
+            fail_count = 0
+            for uid in user_ids:
+                try:
+                    if image_url:
+                        await bot.send_photo(uid, photo=image_url, caption=text, parse_mode="Markdown")
+                    else:
+                        await bot.send_message(uid, text, parse_mode="Markdown")
+                    success_count += 1
+                except Exception as ex:
+                    logging.warning(f"Failed to send broadcast to {uid}: {ex}")
+                    fail_count += 1
+                await asyncio.sleep(0.05)
+            logging.info(f"Broadcast completed. Success: {success_count}, Failures: {fail_count}")
+            
+        asyncio.create_task(broadcast_task())
+        return web.json_response({"success": True, "message": "Xabar tarqatish fon rejimida boshlandi!"})
     except Exception as e:
-        logging.error(f"Error in admin_give_handler: {e}")
+        logging.error(f"Error in admin_broadcast_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_ban_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        target_id = int(data.get("target_id", 0))
+        ban = bool(data.get("ban", False))
+        
+        if user_id != ADMIN_ID:
+            return web.json_response({"error": "Siz admin emassiz!"}, status=403)
+            
+        if not target_id:
+            return web.json_response({"error": "Nishon Telegram ID kiritilishi shart!"}, status=400)
+            
+        await db.ban_user(target_id, ban)
+        action_word = "bloklandi" if ban else "blokdan chiqarildi"
+        return web.json_response({"success": True, "message": f"Foydalanuvchi {target_id} muvaffaqiyatli {action_word}."})
+    except Exception as e:
+        logging.error(f"Error in admin_ban_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_active_games_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if user_id != ADMIN_ID:
+            return web.json_response({"error": "Siz admin emassiz!"}, status=403)
+            
+        from game.manager import game_manager
+        active_list = []
+        seen_room_ids = set()
+        
+        for game in list(game_manager.games.values()):
+            room_id = getattr(game, 'room_id', None)
+            if room_id and room_id not in seen_room_ids:
+                seen_room_ids.add(room_id)
+                active_list.append({
+                    "room_id": room_id,
+                    "owner_id": game.chat_id,
+                    "phase": game.phase,
+                    "players_count": len(game.players)
+                })
+                
+        return web.json_response({"games": active_list})
+    except Exception as e:
+        logging.error(f"Error in admin_active_games_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_force_close_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        room_id = data.get("room_id", "").strip()
+        
+        if user_id != ADMIN_ID:
+            return web.json_response({"error": "Siz admin emassiz!"}, status=403)
+            
+        if not room_id:
+            return web.json_response({"error": "room_id kiritilishi shart!"}, status=400)
+            
+        from game.manager import game_manager
+        game = game_manager.games.get(room_id)
+        bot = request.app['bot']
+        
+        if game:
+            try:
+                from game.loop import try_mute_chat, try_restrict_user
+                await try_mute_chat(bot, game.chat_id, False)
+                for p in game.players.values():
+                    await try_restrict_user(bot, game.chat_id, p.user_id, False)
+            except Exception as ex:
+                logging.warning(f"Error releasing restrictions in force-close: {ex}")
+                
+            game_manager.remove_game(game.chat_id)
+            
+        import aiosqlite
+        async with aiosqlite.connect(db.DB_PATH) as conn:
+            await conn.execute("UPDATE rooms SET status = 'finished' WHERE room_id = ?", (room_id,))
+            await conn.execute("DELETE FROM room_players WHERE room_id = ?", (room_id,))
+            await conn.commit()
+            
+        return web.json_response({"success": True, "message": f"Xona {room_id} majburan yopildi."})
+    except Exception as e:
+        logging.error(f"Error in admin_force_close_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
 async def get_game_status_handler(request):
@@ -951,6 +1058,10 @@ def setup_web_server():
     app.router.add_get("/api/leaderboard", get_leaderboard_handler)
     app.router.add_get("/api/admin/stats", admin_stats_handler)
     app.router.add_post("/api/admin/give", admin_give_handler)
+    app.router.add_post("/api/admin/broadcast", admin_broadcast_handler)
+    app.router.add_post("/api/admin/ban", admin_ban_handler)
+    app.router.add_get("/api/admin/active-games", admin_active_games_handler)
+    app.router.add_post("/api/admin/force-close", admin_force_close_handler)
     app.router.add_get("/api/game/status", get_game_status_handler)
     app.router.add_post("/api/game/action", post_game_action_handler)
     app.router.add_post("/api/game/vote", post_game_vote_handler)

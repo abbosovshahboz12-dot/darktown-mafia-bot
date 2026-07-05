@@ -120,6 +120,12 @@ async function loadProfile() {
         if (!response.ok) throw new Error("Profile fetch failed");
         
         const data = await response.json();
+        if (data.banned) {
+            document.getElementById('banned-overlay').style.display = 'flex';
+            document.querySelector('.app-container').style.display = 'none';
+            return;
+        }
+        
         userData = data;
         
         if (data.isAdmin) {
@@ -1085,12 +1091,106 @@ async function loadAdminStats() {
             document.getElementById('admin-total-plays').innerText = data.total_plays;
             document.getElementById('admin-active-games').innerText = data.active_games;
         }
+        
+        // Fetch active games list
+        const gamesRes = await fetch(`/api/admin/active-games?user_id=${userId}`);
+        const gamesData = await gamesRes.json();
+        const container = document.getElementById('admin-active-rooms-list');
+        if (container) {
+            container.innerHTML = '';
+            if (gamesData.games && gamesData.games.length > 0) {
+                gamesData.games.forEach(g => {
+                    const card = document.createElement('div');
+                    card.style = "padding:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;";
+                    card.innerHTML = `
+                        <div style="text-align:left;">
+                            <div style="font-weight:bold; font-size:13px; color:#00f2fe;">Xona #${g.room_id}</div>
+                            <div style="font-size:11px; color:#94a3b8;">Bosqich: ${g.phase.toUpperCase()} | O'yinchilar: ${g.players_count} ta</div>
+                        </div>
+                        <button class="btn btn-sm btn-danger" style="padding:6px 12px; font-size:11px; height:auto; width:auto; line-height:1; cursor:pointer;" onclick="forceCloseRoom('${g.room_id}')">Yakunlash</button>
+                    `;
+                    container.appendChild(card);
+                });
+            } else {
+                container.innerHTML = `
+                    <div style="font-size:12px; color:#94a3b8; padding:20px; background:rgba(255,255,255,0.01); border-radius:12px; border:1px dashed rgba(255,255,255,0.05); text-align:center;">
+                        Hozircha hech qanday faol o'yin xonalari yo'q.
+                    </div>
+                `;
+            }
+        }
     } catch (e) {
         console.error("Admin stats error:", e);
     }
 }
 
-document.getElementById('admin-submit-btn').addEventListener('click', async () => {
+window.forceCloseRoom = async function(roomId) {
+    if (!confirm(`Haqiqatan ham #${roomId} xonani majburan yopmoqchimisiz?`)) return;
+    try {
+        const response = await fetch('/api/admin/force-close', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, room_id: roomId })
+        });
+        const data = await response.json();
+        alert(data.message || data.error);
+        loadAdminStats();
+    } catch(e) {
+        alert("Xato: " + e.message);
+    }
+};
+
+async function submitAdminBroadcast() {
+    const text = document.getElementById('admin-broadcast-text').value.trim();
+    const imageUrl = document.getElementById('admin-broadcast-image').value.trim();
+    
+    if (!text) {
+        alert("Xabar matnini yozing!");
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, text: text, image_url: imageUrl })
+        });
+        const data = await response.json();
+        alert(data.message || data.error);
+        if (data.success) {
+            document.getElementById('admin-broadcast-text').value = '';
+            document.getElementById('admin-broadcast-image').value = '';
+        }
+    } catch(e) {
+        alert("Xato: " + e.message);
+    }
+}
+
+async function submitAdminBan(isBan) {
+    const targetId = document.getElementById('admin-ban-target-id').value.trim();
+    if (!targetId) {
+        alert("Foydalanuvchi Telegram ID-sini kiriting!");
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, target_id: parseInt(targetId), ban: isBan })
+        });
+        const data = await response.json();
+        alert(data.message || data.error);
+        if (data.success) {
+            document.getElementById('admin-ban-target-id').value = '';
+        }
+    } catch(e) {
+        alert("Xato: " + e.message);
+    }
+}
+
+// Admin Event Listeners using safeAddListener
+safeAddListener('admin-submit-btn', 'click', async () => {
     const targetIdInput = document.getElementById('admin-target-id');
     const coinsInput = document.getElementById('admin-give-coins');
     const xpInput = document.getElementById('admin-give-xp');
@@ -1690,3 +1790,8 @@ safeAddListener('btn-send-room-day', 'click', sendRoomDayChatMessage);
 safeAddListener('room-day-chat-input', 'keypress', (e) => {
     if (e.key === 'Enter') sendRoomDayChatMessage();
 });
+
+// New Admin event listeners
+safeAddListener('admin-broadcast-btn', 'click', submitAdminBroadcast);
+safeAddListener('admin-ban-btn', 'click', () => submitAdminBan(true));
+safeAddListener('admin-unban-btn', 'click', () => submitAdminBan(false));
