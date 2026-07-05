@@ -297,13 +297,14 @@
                         </div>
 
                         <!-- Join by ID Form -->
-                        <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
-                            <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:4px;">ID orqali ulanish (PIN bo'lsa kiriting):</label>
-                            <div style="display:flex; gap:6px;">
-                                <input type="text" id="join-room-id" placeholder="Xona ID (masalan: 123456)" style="flex:1.5; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px; color:#fff; font-size:13px;">
-                                <input type="text" id="join-room-pin" placeholder="PIN" style="flex:0.8; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px; color:#fff; font-size:13px; text-align:center;">
-                                <button class="btn btn-primary" id="btn-submit-join-room" style="flex:1; padding:0 12px; font-size:12px;">Ulanish</button>
-                            </div>
+                        <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:12px; display:flex; flex-direction:column; gap:8px;">
+                            <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:2px;">ID orqali ulanish:</label>
+                            <input type="text" id="join-room-id" placeholder="Xona ID (masalan: 123456)" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff; font-size:13px;">
+                            
+                            <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:2px;">PIN-kod (agar mavjud bo'lsa):</label>
+                            <input type="text" id="join-room-pin" placeholder="PIN" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:#fff; font-size:13px; text-align:left;">
+                            
+                            <button class="btn btn-primary" id="btn-submit-join-room" style="width:100%; height:42px; margin-top:4px;">Ulanish</button>
                         </div>
                     </div>
 
@@ -312,6 +313,64 @@
                     <div id="active-rooms-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
                         <div style="font-size:12px; color:#94a3b8; padding:20px; background:rgba(255,255,255,0.01); border-radius:12px; border:1px dashed rgba(255,255,255,0.05); text-align:center;">
                             Hozircha ochiq lobbilar yo'q. Avto matching orqali birinchilardan bo'lib yarating!
+                        </div>
+                    </div>
+
+                    <!-- Calculator & Roles Guide Section -->
+                    <div class="lobby-card" id="match-calc-view" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:16px; border-radius:12px; margin-top:20px; text-align:left; margin-bottom:20px;">
+                        <h3 class="section-title" style="margin-top:0; font-size:16px; color:#ffc439;">🎮 Mafiya Balans Kalkulyatori</h3>
+                        
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label id="calc-lbl-players" style="font-size:12px; color:#94a3b8; display:block; margin-bottom:8px;">O'yinchilar soni:</label>
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <input type="range" id="player-slider" min="4" max="20" value="5" style="flex: 1; accent-color: #00f2fe;">
+                                <span id="calc-player-count" style="font-size: 1.2rem; font-weight: 800; color: #00f2fe; background: rgba(0,242,254,0.1); padding: 4px 12px; border-radius: 8px;">5</span>
+                            </div>
+                        </div>
+
+                        <div class="calc-results" style="margin-bottom: 20px;">
+                            <h4 id="calc-roles-distribution" style="margin: 0 0 10px 0; font-size: 13px; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">👥 Kutilayotgan rollar taqsimoti</h4>
+                            <div id="calc-roles-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Roles count will go here dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="roles-guide">
+                            <h4 id="calc-roles-guide" style="margin: 0 0 10px 0; font-size: 13px; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;">🎭 Rol qoidalari va tavsiflari</h4>
+                            <div id="calc-roles-guide-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                                <div>
+                                    <span style="font-weight:bold; color:#ff3b30;">🔴 Mafiya</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Tunda shahar a'zolarini o'ldirish uchun sheriklari bilan ovoz beradi.</p>
+                                </div>
+                                <div>
+                                    <span style="font-weight:bold; color:#ffcc00;">🕶️ Don</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Komissarni topish uchun tunda har bir o'yinchini tekshiradi.</p>
+                                </div>
+                                <div>
+                                    <span style="font-weight:bold; color:#007af5;">🔵 Komissar (Detective)</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Tunda shubhalanuvchini tekshiradi yoki uni to'g'ridan-to'g'ri otib tashlaydi.</p>
+                                </div>
+                                <div>
+                                    <span style="font-weight:bold; color:#4cd964;">🟢 Tinch aholi (Civilian)</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Tunda uxlaydi, kunduzi shubhalilarni dorda osish uchun ovoz beradi.</p>
+                                </div>
+                                <div>
+                                    <span style="font-weight:bold; color:#ff9500;">🏥 Shifokor (Doctor)</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Tunda o'ldirilgan o'yinchilardan birini o'limdan qutqarish uchun davolaydi.</p>
+                                </div>
+                                <div>
+                                    <span style="font-weight:bold; color:#5856d6;">🛡️ Tansoqchi (Bodyguard)</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Tunda kimnidir himoya qiladi (u o'rniga o'zi o'limga duch keladi).</p>
+                                </div>
+                                <div>
+                                    <span style="font-weight:bold; color:#ff2d55;">🌸 Kutizanka (Courtesan)</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Tunda istalgan bir o'yinchining tungi qobiliyatini bloklaydi.</p>
+                                </div>
+                                <div>
+                                    <span style="font-weight:bold; color:#af52de;">🦹 Telba (Maniac)</span>
+                                    <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">Har bir tunda o'z xohishiga ko'ra o'ldirish uchun bitta qurbon tanlaydi.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

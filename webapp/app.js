@@ -77,6 +77,7 @@ navItems.forEach(item => {
             loadProfile();
         } else if (tabName === 'match') {
             loadActiveGame();
+            initCalculator();
         } else if (tabName === 'admin') {
             loadAdminStats();
         }
