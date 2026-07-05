@@ -242,61 +242,98 @@
 
             <!-- 4. Match Tab -->
             <section id="tab-match" class="tab-content">
-                <div id="match-calc-view">
-                    <div class="section-title">🎲 Rol taqsimoti kalkulyatori</div>
-                    
-                    <div class="calculator-card">
-                        <div class="calc-header">
-                            <span>O'yinchilar soni:</span>
-                            <span id="calc-player-count" class="player-count-display">5</span>
+                
+                <!-- 4A. Matchmaking & Party Lobby View -->
+                <div id="match-lobby-view">
+                    <!-- Party Management Card -->
+                    <div class="lobby-card" id="party-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:16px; border-radius:12px; margin-bottom:16px; text-align:left;">
+                        <h3 style="margin-top:0; font-size:16px; color:#00f2fe; display:flex; justify-content:space-between; align-items:center;">
+                            <span>👥 Geymerlar Partiyasi</span>
+                            <span id="party-status-badge" style="font-size:10px; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:10px; color:#94a3b8;">Yakka (Solo)</span>
+                        </h3>
+                        <div id="party-info-area" style="font-size:13px; color:#cbd5e1; margin-bottom:12px;">
+                            Siz hozircha guruhda emassiz. Do'stlaringiz bilan birga o'ynash uchun partiya yarating.
                         </div>
-                        <div class="slider-container">
-                            <input type="range" id="player-slider" min="5" max="15" value="5" class="player-slider">
+                        <div id="party-members-list" style="display:none; flex-direction:column; gap:6px; margin-bottom:12px; max-height:100px; overflow-y:auto;">
+                            <!-- Party members go here -->
+                        </div>
+                        <div id="party-actions" style="display:flex; gap:8px;">
+                            <button class="btn btn-sm btn-primary" id="btn-create-party" style="flex:1;">Partiya Yaratish</button>
+                            <button class="btn btn-sm btn-secondary" id="btn-copy-party-link" style="flex:1; display:none;">Taklif Havolasi</button>
+                            <button class="btn btn-sm btn-danger" id="btn-leave-party" style="flex:none; width:44px; display:none; padding:0;">🚪</button>
                         </div>
                     </div>
 
-                    <div class="section-title">👥 Kutilayotgan rollar taqsimoti</div>
-                    <div class="calc-roles-list" id="calc-roles-list">
-                        <!-- Dynamic role count cards will go here -->
+                    <!-- Matchmaking & Create Room Card -->
+                    <div class="lobby-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:16px; border-radius:12px; margin-bottom:16px; text-align:left;">
+                        <h3 style="margin-top:0; font-size:16px; color:#ffc439;">🎮 O'yin Topish & Xona Yaratish</h3>
+                        
+                        <div style="display:flex; gap:8px; margin-bottom:16px;">
+                            <button class="btn btn-primary" id="btn-auto-match" style="flex:1; height:44px; font-weight:bold; font-size:14px; background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);">🔍 Avto Matching (CS2)</button>
+                            <button class="btn btn-secondary" id="btn-toggle-create-opts" style="flex:none; width:44px; padding:0;">➕</button>
+                        </div>
+
+                        <!-- Room Custom Options Form -->
+                        <div id="room-create-opts" style="display:none; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px; margin-bottom:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <span style="font-size:13px;">🔒 Faqat do'stlar uchun (Private)</span>
+                                <input type="checkbox" id="room-is-private" style="width:18px; height:18px; cursor:pointer;">
+                            </div>
+                            <div class="form-group" id="room-pin-group" style="display:none; margin-bottom:10px;">
+                                <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">PIN-kod o'rnatish:</label>
+                                <input type="text" id="room-pin-code" placeholder="Masalan: 1234" maxlength="6" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px; color:#fff; font-size:13px;">
+                            </div>
+                            <div style="display:flex; gap:10px; margin-bottom:12px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:10px; color:#94a3b8;">☀️ Kun vaqti (soniya):</label>
+                                    <input type="number" id="room-day-limit" min="30" max="180" value="60" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px; color:#fff; font-size:12px;">
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:10px; color:#94a3b8;">🌙 Tun vaqti (soniya):</label>
+                                    <input type="number" id="room-night-limit" min="30" max="180" value="60" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px; color:#fff; font-size:12px;">
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-primary" id="btn-submit-create-room" style="width:100%;">Xona Yaratish</button>
+                        </div>
+
+                        <!-- Join by ID Form -->
+                        <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
+                            <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:4px;">ID orqali ulanish (PIN bo'lsa kiriting):</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="text" id="join-room-id" placeholder="Xona ID (masalan: 123456)" style="flex:1.5; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px; color:#fff; font-size:13px;">
+                                <input type="text" id="join-room-pin" placeholder="PIN" style="flex:0.8; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px; color:#fff; font-size:13px; text-align:center;">
+                                <button class="btn btn-primary" id="btn-submit-join-room" style="flex:1; padding:0 12px; font-size:12px;">Ulanish</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="section-title" style="margin-top:24px;">🎭 Rol qoidalari va tavsiflari</div>
-                    <div class="roles-guide-list">
-                        <div class="guide-item">
-                            <div class="guide-header">🔴 Mafiya</div>
-                            <div class="guide-desc">Tunda shahar a'zolarini o'ldirish uchun sheriklari bilan ovoz beradi.</div>
-                        </div>
-                        <div class="guide-item">
-                            <div class="guide-header">Don 🕶️</div>
-                            <div class="guide-desc">Mafiya boshlig'i, tunda Komissarni qidiradi.</div>
-                        </div>
-                        <div class="guide-item">
-                            <div class="guide-header">Komissar 🔵</div>
-                            <div class="guide-desc">Qonun himoyachisi, tunda o'yinchilardan birining rolini tekshiradi.</div>
-                        </div>
-                        <div class="guide-item">
-                            <div class="guide-header">Shifokor 🟡</div>
-                            <div class="guide-desc">O'yinchi hayotini saqlab qoladi, bir kishini ketma-ket ikki marta davolay olmaydi.</div>
-                        </div>
-                        <div class="guide-item">
-                            <div class="guide-header">Tansoqchi 🛡️</div>
-                            <div class="guide-desc">O'yinchini himoya qiladi, hujum bo'lsa o'zi vafot etadi.</div>
-                        </div>
-                        <div class="guide-item">
-                            <div class="guide-header">Kutizanka 🌸</div>
-                            <div class="guide-desc">O'yinchi qobiliyatini bir kechaga cheklaydi.</div>
-                        </div>
-                        <div class="guide-item">
-                            <div class="guide-header">Telba 🦹</div>
-                            <div class="guide-desc">Yolg'iz qotil, hamma bilan kurashadi va yakka o'zi qolsa g'olib bo'ladi.</div>
-                        </div>
-                        <div class="guide-item">
-                            <div class="guide-header">Tinch aholi 🟢</div>
-                            <div class="guide-desc">Oddiy fuqaro, kunduzi munozara qilib mafiyani topishga harakat qiladi.</div>
+                    <!-- Active Public Rooms List -->
+                    <div class="section-title">🌐 Faol Ochiq Xonalar (Lobby)</div>
+                    <div id="active-rooms-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                        <div style="font-size:12px; color:#94a3b8; padding:20px; background:rgba(255,255,255,0.01); border-radius:12px; border:1px dashed rgba(255,255,255,0.05); text-align:center;">
+                            Hozircha ochiq lobbilar yo'q. Avto matching orqali birinchilardan bo'lib yarating!
                         </div>
                     </div>
                 </div>
 
+                <!-- 4B. Room Lobby (Waiting Room) View -->
+                <div id="match-room-lobby-view" style="display:none;">
+                    <div class="lobby-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:20px; border-radius:16px; text-align:center; margin-bottom:20px;">
+                        <h2 style="margin:0; font-size:24px; color:#00f2fe; font-weight:800;" id="lobby-room-title">XONA #123456</h2>
+                        <p style="font-size:12px; color:#94a3b8; margin:6px 0 16px 0;" id="lobby-room-status">O'yinchilar kutilmoqda...</p>
+                        
+                        <div id="lobby-players-container" style="display:flex; flex-direction:column; gap:8px; background:rgba(0,0,0,0.15); padding:12px; border-radius:12px; max-height:220px; overflow-y:auto; text-align:left; border:1px solid rgba(255,255,255,0.03); margin-bottom:20px;">
+                            <!-- Joined players list -->
+                        </div>
+
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-danger" id="btn-lobby-leave" style="flex:1;">Chiqish</button>
+                            <button class="btn btn-primary" id="btn-lobby-start" style="flex:2; font-weight:bold; display:none; background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);">O'yinni Boshlash</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4C. Active Game View -->
                 <div id="match-active-game-view" style="display:none;">
                     <div class="game-header-card">
                         <div class="game-phase-badge" id="game-phase-badge">🌙 TUN</div>
@@ -310,6 +347,18 @@
                     <div class="section-title" id="lbl-players-title">👥 O'yinchilar maydoni</div>
                     <div class="game-players-grid" id="game-players-grid">
                         <!-- Players cards will go here dynamically -->
+                    </div>
+
+                    <!-- Live Day Chat (for Room Games during Day Phase) -->
+                    <div id="room-day-chat-section" style="display:none; margin-top:20px;">
+                        <div class="section-title" id="lbl-day-chat-title" style="color:#00f2fe;">💬 Kunlik Munozara Chati</div>
+                        <div class="room-chat-container" id="room-day-messages" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; height:160px; overflow-y:auto; padding:12px; margin-bottom:10px; display:flex; flex-direction:column; gap:8px; text-align:left;">
+                            <!-- Dynamic chat messages -->
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="room-day-chat-input" placeholder="Munozaraga qo'shiling..." style="flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; padding:10px; font-size:13px;">
+                            <button class="btn btn-primary" id="btn-send-room-day" style="padding:10px 16px;">➡️</button>
+                        </div>
                     </div>
 
                     <!-- Live Game Logs -->

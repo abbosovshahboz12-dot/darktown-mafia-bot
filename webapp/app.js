@@ -25,6 +25,28 @@ if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
 
 // Global state
 let userData = null;
+let currentRoomId = null;
+let currentPartyId = null;
+
+// Auto-join party if start parameter contains party ID
+if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+    const param = tg.initDataUnsafe.start_param;
+    if (param.startsWith('party_')) {
+        autoJoinParty(param);
+    }
+}
+
+async function autoJoinParty(partyId) {
+    try {
+        await fetch('/api/party/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, party_id: partyId })
+        });
+    } catch(e) {
+        console.error("Auto join party error:", e);
+    }
+}
 
 // Tab navigation
 const navItems = document.querySelectorAll('.nav-item');
@@ -48,7 +70,7 @@ navItems.forEach(item => {
         } else if (tabName === 'shop' || tabName === 'profile') {
             loadProfile();
         } else if (tabName === 'match') {
-            initCalculator();
+            loadActiveGame();
         } else if (tabName === 'admin') {
             loadAdminStats();
         }
@@ -402,29 +424,61 @@ loadActiveGame();
 setInterval(loadActiveGame, 4000);
 
 // Active Game Arena Actions
+// Active Game Arena Actions
 async function loadActiveGame() {
     try {
         const response = await fetch(`/api/game/status?user_id=${userId}`);
         if (!response.ok) throw new Error("Game status fetch failed");
         
         const data = await response.json();
-        const calcView = document.getElementById('match-calc-view');
+        const lobbyView = document.getElementById('match-lobby-view');
+        const roomLobbyView = document.getElementById('match-room-lobby-view');
         const gameView = document.getElementById('match-active-game-view');
         
         if (!data.inGame) {
-            calcView.style.display = 'block';
+            lobbyView.style.display = 'block';
+            roomLobbyView.style.display = 'none';
             gameView.style.display = 'none';
+            loadPartyStatus();
+            loadPublicRoomsList();
             return;
         }
         
-        // Inside active game!
-        calcView.style.display = 'none';
+        currentRoomId = data.room_id;
+        
+        // Waiting room lobby (phase === 'lobby')
+        if (data.phase === "lobby") {
+            lobbyView.style.display = 'none';
+            roomLobbyView.style.display = 'block';
+            gameView.style.display = 'none';
+            
+            document.getElementById('lobby-room-title').innerText = `XONA #${data.room_id}`;
+            const container = document.getElementById('lobby-players-container');
+            container.innerHTML = data.players.map((p, idx) => `
+                <div style="padding:8px 12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                    <span style="font-size:13px; color:#fff;">${idx+1}. 👤 <strong>${p.name}</strong></span>
+                    ${p.user_id === data.owner_id ? '<span style="font-size:10px; color:#ffc439; background:rgba(255,196,57,0.1); padding:2px 6px; border-radius:6px; font-weight:bold;">👑 Ega</span>' : ''}
+                </div>
+            `).join('');
+            
+            const startBtn = document.getElementById('btn-lobby-start');
+            if (data.owner_id === userId) {
+                startBtn.style.display = 'inline-block';
+                startBtn.disabled = data.players.length < 5;
+            } else {
+                startBtn.style.display = 'none';
+            }
+            return;
+        }
+        
+        // Active game!
+        lobbyView.style.display = 'none';
+        roomLobbyView.style.display = 'none';
         gameView.style.display = 'block';
         
         // Render phase
         const phaseBadge = document.getElementById('game-phase-badge');
         const phaseNames = {
-            "lobby": "⏳ LOBBI",
             "night": "🌙 TUN",
             "day": "🌅 KUN",
             "voting": "🗳️ OVOZ BERISH",
@@ -487,17 +541,14 @@ async function loadActiveGame() {
                 
                 if (data.phase === "night") {
                     if (data.myRole === "Mafia" || data.myRole === "Don") {
-                        // Mafia kill
                         if (p.role !== "Mafia" && p.role !== "Don") {
                             addActionBtn(actionsContainer, "🔴 O'ldirish", () => sendAction(p.user_id, "mafia"), "shoot");
                         }
                     }
                     if (data.myRole === "Don") {
-                        // Don check
                         addActionBtn(actionsContainer, "🔍 Tekshirish", () => sendAction(p.user_id, "don"), "check");
                     }
                     if (data.myRole === "Detective") {
-                        // Detective choice: check or shoot
                         addActionBtn(actionsContainer, "🔍 Tekshirish", () => sendAction(p.user_id, "det_check"), "check");
                         addActionBtn(actionsContainer, "🔫 Otish", () => sendAction(p.user_id, "det_shoot"), "shoot");
                     }
@@ -539,6 +590,15 @@ async function loadActiveGame() {
             grid.appendChild(skipCard);
         }
         
+        // Live room chat for Day/Discussion phase in Room games
+        const dayChatSection = document.getElementById('room-day-chat-section');
+        if (data.room_id && data.isAlive && (data.phase === 'day' || data.phase === 'discussion')) {
+            dayChatSection.style.display = 'block';
+            loadRoomDayChatMessages();
+        } else {
+            dayChatSection.style.display = 'none';
+        }
+        
         // Render game logs
         const logsDiv = document.getElementById('game-logs');
         if (data.logs && data.logs.length > 0) {
@@ -559,6 +619,330 @@ async function loadActiveGame() {
         
     } catch (e) {
         console.error("Active game fetch error:", e);
+    }
+}
+
+// Party Management functions
+async function loadPartyStatus() {
+    try {
+        const response = await fetch(`/api/party/status?user_id=${userId}`);
+        const data = await response.json();
+        
+        const badge = document.getElementById('party-status-badge');
+        const info = document.getElementById('party-info-area');
+        const list = document.getElementById('party-members-list');
+        const createBtn = document.getElementById('btn-create-party');
+        const copyBtn = document.getElementById('btn-copy-party-link');
+        const leaveBtn = document.getElementById('btn-leave-party');
+        
+        if (data.inParty) {
+            currentPartyId = data.party_id;
+            badge.innerText = data.isLeader ? "👑 LIDER" : "👥 AZO";
+            badge.style.color = data.isLeader ? "#ffc439" : "#00f2fe";
+            
+            info.innerText = `Partiya ID: ${data.party_id.replace('party_', '')}`;
+            list.style.display = 'flex';
+            list.innerHTML = data.members.map((m, idx) => `
+                <div style="font-size:12px; display:flex; justify-content:space-between; margin-bottom:3px; color:#fff;">
+                    <span>${idx+1}. 👤 ${m.first_name} (Lvl ${m.level})</span>
+                    ${m.user_id === data.leader_id ? '<span style="font-size:9px; color:#ffc439; font-weight:bold;">👑 Lider</span>' : ''}
+                </div>
+            `).join('');
+            
+            createBtn.style.display = 'none';
+            copyBtn.style.display = data.isLeader ? 'inline-block' : 'none';
+            leaveBtn.style.display = 'inline-block';
+        } else {
+            currentPartyId = null;
+            badge.innerText = "Yakka (Solo)";
+            badge.style.color = "#94a3b8";
+            info.innerText = "Siz hozircha guruhda emassiz. Do'stlaringiz bilan birga o'ynash uchun partiya yarating.";
+            list.style.display = 'none';
+            
+            createBtn.style.display = 'inline-block';
+            copyBtn.style.display = 'none';
+            leaveBtn.style.display = 'none';
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function createParty() {
+    try {
+        const response = await fetch('/api/party/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadPartyStatus();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function leaveParty() {
+    if (!currentPartyId) return;
+    try {
+        const response = await fetch('/api/party/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, party_id: currentPartyId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadPartyStatus();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+function copyPartyLink() {
+    if (!currentPartyId) return;
+    const link = `https://t.me/darktownuz_bot?start=${currentPartyId}`;
+    navigator.clipboard.writeText(link).then(() => {
+        alert("Taklif havolasi nusxalandi!");
+    }).catch(() => {
+        alert(link);
+    });
+}
+
+// Matchmaking and Room custom creation
+async function autoMatchmaking() {
+    try {
+        // Query public rooms first
+        const response = await fetch('/api/rooms/list');
+        const data = await response.json();
+        
+        if (data.rooms && data.rooms.length > 0) {
+            // Join the first open public room
+            const firstRoom = data.rooms[0];
+            const joinRes = await fetch('/api/rooms/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, room_id: firstRoom.room_id })
+            });
+            const joinData = await joinRes.json();
+            if (joinData.success) {
+                loadActiveGame();
+                return;
+            }
+        }
+        
+        // No open room found, automatically create one
+        const createRes = await fetch('/api/rooms/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, is_private: 0, pin_code: "", day_limit: 60, night_limit: 60 })
+        });
+        const createData = await createRes.json();
+        if (createData.success) {
+            loadActiveGame();
+        } else {
+            alert(createData.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function submitCreateRoom() {
+    const isPrivate = document.getElementById('room-is-private').checked ? 1 : 0;
+    const pinCode = document.getElementById('room-pin-code').value.trim();
+    const dayLimit = parseInt(document.getElementById('room-day-limit').value) || 60;
+    const nightLimit = parseInt(document.getElementById('room-night-limit').value) || 60;
+    
+    try {
+        const response = await fetch('/api/rooms/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, is_private: isPrivate, pin_code: pinCode, day_limit: dayLimit, night_limit: nightLimit })
+        });
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('room-create-opts').style.display = 'none';
+            loadActiveGame();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function submitJoinRoom() {
+    const roomIdInput = document.getElementById('join-room-id');
+    const roomPinInput = document.getElementById('join-room-pin');
+    
+    const roomId = roomIdInput.value.trim();
+    const pin = roomPinInput.value.trim();
+    
+    if (!roomId) {
+        alert("Xona ID raqami kiritilishi shart!");
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/rooms/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, room_id: roomId, pin_code: pin })
+        });
+        const data = await response.json();
+        if (data.success) {
+            roomIdInput.value = '';
+            roomPinInput.value = '';
+            loadActiveGame();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function leaveRoom() {
+    if (!currentRoomId) return;
+    try {
+        const response = await fetch('/api/rooms/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, room_id: currentRoomId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            currentRoomId = null;
+            loadActiveGame();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function startRoom() {
+    if (!currentRoomId) return;
+    try {
+        const response = await fetch('/api/rooms/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, room_id: currentRoomId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadActiveGame();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function loadPublicRoomsList() {
+    try {
+        const response = await fetch('/api/rooms/list');
+        const data = await response.json();
+        
+        const container = document.getElementById('active-rooms-list');
+        if (data.rooms && data.rooms.length > 0) {
+            container.innerHTML = data.rooms.map(room => `
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; text-align:left; margin-bottom: 4px;">
+                    <div>
+                        <div style="font-weight:bold; font-size:13px; color:#00f2fe;">Xona #${room.room_id}</div>
+                        <div style="font-size:10px; color:#94a3b8; margin-top:2px;">O'yinchilar: ${room.player_count} ta • Kun: ${room.day_limit}s / Tun: ${room.night_limit}s</div>
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="directJoinRoom('${room.room_id}')" style="font-size:11px; padding:4px 10px; height:auto; line-height:1;">Qo'shilish</button>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = `
+                <div style="font-size:12px; color:#94a3b8; padding:20px; background:rgba(255,255,255,0.01); border-radius:12px; border:1px dashed rgba(255,255,255,0.05); text-align:center;">
+                    Hozircha ochiq lobbilar yo'q. Avto matching orqali birinchilardan bo'lib yarating!
+                </div>
+            `;
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+window.directJoinRoom = async function(roomId) {
+    try {
+        const response = await fetch('/api/rooms/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, room_id: roomId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            loadActiveGame();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+// Day chat messages inside room
+async function loadRoomDayChatMessages() {
+    try {
+        const response = await fetch(`/api/rooms/chat/messages?user_id=${userId}`);
+        const data = await response.json();
+        
+        const container = document.getElementById('room-day-messages');
+        container.innerHTML = '';
+        if (data.messages && data.messages.length > 0) {
+            data.messages.forEach(msg => {
+                const isMine = msg.sender_id === userId;
+                const bubble = document.createElement('div');
+                bubble.className = `chat-msg ${isMine ? 'mine' : ''}`;
+                bubble.innerHTML = `
+                    <div class="chat-sender">${msg.sender}</div>
+                    <div class="chat-text">${msg.text}</div>
+                    <div class="chat-time">${msg.timestamp}</div>
+                `;
+                container.appendChild(bubble);
+            });
+            container.scrollTop = container.scrollHeight;
+        } else {
+            container.innerHTML = `<div style="color:#64748b; text-align:center; margin-top:30px; font-size:12px;">Munozara chati bo'sh. Qotilni aniqlash uchun yozing!</div>`;
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function sendRoomDayChatMessage() {
+    const input = document.getElementById('room-day-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    try {
+        const response = await fetch('/api/rooms/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, text: text })
+        });
+        const data = await response.json();
+        if (data.success) {
+            input.value = '';
+            loadRoomDayChatMessages();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
     }
 }
 
@@ -1209,4 +1593,30 @@ document.addEventListener('click', (e) => {
         const coins = e.target.getAttribute('data-coins');
         startCardPayment(coins);
     }
+});
+
+// Matchmaking & Party Event Listeners
+document.getElementById('btn-create-party').addEventListener('click', createParty);
+document.getElementById('btn-copy-party-link').addEventListener('click', copyPartyLink);
+document.getElementById('btn-leave-party').addEventListener('click', leaveParty);
+document.getElementById('btn-auto-match').addEventListener('click', autoMatchmaking);
+
+document.getElementById('btn-toggle-create-opts').addEventListener('click', () => {
+    const opts = document.getElementById('room-create-opts');
+    opts.style.display = opts.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('room-is-private').addEventListener('change', (e) => {
+    const pinGroup = document.getElementById('room-pin-group');
+    pinGroup.style.display = e.target.checked ? 'block' : 'none';
+});
+
+document.getElementById('btn-submit-create-room').addEventListener('click', submitCreateRoom);
+document.getElementById('btn-submit-join-room').addEventListener('click', submitJoinRoom);
+document.getElementById('btn-lobby-leave').addEventListener('click', leaveRoom);
+document.getElementById('btn-lobby-start').addEventListener('click', startRoom);
+
+document.getElementById('btn-send-room-day').addEventListener('click', sendRoomDayChatMessage);
+document.getElementById('room-day-chat-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendRoomDayChatMessage();
 });

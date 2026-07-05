@@ -1136,3 +1136,53 @@ body {
         width: 160px;
     }
 }
+
+/* Matchmaking & Party custom styles */
+.lobby-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lobby-card:hover {
+    box-shadow: 0 4px 20px rgba(0, 242, 254, 0.15);
+}
+.room-chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    height: 160px;
+    overflow-y: auto;
+    padding: 12px;
+    margin-bottom: 10px;
+    text-align: left;
+}
+.chat-msg {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 8px 12px;
+    max-width: 85%;
+    align-self: flex-start;
+}
+.chat-msg.mine {
+    background: rgba(0, 242, 254, 0.1);
+    border: 1px solid rgba(0, 242, 254, 0.2);
+    align-self: flex-end;
+}
+.chat-sender {
+    font-size: 10px;
+    font-weight: bold;
+    color: #00f2fe;
+    margin-bottom: 3px;
+}
+.chat-text {
+    font-size: 13px;
+    color: #fff;
+    word-break: break-word;
+}
+.chat-time {
+    font-size: 9px;
+    color: #94a3b8;
+    text-align: right;
+    margin-top: 3px;
+}

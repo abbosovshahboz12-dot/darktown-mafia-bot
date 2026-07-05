@@ -117,10 +117,45 @@ async def try_mute_chat(bot: Bot, chat_id: int, mute: bool):
     except Exception as e:
         logging.warning(f"Could not set chat permissions (mute={mute}): {e}")
 
+async def try_restrict_user(bot: Bot, chat_id: int, user_id: int, mute: bool):
+    if chat_id >= 0:
+        return
+    try:
+        if mute:
+            permissions = types.ChatPermissions(can_send_messages=False)
+        else:
+            permissions = types.ChatPermissions(
+                can_send_messages=True,
+                can_send_media_messages=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True
+            )
+        await bot.restrict_chat_member(chat_id, user_id, permissions)
+    except Exception as e:
+        logging.warning(f"Could not restrict user {user_id} (mute={mute}): {e}")
+
+async def send_game_gif(bot: Bot, chat_id: int, event_type: str):
+    if chat_id >= 0:
+        return
+    gifs = {
+        "start": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzM2MWF6bWdkZno4bmx4d3V1MW01ajBhMmhrbjR5MGw4NGZ3MGNtaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKrE1xs1sA5yyZ2/giphy.gif",
+        "night": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZkMnJid2tmbjI5M2t3MHU4b3M2Yzg5dHc1Y293YTFtMWZhbzJ0NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKrE1xs1sA5yyZ2/giphy.gif",
+        "day": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDV2bGNmMTBrOWUxeDVwNDNqMzdrbXh3OTN2c2U5cGRxNWlzNm9jMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5tq3c6tZ30c8F7lS8a/giphy.gif",
+        "death": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cWw2MzJrMmtnbjVwM2s0a3MxMGFtMTVnNTR5MXplM2MzaDJlYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/h5NLPXL6M3FQPv805H/giphy.gif",
+        "hang": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzhidXJrbWJ0MG93djFidHpxODh6bXFvOTg5bzhpMmxrdGR0cWFqZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qBgfJdqBwepfLAI/giphy.gif"
+    }
+    url = gifs.get(event_type)
+    if url:
+        try:
+            await bot.send_animation(chat_id, url)
+        except Exception as e:
+            logging.warning(f"Could not send game GIF ({event_type}): {e}")
+
 async def start_game_loop(bot: Bot, game: Game):
     # Assign roles
     await assign_roles(game, bot)
     log_game_event(game, "🎭 O'yin boshlandi. Rollar taqsimlandi.")
+    await send_game_gif(bot, game.chat_id, "start")
     await bot.send_message(
         game.chat_id,
         "🎭 **Rollar taqsimlandi!** Har bir o'yinchiga o'z roli shaxsiy chatda yuborildi.\n\n"
@@ -132,6 +167,7 @@ async def start_game_loop(bot: Bot, game: Game):
 async def night_phase(bot: Bot, game: Game):
     game.phase = "night"
     log_game_event(game, "🌙 Tun boshlandi. Rollar tungi harakatda.")
+    await send_game_gif(bot, game.chat_id, "night")
     
     # Send group night announcement
     await bot.send_message(
@@ -298,6 +334,51 @@ async def process_night(bot: Bot, game: Game):
     # Unmute chat
     await try_mute_chat(bot, game.chat_id, False)
     
+    # Check AFK for active roles
+    afk_killed = []
+    for player in game.get_alive_players():
+        if player.role == "Civilian":
+            continue
+            
+        acted = True
+        if player.role == "Mafia" and player.user_id not in game.night_actions["mafia"]:
+            acted = False
+        elif player.role == "Don" and not game.night_actions["don"]:
+            acted = False
+        elif player.role == "Detective" and not game.night_actions["detective_check"] and not game.night_actions["detective_shoot"]:
+            acted = False
+        elif player.role == "Doctor" and not game.night_actions["doctor"]:
+            acted = False
+        elif player.role == "Bodyguard" and not game.night_actions["bodyguard"]:
+            acted = False
+        elif player.role == "Courtesan" and not game.night_actions["courtesan"]:
+            acted = False
+        elif player.role == "Maniac" and not game.night_actions["maniac"] and not (game.event and game.event["key"] == "curfew"):
+            acted = False
+            
+        if acted:
+            player.afk_streak = 0
+        else:
+            player.afk_streak = getattr(player, "afk_streak", 0) + 1
+            if player.afk_streak >= 2:
+                player.is_alive = False
+                afk_killed.append(player)
+                await try_restrict_user(bot, game.chat_id, player.user_id, True)
+                
+    if afk_killed:
+        afk_text = "🚶 **AFK (Faolsizlik) tufayli o'yindan chetlashtirilganlar**:\n"
+        for p in afk_killed:
+            role_emoji = ROLE_EMOJIS.get(p.role, "")
+            afk_text += f"- {p.name} ({role_emoji} {p.role}): 2 ta bosqichda faolsiz bo'lgani sababli o'yindan chetlashtirildi!\n"
+            log_game_event(game, f"🚶 {p.name} AFK sababli chetlashtirildi.")
+        await bot.send_message(game.chat_id, afk_text, parse_mode="Markdown")
+        
+        # Check win conditions immediately
+        ended, winner = check_win_conditions(game)
+        if ended:
+            await end_game(bot, game, winner)
+            return
+    
     # 1. Apply Courtesan Block
     blocked_user = game.night_actions["courtesan"]
     if blocked_user:
@@ -449,6 +530,10 @@ async def process_night(bot: Bot, game: Game):
                 victim.is_alive = False
                 victims.append((victim, f"Maniakning qo'lida jon berdi. Rol: **{victim.role}**"))
 
+    # Mute all night victims
+    for vic, _ in victims:
+        await try_restrict_user(bot, game.chat_id, vic.user_id, True)
+
     # Prompt victims for last words
     victim_users = [vic for vic, _ in victims]
     if victim_users:
@@ -479,6 +564,12 @@ async def process_night(bot: Bot, game: Game):
         # Clean up
         for uid in list(game.waiting_last_words.keys()):
             game.waiting_last_words[uid] = False
+
+    # Send Day/Death GIF
+    if victims:
+        await send_game_gif(bot, game.chat_id, "death")
+    else:
+        await send_game_gif(bot, game.chat_id, "day")
 
     # Day announcement text
     day_text = "🌅 **Tong otdi! Darktown shahri uyg'ondi...**\n\n"
@@ -603,6 +694,33 @@ async def process_voting(bot: Bot, game: Game):
         game.timer_task.cancel()
         game.timer_task = None
         
+    # Check AFK for all alive players
+    afk_killed = []
+    for player in game.get_alive_players():
+        voted = player.user_id in game.votes
+        if voted:
+            player.afk_streak = 0
+        else:
+            player.afk_streak = getattr(player, "afk_streak", 0) + 1
+            if player.afk_streak >= 2:
+                player.is_alive = False
+                afk_killed.append(player)
+                await try_restrict_user(bot, game.chat_id, player.user_id, True)
+                
+    if afk_killed:
+        afk_text = "🚶 **AFK (Faolsizlik) tufayli o'yindan chetlashtirilganlar**:\n"
+        for p in afk_killed:
+            role_emoji = ROLE_EMOJIS.get(p.role, "")
+            afk_text += f"- {p.name} ({role_emoji} {p.role}): 2 ta bosqichda faolsiz bo'lgani sababli o'yindan chetlashtirildi!\n"
+            log_game_event(game, f"🚶 {p.name} AFK sababli chetlashtirildi.")
+        await bot.send_message(game.chat_id, afk_text, parse_mode="Markdown")
+        
+        # Check win conditions immediately
+        ended, winner = check_win_conditions(game)
+        if ended:
+            await end_game(bot, game, winner)
+            return
+
     # Remove voting keyboard
     try:
         await bot.edit_message_reply_markup(game.chat_id, game.vote_message_id, reply_markup=None)
@@ -662,6 +780,8 @@ async def process_voting(bot: Bot, game: Game):
             hanged_id = random.choice(top_candidates)
             hanged_player = game.players[hanged_id]
             hanged_player.is_alive = False
+            await try_restrict_user(bot, game.chat_id, hanged_player.user_id, True)
+            await send_game_gif(bot, game.chat_id, "hang")
             role_emoji = ROLE_EMOJIS.get(hanged_player.role, "")
             result_text += (
                 f"\n🔥 **Anarxiya voqeasi sababli ovozlar teng bo'lsa-da, tasodifiy ravishda {hanged_player.name} osildi!**\n"
@@ -679,6 +799,8 @@ async def process_voting(bot: Bot, game: Game):
         else:
             hanged_player = game.players[hanged_id]
             hanged_player.is_alive = False
+            await try_restrict_user(bot, game.chat_id, hanged_player.user_id, True)
+            await send_game_gif(bot, game.chat_id, "hang")
             role_emoji = ROLE_EMOJIS.get(hanged_player.role, "")
             result_text += (
                 f"\n⚖️ Ko'pchilikning qarori bilan **{hanged_player.name}** dorga osildi!\n"
@@ -704,6 +826,10 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
     game.phase = "ended"
     log_game_event(game, f"🏁 O'yin yakunlandi! G'olib: {winning_faction}")
     await try_mute_chat(bot, game.chat_id, False)
+    
+    # Unmute all players individually (remove restrictions)
+    for p in game.players.values():
+        await try_restrict_user(bot, game.chat_id, p.user_id, False)
     
     faction_emojis = {
         "Mafia": "🔴 Mafiya",

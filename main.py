@@ -173,6 +173,25 @@ async def get_game_status_handler(request):
         from game.manager import game_manager
         game = game_manager.get_game_by_player(user_id)
         if not game:
+            active_room = await db.get_active_room(user_id)
+            if active_room:
+                players = await db.get_room_players(active_room['room_id'])
+                players_list = [{
+                    "user_id": p['user_id'],
+                    "name": p['first_name'],
+                    "is_alive": True,
+                    "role": None
+                } for p in players]
+                
+                return web.json_response({
+                    "inGame": True,
+                    "phase": "lobby",
+                    "room_id": active_room['room_id'],
+                    "owner_id": active_room['owner_id'],
+                    "isAlive": True,
+                    "players": players_list,
+                    "logs": ["Ishtirokchilar yig'ilmoqda..."]
+                })
             return web.json_response({"inGame": False})
             
         player = game.players.get(user_id)
@@ -196,6 +215,8 @@ async def get_game_status_handler(request):
             "inGame": True,
             "phase": game.phase,
             "chat_id": game.chat_id,
+            "room_id": getattr(game, 'room_id', None),
+            "owner_id": getattr(game, 'owner_id', None),
             "myRole": player.role,
             "isAlive": player.is_alive,
             "players": players_list,
@@ -602,9 +623,318 @@ async def ghost_chat_messages_handler(request):
             
         chat_id = game.chat_id
         msgs = ghost_chats.get(chat_id, [])
+            
         return web.json_response({"messages": msgs})
     except Exception as e:
         logging.error(f"Error in ghost_chat_messages_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+# TMA Matchmaking & Party Handlers
+async def create_room_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        is_private = int(data.get("is_private", 0))
+        pin_code = data.get("pin_code", "").strip()
+        day_limit = int(data.get("day_limit", 60))
+        night_limit = int(data.get("night_limit", 60))
+        
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        active_room = await db.get_active_room(user_id)
+        if active_room:
+            return web.json_response({"error": "Siz allaqachon faol o'yin xonasidasiz!"}, status=400)
+            
+        party_row = await db.get_user_party(user_id)
+        party_members = []
+        if party_row and party_row['leader_id'] == user_id:
+            party_members = await db.get_party_members(party_row['party_id'])
+            for m in party_members:
+                if m['user_id'] != user_id:
+                    m_active = await db.get_active_room(m['user_id'])
+                    if m_active:
+                        return web.json_response({"error": f"Partiya a'zosi {m['first_name']} boshqa o'yin xonasida!"}, status=400)
+                        
+        import uuid
+        room_id = str(uuid.uuid4().int)[:6]
+        
+        success = await db.create_room(room_id, user_id, is_private, pin_code, day_limit, night_limit)
+        if success:
+            if party_members:
+                for m in party_members:
+                    if m['user_id'] != user_id:
+                        await db.join_room(room_id, m['user_id'])
+            return web.json_response({"success": True, "room_id": room_id})
+        else:
+            return web.json_response({"error": "Xona yaratishda xatolik yuz berdi"}, status=500)
+    except Exception as e:
+        logging.error(f"Error in create_room_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def join_room_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        room_id = data.get("room_id", "").strip()
+        pin_code = data.get("pin_code", "").strip()
+        
+        if not user_id or not room_id:
+            return web.json_response({"error": "user_id va room_id kiritilishi shart"}, status=400)
+            
+        async with aiosqlite.connect(db.DB_PATH) as sqlite_db:
+            sqlite_db.row_factory = aiosqlite.Row
+            async with sqlite_db.execute("SELECT * FROM rooms WHERE room_id = ?", (room_id,)) as cursor:
+                room = await cursor.fetchone()
+                
+        if not room:
+            return web.json_response({"error": "Bunday xona topilmadi!"}, status=404)
+            
+        if room['status'] != 'lobby':
+            return web.json_response({"error": "O'yin allaqachon boshlangan!"}, status=400)
+            
+        if room['is_private'] and room['pin_code'] != pin_code:
+            return web.json_response({"error": "PIN-kod noto'g'ri!"}, status=403)
+            
+        active_room = await db.get_active_room(user_id)
+        if active_room and active_room['room_id'] == room_id:
+            return web.json_response({"success": True})
+            
+        if active_room:
+            return web.json_response({"error": "Siz allaqachon boshqa o'yin xonasidasiz!"}, status=400)
+            
+        party_row = await db.get_user_party(user_id)
+        party_members = []
+        if party_row and party_row['leader_id'] == user_id:
+            party_members = await db.get_party_members(party_row['party_id'])
+            for m in party_members:
+                if m['user_id'] != user_id:
+                    m_active = await db.get_active_room(m['user_id'])
+                    if m_active:
+                        return web.json_response({"error": f"Partiya a'zosi {m['first_name']} boshqa o'yin xonasida!"}, status=400)
+                        
+        success = await db.join_room(room_id, user_id)
+        if success:
+            if party_members:
+                for m in party_members:
+                    if m['user_id'] != user_id:
+                        await db.join_room(room_id, m['user_id'])
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"error": "Xonaga qo'shilishda xatolik yuz berdi"}, status=500)
+    except Exception as e:
+        logging.error(f"Error in join_room_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def leave_room_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        room_id = data.get("room_id", "")
+        
+        if not user_id or not room_id:
+            return web.json_response({"error": "user_id va room_id kiritilishi shart"}, status=400)
+            
+        success = await db.leave_room(room_id, user_id)
+        if success:
+            from game.manager import game_manager
+            game = game_manager.games.get(room_id)
+            if game:
+                game.players.pop(user_id, None)
+                if len(game.get_alive_players()) == 0:
+                    game_manager.games.pop(room_id, None)
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"error": "Xonadan chiqishda xatolik yuz berdi"}, status=500)
+    except Exception as e:
+        logging.error(f"Error in leave_room_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def list_rooms_handler(request):
+    try:
+        rooms = await db.get_open_rooms()
+        return web.json_response({"rooms": rooms})
+    except Exception as e:
+        logging.error(f"Error in list_rooms_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def start_room_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        room_id = data.get("room_id", "")
+        
+        if not user_id or not room_id:
+            return web.json_response({"error": "user_id va room_id kiritilishi shart"}, status=400)
+            
+        async with aiosqlite.connect(db.DB_PATH) as sqlite_db:
+            sqlite_db.row_factory = aiosqlite.Row
+            async with sqlite_db.execute("SELECT * FROM rooms WHERE room_id = ?", (room_id,)) as cursor:
+                room = await cursor.fetchone()
+                
+        if not room:
+            return web.json_response({"error": "Bunday xona topilmadi!"}, status=404)
+            
+        if room['owner_id'] != user_id:
+            return web.json_response({"error": "Faqat xona egasi o'yinni boshlay oladi!"}, status=403)
+            
+        players = await db.get_room_players(room_id)
+        if len(players) < 5:
+            return web.json_response({"error": "O'yinni boshlash uchun kamida 5 ta o'yinchi kerak!"}, status=400)
+            
+        from game.manager import game_manager
+        from game.models import Game, Player
+        from game.loop import start_game_loop
+        
+        game = Game(chat_id=room['owner_id'])
+        game.room_id = room_id
+        
+        for p in players:
+            player_obj = Player(user_id=p['user_id'], name=p['first_name'], username=p['username'])
+            game.players[p['user_id']] = player_obj
+            
+        game_manager.games[room_id] = game
+        game_manager.games[game.chat_id] = game
+        
+        await db.start_room_game(room_id)
+        
+        bot = request.app['bot']
+        asyncio.create_task(start_game_loop(bot, game))
+        
+        return web.json_response({"success": True})
+    except Exception as e:
+        logging.error(f"Error in start_room_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def room_chat_send_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        text = data.get("text", "").strip()
+        
+        if not user_id or not text:
+            return web.json_response({"error": "user_id va text kiritilishi shart"}, status=400)
+            
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game:
+            return web.json_response({"error": "Siz faol o'yinda emassiz!"}, status=400)
+            
+        player = game.players.get(user_id)
+        if not player or not player.is_alive:
+            return web.json_response({"error": "Faqat tirik o'yinchilar yozishi mumkin!"}, status=403)
+            
+        if not hasattr(game, "room_chat_messages"):
+            game.room_chat_messages = []
+            
+        msg = {
+            "sender": player.name,
+            "sender_id": player.user_id,
+            "text": text,
+            "timestamp": datetime.now().strftime("%H:%M")
+        }
+        game.room_chat_messages.append(msg)
+        if len(game.room_chat_messages) > 50:
+            game.room_chat_messages.pop(0)
+            
+        return web.json_response({"success": True})
+    except Exception as e:
+        logging.error(f"Error in room_chat_send_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def room_chat_messages_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game or not hasattr(game, "room_chat_messages"):
+            return web.json_response({"messages": []})
+            
+        return web.json_response({"messages": game.room_chat_messages})
+    except Exception as e:
+        logging.error(f"Error in room_chat_messages_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+# Party Handlers
+async def party_create_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        party_id = f"party_{user_id}"
+        success = await db.create_party(party_id, user_id)
+        if success:
+            return web.json_response({"success": True, "party_id": party_id})
+        else:
+            return web.json_response({"error": "Partiya yaratishda xatolik"}, status=500)
+    except Exception as e:
+        logging.error(f"Error in party_create_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def party_join_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        party_id = data.get("party_id", "").strip()
+        
+        if not user_id or not party_id:
+            return web.json_response({"error": "user_id va party_id kiritilishi shart"}, status=400)
+            
+        try:
+            leader_id = int(party_id.replace("party_", ""))
+        except ValueError:
+            return web.json_response({"error": "Noto'g'ri partiya ID"}, status=400)
+            
+        success = await db.add_to_party(party_id, leader_id, user_id)
+        if success:
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"error": "Partiyaga qo'shilishda xatolik"}, status=500)
+    except Exception as e:
+        logging.error(f"Error in party_join_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def party_status_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        party_row = await db.get_user_party(user_id)
+        if not party_row:
+            return web.json_response({"inParty": False})
+            
+        party_id = party_row['party_id']
+        members = await db.get_party_members(party_id)
+        return web.json_response({
+            "inParty": True,
+            "party_id": party_id,
+            "isLeader": party_row['leader_id'] == user_id,
+            "leader_id": party_row['leader_id'],
+            "members": members
+        })
+    except Exception as e:
+        logging.error(f"Error in party_status_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def party_leave_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        party_id = data.get("party_id", "")
+        
+        if not user_id or not party_id:
+            return web.json_response({"error": "user_id va party_id kiritilishi shart"}, status=400)
+            
+        success = await db.remove_from_party(party_id, user_id)
+        if success:
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"error": "Partiyadan chiqishda xatolik"}, status=500)
+    except Exception as e:
+        logging.error(f"Error in party_leave_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
 # Setup Web Server Routing
@@ -628,6 +958,19 @@ def setup_web_server():
     app.router.add_post("/api/payment/mock-success", mock_payment_success_handler)
     app.router.add_post("/api/game/ghost-chat/send", ghost_chat_send_handler)
     app.router.add_get("/api/game/ghost-chat/messages", ghost_chat_messages_handler)
+    
+    # TMA Matchmaking & Party Routing
+    app.router.add_post("/api/rooms/create", create_room_handler)
+    app.router.add_post("/api/rooms/join", join_room_handler)
+    app.router.add_post("/api/rooms/leave", leave_room_handler)
+    app.router.add_get("/api/rooms/list", list_rooms_handler)
+    app.router.add_post("/api/rooms/start", start_room_handler)
+    app.router.add_post("/api/rooms/chat/send", room_chat_send_handler)
+    app.router.add_get("/api/rooms/chat/messages", room_chat_messages_handler)
+    app.router.add_post("/api/party/create", party_create_handler)
+    app.router.add_post("/api/party/join", party_join_handler)
+    app.router.add_get("/api/party/status", party_status_handler)
+    app.router.add_post("/api/party/leave", party_leave_handler)
     
     # Frontend static files and index
     webapp_dir = os.path.join(os.path.dirname(__file__), "webapp")
