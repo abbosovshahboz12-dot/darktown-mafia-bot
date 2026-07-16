@@ -14,6 +14,9 @@ from handlers import group_handlers, private_handlers, common
 # Initialize logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
+# Maintenance Mode Flag
+MAINTENANCE_MODE = False
+
 # Setup aiohttp web server handlers
 async def get_profile_handler(request):
     try:
@@ -23,6 +26,9 @@ async def get_profile_handler(request):
         
         if not user_id:
             return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        if MAINTENANCE_MODE and user_id != ADMIN_ID:
+            return web.json_response({"maintenance": True})
             
         user = await db.get_user(user_id, username, first_name)
         
@@ -126,7 +132,8 @@ async def admin_stats_handler(request):
             "success": True,
             "total_users": stats["total_users"],
             "total_plays": stats["total_plays"],
-            "active_games": active_games
+            "active_games": active_games,
+            "maintenance_enabled": MAINTENANCE_MODE
         })
     except Exception as e:
         logging.error(f"Error in admin_stats_handler: {e}")
@@ -272,6 +279,180 @@ async def admin_force_close_handler(request):
         return web.json_response({"success": True, "message": f"Xona {room_id} majburan yopildi."})
     except Exception as e:
         logging.error(f"Error in admin_force_close_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def room_force_close_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        room_id = data.get("room_id", "").strip()
+        
+        if not user_id or not room_id:
+            return web.json_response({"error": "user_id va room_id kiritilishi shart"}, status=400)
+            
+        import aiosqlite
+        async with aiosqlite.connect(db.DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute("SELECT owner_id FROM rooms WHERE room_id = ?", (room_id,)) as cursor:
+                room = await cursor.fetchone()
+                
+        if not room:
+            return web.json_response({"error": "Xona topilmadi"}, status=404)
+            
+        # Only room owner (or bot admin) can force close
+        if room['owner_id'] != user_id and user_id != ADMIN_ID:
+            return web.json_response({"error": "Faqat xona egasi majburan yopa oladi!"}, status=403)
+            
+        from game.manager import game_manager
+        game = game_manager.games.get(room_id)
+        bot = request.app['bot']
+        
+        if game:
+            try:
+                from game.loop import try_mute_chat, try_restrict_user
+                await try_mute_chat(bot, game.chat_id, False)
+                for p in game.players.values():
+                    await try_restrict_user(bot, game.chat_id, p.user_id, False)
+            except Exception as ex:
+                logging.warning(f"Error releasing restrictions in room force-close: {ex}")
+                
+            game_manager.remove_game(game.chat_id)
+            
+        async with aiosqlite.connect(db.DB_PATH) as conn:
+            await conn.execute("UPDATE rooms SET status = 'finished' WHERE room_id = ?", (room_id,))
+            await conn.execute("DELETE FROM room_players WHERE room_id = ?", (room_id,))
+            await conn.commit()
+            
+        return web.json_response({"success": True, "message": "Xona muvaffaqiyatli yopildi."})
+    except Exception as e:
+        logging.error(f"Error in room_force_close_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def get_game_history_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+        history = await db.get_game_history(user_id)
+        return web.json_response({"history": history})
+    except Exception as e:
+        logging.error(f"Error in get_game_history_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def get_quests_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+        quests = await db.get_daily_quests(user_id)
+        return web.json_response({"quests": quests})
+    except Exception as e:
+        logging.error(f"Error in get_quests_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def get_achievements_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+        achievements = await db.get_user_achievements(user_id)
+        return web.json_response({"achievements": achievements})
+    except Exception as e:
+        logging.error(f"Error in get_achievements_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_users_search_handler(request):
+    try:
+        admin_id = int(request.query.get("admin_id", 0))
+        if admin_id != ADMIN_ID:
+            return web.json_response({"error": "Ruxsat yo'q!"}, status=403)
+            
+        search_query = request.query.get("q", "").strip()
+        if not search_query:
+            return web.json_response({"users": []})
+            
+        import aiosqlite
+        async with aiosqlite.connect(db.DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            sql = "SELECT * FROM users WHERE user_id = ? OR username LIKE ? OR first_name LIKE ? LIMIT 20"
+            like_q = f"%{search_query}%"
+            async with conn.execute(sql, (search_query, like_q, like_q)) as cursor:
+                rows = await cursor.fetchall()
+                return web.json_response({"users": [dict(r) for r in rows]})
+    except Exception as e:
+        logging.error(f"Error in admin_users_search_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_users_edit_handler(request):
+    try:
+        data = await request.json()
+        admin_id = int(data.get("admin_id", 0))
+        if admin_id != ADMIN_ID:
+            return web.json_response({"error": "Ruxsat yo'q!"}, status=403)
+            
+        target_id = int(data.get("user_id", 0))
+        coins = data.get("coins")
+        xp = data.get("xp")
+        level = data.get("level")
+        banned = data.get("banned")
+        
+        if not target_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        import aiosqlite
+        async with aiosqlite.connect(db.DB_PATH) as conn:
+            if coins is not None:
+                await conn.execute("UPDATE users SET coins = ? WHERE user_id = ?", (int(coins), target_id))
+            if xp is not None:
+                await conn.execute("UPDATE users SET xp = ? WHERE user_id = ?", (int(xp), target_id))
+            if level is not None:
+                await conn.execute("UPDATE users SET level = ? WHERE user_id = ?", (int(level), target_id))
+            if banned is not None:
+                val = 1 if banned else 0
+                await conn.execute("UPDATE users SET banned = ? WHERE user_id = ?", (val, target_id))
+            await conn.commit()
+            
+        return web.json_response({"success": True, "message": "Foydalanuvchi ma'lumotlari yangilandi."})
+    except Exception as e:
+        logging.error(f"Error in admin_users_edit_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_rooms_live_handler(request):
+    try:
+        admin_id = int(request.query.get("admin_id", 0))
+        if admin_id != ADMIN_ID:
+            return web.json_response({"error": "Ruxsat yo'q!"}, status=403)
+            
+        from game.manager import game_manager
+        live_games = []
+        for chat_id, game in game_manager.games.items():
+            if isinstance(chat_id, str): # Skip duplicate room_id keys
+                continue
+            live_games.append({
+                "chat_id": chat_id,
+                "room_id": getattr(game, 'room_id', None),
+                "phase": game.phase,
+                "players_count": len(game.players),
+                "players": [p.name for p in game.players.values()]
+            })
+        return web.json_response({"rooms": live_games})
+    except Exception as e:
+        logging.error(f"Error in admin_rooms_live_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def admin_system_maintenance_handler(request):
+    global MAINTENANCE_MODE
+    try:
+        data = await request.json()
+        admin_id = int(data.get("admin_id", 0))
+        if admin_id != ADMIN_ID:
+            return web.json_response({"error": "Ruxsat yo'q!"}, status=403)
+            
+        enabled = bool(data.get("enabled", False))
+        MAINTENANCE_MODE = enabled
+        return web.json_response({"success": True, "maintenance": MAINTENANCE_MODE})
+    except Exception as e:
+        logging.error(f"Error in admin_system_maintenance_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
 async def get_game_status_handler(request):
@@ -1063,6 +1244,13 @@ def setup_web_server():
     app.router.add_get("/api/admin/active-games", admin_active_games_handler)
     app.router.add_post("/api/admin/force-close", admin_force_close_handler)
     app.router.add_get("/api/game/status", get_game_status_handler)
+    app.router.add_get("/api/game/history", get_game_history_handler)
+    app.router.add_get("/api/quests", get_quests_handler)
+    app.router.add_get("/api/achievements", get_achievements_handler)
+    app.router.add_get("/api/admin/users/search", admin_users_search_handler)
+    app.router.add_post("/api/admin/users/edit", admin_users_edit_handler)
+    app.router.add_get("/api/admin/rooms/live", admin_rooms_live_handler)
+    app.router.add_post("/api/admin/system/maintenance", admin_system_maintenance_handler)
     app.router.add_post("/api/game/action", post_game_action_handler)
     app.router.add_post("/api/game/vote", post_game_vote_handler)
     app.router.add_post("/api/profile/language", set_language_handler)
@@ -1077,6 +1265,7 @@ def setup_web_server():
     app.router.add_post("/api/rooms/create", create_room_handler)
     app.router.add_post("/api/rooms/join", join_room_handler)
     app.router.add_post("/api/rooms/leave", leave_room_handler)
+    app.router.add_post("/api/rooms/force-close", room_force_close_handler)
     app.router.add_get("/api/rooms/list", list_rooms_handler)
     app.router.add_post("/api/rooms/start", start_room_handler)
     app.router.add_post("/api/rooms/chat/send", room_chat_send_handler)

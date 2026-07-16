@@ -37,7 +37,7 @@ async def lobby_timer(bot: Bot, game: Game):
                 return
             if sec in [90, 60, 30, 15, 5]:
                 try:
-                    players_list = "\n".join([f"{i}. {p.name}" for i, p in enumerate(game.players.values(), 1)])
+                    players_list = "\n".join([f"{i}. {p.name_escaped}" for i, p in enumerate(game.players.values(), 1)])
                     
                     if lang == "ru":
                         text = (
@@ -251,7 +251,7 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
     
     # Update lobby text
     lang = await db.get_group_language(chat_id)
-    players_list = "\n".join([f"{i}. {p.name}" for i, p in enumerate(game.players.values(), 1)])
+    players_list = "\n".join([f"{i}. {p.name_escaped}" for i, p in enumerate(game.players.values(), 1)])
     
     if lang == "ru":
         lobby_text = (
@@ -381,7 +381,7 @@ async def cmd_leave(message: types.Message):
             await message.answer(cancel_msg)
             return
             
-        players_list = "\n".join([f"{i}. {p.name}" for i, p in enumerate(game.players.values(), 1)])
+        players_list = "\n".join([f"{i}. {p.name_escaped}" for i, p in enumerate(game.players.values(), 1)])
         
         if lang == "ru":
             lobby_text = (
@@ -405,9 +405,9 @@ async def cmd_leave(message: types.Message):
             lobby_text = (
                 f"🎮 **Darktown Мафия Ойыны**\n\n"
                 f"Жаңа ойын құрылды! Ойыншылар жиналуда.\n\n"
-                f"👥 **Ойыншылар тізімі ({len(game.players)})**:\n"
+                f"👥 **Ойыншыlar тізімі ({len(game.players)})**:\n"
                 f"{players_list}\n\n"
-                f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
+                f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске qosqańyzǵa kóz jetkizińiz!"
             )
             leave_confirm = f"🚶 **{message.from_user.full_name}** лоббиден шықты."
         else:
@@ -438,15 +438,15 @@ async def cmd_leave(message: types.Message):
         if player.is_alive:
             player.is_alive = False
             
-            leave_msg = f"💀 **{player.name}** o'yinni tark etdi va vafot etdi. Uning roli: **{player.role}**"
+            leave_msg = f"💀 **{player.name_escaped}** o'yinni tark etdi va vafot etdi. Uning roli: **{player.role}**"
             if lang == "ru":
-                leave_msg = f"💀 **{player.name}** покинул игру и погиб. Его роль: **{player.role}**"
+                leave_msg = f"💀 **{player.name_escaped}** покинул игру и погиб. Его роль: **{player.role}**"
             elif lang == "en":
-                leave_msg = f"💀 **{player.name}** left the game and died. His role: **{player.role}**"
+                leave_msg = f"💀 **{player.name_escaped}** left the game and died. His role: **{player.role}**"
             elif lang == "kz":
-                leave_msg = f"💀 **{player.name}** ойыннан шығып, қайтыс болды. Оның рөлі: **{player.role}**"
+                leave_msg = f"💀 **{player.name_escaped}** ойыннан шығып, қайтыс болды. Оның рөлі: **{player.role}**"
                 
-            await message.answer(leave_msg)
+            await message.answer(leave_msg, parse_mode="Markdown")
             
             # Check win conditions
             from game.loop import check_win_conditions, end_game
@@ -494,7 +494,7 @@ async def vote_callback(cb: types.CallbackQuery, bot: Bot):
     for p in alive:
         count = vote_counts.get(p.user_id, 0)
         votes_box = "🗳️" * count if count > 0 else ""
-        text += f"- **{p.name}**: {votes_box} ({count})\n"
+        text += f"- **{p.name_escaped}**: {votes_box} ({count})\n"
         
     skip_count = vote_counts.get("skip", 0)
     skip_box = "🗳️" * skip_count if skip_count > 0 else ""
@@ -622,3 +622,47 @@ async def cb_group_setlang(cb: types.CallbackQuery, bot: Bot):
     await db.set_group_language(chat_id, lang)
     await cb.answer(get_text(lang, "lang_changed"), show_alert=True)
     await cb.message.edit_text(get_text(lang, "lang_changed"))
+
+@router.message(Command("forceclose", "stopgame"))
+async def cmd_forceclose(message: types.Message, bot: Bot):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    
+    # Check if sender is group administrator or bot admin
+    try:
+        chat_member = await bot.get_chat_member(chat_id, user_id)
+        is_admin = chat_member.status in ["administrator", "creator"] or user_id == ADMIN_ID
+    except Exception:
+        is_admin = user_id == ADMIN_ID
+        
+    if not is_admin:
+        await message.answer("⚠️ Ushbu buyruq faqat guruh adminlari yoki bot admini uchun!")
+        return
+        
+    game = game_manager.get_game(chat_id)
+    if not game:
+        await message.answer("⚠️ Ushbu guruhda faol o'yin topilmadi.")
+        return
+        
+    # Unmute chat and release player restrictions
+    from game.loop import try_mute_chat, try_restrict_user
+    await try_mute_chat(bot, chat_id, False)
+    for p in game.players.values():
+        await try_restrict_user(bot, chat_id, p.user_id, False)
+        
+    # Delete room from DB if it is a room game
+    room_id = getattr(game, 'room_id', None)
+    if room_id:
+        import aiosqlite
+        try:
+            async with aiosqlite.connect(db.DB_PATH) as conn:
+                await conn.execute("UPDATE rooms SET status = 'finished' WHERE room_id = ?", (room_id,))
+                await conn.execute("DELETE FROM room_players WHERE room_id = ?", (room_id,))
+                await conn.commit()
+        except Exception as e:
+            logging.error(f"Error closing DB room in group forceclose: {e}")
+            
+    # Delete from manager
+    game_manager.remove_game(chat_id)
+    
+    await message.answer("🚨 **O'yin majburan to'xtatildi!** Barcha cheklovlar bekor qilindi va guruh ochildi.")

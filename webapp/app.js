@@ -62,6 +62,7 @@ if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
 let userData = null;
 let currentRoomId = null;
 let currentPartyId = null;
+let lastGamePhase = null;
 
 // Auto-join party if start parameter contains party ID
 if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
@@ -124,6 +125,14 @@ async function loadProfile() {
             document.getElementById('banned-overlay').style.display = 'flex';
             document.querySelector('.app-container').style.display = 'none';
             return;
+        }
+        if (data.maintenance) {
+            document.getElementById('maintenance-overlay').style.display = 'flex';
+            document.querySelector('.app-container').style.display = 'none';
+            return;
+        } else {
+            document.getElementById('maintenance-overlay').style.display = 'none';
+            document.querySelector('.app-container').style.display = 'flex';
         }
         
         userData = data;
@@ -212,6 +221,8 @@ async function loadProfile() {
         updateLang(data.user.language || 'uz');
         updateDailyClaimTimer(data.user.last_daily_claim);
         renderAchievements(data.stats, data.user.level);
+        loadDailyQuests();
+        loadGameHistory();
         
     } catch (e) {
         console.error(e);
@@ -473,6 +484,30 @@ async function loadActiveGame() {
         if (!response.ok) throw new Error("Game status fetch failed");
         
         const data = await response.json();
+        
+        // Track and show game phase transitions
+        if (data.inGame && data.phase !== "lobby") {
+            if (lastGamePhase && lastGamePhase !== data.phase) {
+                showPhaseTransition(data.phase);
+                // Trigger Phase SFX (Phase 2)
+                if (data.phase === "night") {
+                    audioManager.play('night');
+                } else if (data.phase === "day") {
+                    audioManager.play('day');
+                } else if (data.phase === "voting") {
+                    audioManager.play('voting');
+                } else if (data.phase === "ended") {
+                    audioManager.play('win');
+                }
+            }
+            lastGamePhase = data.phase;
+        } else {
+            if (lastGamePhase) {
+                audioManager.stopAll();
+            }
+            lastGamePhase = null;
+        }
+
         const lobbyView = document.getElementById('match-lobby-view');
         const roomLobbyView = document.getElementById('match-room-lobby-view');
         const gameView = document.getElementById('match-active-game-view');
@@ -519,6 +554,18 @@ async function loadActiveGame() {
         lobbyView.style.display = 'none';
         roomLobbyView.style.display = 'none';
         gameView.style.display = 'block';
+        
+        // Setup Active Game Leave/Yopish button dynamically
+        const leaveBtn = document.getElementById('btn-active-game-leave');
+        if (leaveBtn) {
+            if (data.owner_id === userId) {
+                leaveBtn.innerText = "🚨 Xonani yopish";
+                leaveBtn.style.background = "var(--error)";
+            } else {
+                leaveBtn.innerText = "Chiqish";
+                leaveBtn.style.background = "rgba(255, 255, 255, 0.08)";
+            }
+        }
         
         // Render phase
         const phaseBadge = document.getElementById('game-phase-badge');
@@ -887,6 +934,87 @@ async function submitJoinRoom() {
     }
 }
 
+async function forceCloseRoom() {
+    if (!currentRoomId) return;
+    if (!confirm("🚨 Haqiqatan ham o'yin xonasini majburan yopmoqchimisiz? Barcha o'yinchilar guruhidan bloklar yechiladi.")) return;
+    try {
+        const response = await fetch('/api/rooms/force-close', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, room_id: currentRoomId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            currentRoomId = null;
+            loadActiveGame();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+function handleActiveGameLeave() {
+    const leaveBtn = document.getElementById('btn-active-game-leave');
+    if (leaveBtn && leaveBtn.innerText.includes("yopish")) {
+        forceCloseRoom();
+    } else {
+        leaveRoom();
+    }
+}
+
+function showPhaseTransition(phase) {
+    const overlay = document.getElementById('phase-transition-overlay');
+    const gifImg = document.getElementById('transition-gif');
+    const title = document.getElementById('transition-title');
+    const desc = document.getElementById('transition-desc');
+    
+    if (!overlay || !gifImg || !title || !desc) return;
+    
+    const transitionData = {
+        "night": {
+            "title": "🌙 Tun boshlandi",
+            "desc": "Darktown uzra tun cho'kdi. Barcha tinch aholi uxlamoqda. Mafiya va faol rollar tunda uyg'onishadi.",
+            "gif": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZkMnJid2tmbjI5M2t3MHU4b3M2Yzg5dHc1Y293YTFtMWZhbzJ0NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKrE1xs1sA5yyZ2/giphy.gif"
+        },
+        "day": {
+            "title": "🌅 Tong otdi",
+            "desc": "Darktown shahri uyg'ondi. Kechasi yuz bergan voqealarni muhokama qiling.",
+            "gif": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDV2bGNmMTBrOWUxeDVwNDNqMzdrbXh3OTN2c2U5cGRxNWlzNm9jMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5tq3c6tZ30c8F7lS8a/giphy.gif"
+        },
+        "voting": {
+            "title": "🗳️ Ovoz berish",
+            "desc": "Gumondorlarni osish uchun ovoz berish bosqichi boshlandi.",
+            "gif": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzhidXJrbWJ0MG93djFidHpxODh6bXFvOTg5bzhpMmxrdGR0cWFqZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qBgfJdqBwepfLAI/giphy.gif"
+        },
+        "ended": {
+            "title": "🏁 O'yin yakunlandi",
+            "desc": "O'yin o'z nihoyasiga yetdi. G'oliblar aniqlandi!",
+            "gif": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cWw2MzJrMmtnbjVwM2s0a3MxMGFtMTVnNTR5MXplM2MzaDJlYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/h5NLPXL6M3FQPv805H/giphy.gif"
+        }
+    };
+    
+    const info = transitionData[phase];
+    if (!info) return;
+    
+    gifImg.src = info.gif;
+    title.innerText = info.title;
+    desc.innerText = info.desc;
+    
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+    });
+    
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 400);
+    }, 3500);
+}
+
 async function leaveRoom() {
     if (!currentRoomId) return;
     try {
@@ -1090,6 +1218,11 @@ async function loadAdminStats() {
             document.getElementById('admin-total-users').innerText = data.total_users;
             document.getElementById('admin-total-plays').innerText = data.total_plays;
             document.getElementById('admin-active-games').innerText = data.active_games;
+            
+            const maintenanceToggle = document.getElementById('admin-maintenance-toggle');
+            if (maintenanceToggle) {
+                maintenanceToggle.checked = data.maintenance_enabled === true;
+            }
         }
         
         // Fetch active games list
@@ -1139,6 +1272,235 @@ window.forceCloseRoom = async function(roomId) {
         alert("Xato: " + e.message);
     }
 };
+
+// AudioManager Class for Phase 2 sound effects
+class AudioManager {
+    constructor() {
+        this.muted = localStorage.getItem('sfx_muted') === 'true';
+        this.sounds = {
+            night: new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav'), // Crickets ambient style
+            day: new Audio('https://assets.mixkit.co/active_storage/sfx/911/911-84.wav'), // Bell ring
+            voting: new Audio('https://assets.mixkit.co/active_storage/sfx/2560/2560-84.wav'), // Ticking clock
+            win: new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav'), // Victory fanfare
+            lose: new Audio('https://assets.mixkit.co/active_storage/sfx/2573/2573-84.wav'), // Defeat/fail chime
+            click: new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav')
+        };
+        
+        this.sounds.night.loop = true;
+        this.sounds.night.volume = 0.4;
+        this.sounds.voting.loop = true;
+        this.sounds.voting.volume = 0.5;
+        
+        this.updateToggleButton();
+    }
+    
+    toggleMute() {
+        this.muted = !this.muted;
+        localStorage.setItem('sfx_muted', this.muted);
+        if (this.muted) {
+            this.stopAll();
+        }
+        this.updateToggleButton();
+    }
+    
+    updateToggleButton() {
+        const btn = document.getElementById('btn-sound-toggle');
+        if (btn) {
+            btn.innerText = this.muted ? '🔇' : '🔊';
+        }
+    }
+    
+    stopAll() {
+        Object.values(this.sounds).forEach(audio => {
+            audio.pause();
+            audio.currentTime = 0;
+        });
+    }
+    
+    play(soundKey) {
+        if (this.muted) return;
+        const sound = this.sounds[soundKey];
+        if (sound) {
+            if (soundKey === 'night' || soundKey === 'voting') {
+                this.stopAll();
+                sound.play().catch(err => console.log("Audio play error:", err));
+            } else {
+                sound.currentTime = 0;
+                sound.play().catch(err => console.log("Audio play error:", err));
+            }
+        }
+    }
+}
+
+const audioManager = new AudioManager();
+
+async function loadDailyQuests() {
+    try {
+        const response = await fetch(`/api/quests?user_id=${userId}`);
+        const data = await response.json();
+        const container = document.getElementById('quests-container');
+        if (!container) return;
+        if (!data.quests || data.quests.length === 0) {
+            container.innerHTML = `<div class="no-data">Hozircha vazifalar mavjud emas.</div>`;
+            return;
+        }
+        container.innerHTML = data.quests.map(q => {
+            const percentage = Math.min(100, Math.round((q.progress / q.target) * 100));
+            return `
+                <div class="quest-card ${q.completed ? 'completed' : ''}">
+                    <div class="quest-header">
+                        <span class="quest-name">${q.completed ? '✅' : '📌'} ${q.name_uz}</span>
+                        <span class="quest-reward">+${q.reward} tanga</span>
+                    </div>
+                    <div class="quest-bar-bg">
+                        <div class="quest-bar-fill" style="width: ${percentage}%"></div>
+                    </div>
+                    <div style="font-size:10px; color:#cbd5e1; text-align:right;">${q.progress} / ${q.target}</div>
+                </div>
+            `;
+        }).join('');
+    } catch(e) {
+        console.error("Error loading quests:", e);
+    }
+}
+
+async function loadGameHistory() {
+    try {
+        const response = await fetch(`/api/game/history?user_id=${userId}`);
+        const data = await response.json();
+        const container = document.getElementById('history-container');
+        if (!container) return;
+        if (!data.history || data.history.length === 0) {
+            container.innerHTML = `<div class="no-data">Hozircha o'yinlar tarixi mavjud emas.</div>`;
+            return;
+        }
+        container.innerHTML = data.history.map(h => {
+            const isWin = h.is_winner === 1;
+            const roleClass = isWin ? 'win' : 'loss';
+            const badgeClass = isWin ? 'win' : 'loss';
+            const textResult = isWin ? "G'alaba" : "Mag'lubiyat";
+            return `
+                <div class="history-item ${roleClass}">
+                    <div class="history-left">
+                        <span class="history-role">🕵️‍♂️ Roli: ${h.role}</span>
+                        <span class="history-date">${h.played_at}</span>
+                    </div>
+                    <div class="history-right">
+                        <span class="history-result-badge ${badgeClass}">${textResult}</span>
+                        <span class="history-room">ID: #${h.room_id.substring(0,6)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch(e) {
+        console.error("Error loading game history:", e);
+    }
+}
+
+async function searchUsers() {
+    const query = document.getElementById('admin-user-search-input').value.trim();
+    if (!query) return;
+    try {
+        const response = await fetch(`/api/admin/users/search?admin_id=${userId}&q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        const container = document.getElementById('admin-user-search-results');
+        if (!container) return;
+        if (!data.users || data.users.length === 0) {
+            container.innerHTML = `<div style="font-size:12px; color:#cbd5e1; text-align:center;">Hech qanday o'yinchi topilmadi.</div>`;
+            return;
+        }
+        container.innerHTML = data.users.map(u => `
+            <div class="admin-user-card">
+                <div class="admin-user-row">
+                    <strong>${u.first_name} (@${u.username || 'username'})</strong>
+                    <span>ID: ${u.user_id}</span>
+                </div>
+                <div class="admin-user-row">
+                    <span>Level: ${u.level} | XP: ${u.xp}</span>
+                    <span>Tanga: ${u.coins}</span>
+                </div>
+                <div class="admin-user-row">
+                    <span>Status: ${u.banned === 1 ? '<span class="admin-badge-ban">Bloklangan</span>' : '<span class="admin-badge-win">Faol</span>'}</span>
+                </div>
+                <div class="admin-user-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="editUserPrompt(${u.user_id}, 'coins', ${u.coins})">🪙 Tangalar</button>
+                    <button class="btn btn-sm btn-secondary" onclick="editUserPrompt(${u.user_id}, 'xp', ${u.xp})">⭐ XP</button>
+                    <button class="btn btn-sm ${u.banned === 1 ? 'btn-primary' : 'btn-danger'}" onclick="toggleUserBan(${u.user_id}, ${u.banned === 1 ? 'false' : 'true'})">
+                        ${u.banned === 1 ? 'Bandan chiqarish' : 'Bloklash'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function editUserPrompt(targetUserId, field, currentVal) {
+    const newVal = prompt(`Yangi ${field} qiymatini kiriting (Hozirgi: ${currentVal}):`, currentVal);
+    if (newVal === null) return;
+    try {
+        const body = { admin_id: userId, user_id: targetUserId };
+        body[field] = parseInt(newVal);
+        const response = await fetch('/api/admin/users/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            searchUsers();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function toggleUserBan(targetUserId, banStatus) {
+    if (!confirm(`Haqiqatan ham ushbu foydalanuvchini ${banStatus ? 'bloklamoqchimisiz' : 'blokdan chiqarmoqchimisiz'}?`)) return;
+    try {
+        const response = await fetch('/api/admin/users/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: userId, user_id: targetUserId, banned: banStatus })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            searchUsers();
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function toggleMaintenance(enabled) {
+    try {
+        const response = await fetch('/api/admin/system/maintenance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: userId, enabled: enabled })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(`Texnik ishlar rejimi: ${data.maintenance ? 'YONIQ' : 'O\'CHIQ'}`);
+        } else {
+            alert(data.error);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+window.editUserPrompt = editUserPrompt;
+window.toggleUserBan = toggleUserBan;
+window.toggleMaintenance = toggleMaintenance;
+window.searchUsers = searchUsers;
 
 async function submitAdminBroadcast() {
     const text = document.getElementById('admin-broadcast-text').value.trim();
@@ -1784,7 +2146,7 @@ safeAddListener('btn-submit-create-room', 'click', submitCreateRoom);
 safeAddListener('btn-submit-join-room', 'click', submitJoinRoom);
 safeAddListener('btn-lobby-leave', 'click', leaveRoom);
 safeAddListener('btn-lobby-start', 'click', startRoom);
-safeAddListener('btn-active-game-leave', 'click', leaveRoom);
+safeAddListener('btn-active-game-leave', 'click', handleActiveGameLeave);
 
 safeAddListener('btn-send-room-day', 'click', sendRoomDayChatMessage);
 safeAddListener('room-day-chat-input', 'keypress', (e) => {
@@ -1795,3 +2157,15 @@ safeAddListener('room-day-chat-input', 'keypress', (e) => {
 safeAddListener('admin-broadcast-btn', 'click', submitAdminBroadcast);
 safeAddListener('admin-ban-btn', 'click', () => submitAdminBan(true));
 safeAddListener('admin-unban-btn', 'click', () => submitAdminBan(false));
+
+// Phase 2 event listeners
+safeAddListener('btn-sound-toggle', 'click', () => {
+    audioManager.toggleMute();
+});
+safeAddListener('admin-user-search-btn', 'click', searchUsers);
+safeAddListener('admin-user-search-input', 'keypress', (e) => {
+    if (e.key === 'Enter') searchUsers();
+});
+safeAddListener('admin-maintenance-toggle', 'change', (e) => {
+    toggleMaintenance(e.target.checked);
+});

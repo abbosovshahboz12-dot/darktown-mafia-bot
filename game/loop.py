@@ -334,6 +334,9 @@ async def process_night(bot: Bot, game: Game):
     # Unmute chat
     await try_mute_chat(bot, game.chat_id, False)
     
+    # Initialize victims list at the start of night processing
+    victims = []
+    
     # Check AFK for active roles
     afk_killed = []
     for player in game.get_alive_players():
@@ -369,7 +372,7 @@ async def process_night(bot: Bot, game: Game):
         afk_text = "🚶 **AFK (Faolsizlik) tufayli o'yindan chetlashtirilganlar**:\n"
         for p in afk_killed:
             role_emoji = ROLE_EMOJIS.get(p.role, "")
-            afk_text += f"- {p.name} ({role_emoji} {p.role}): 2 ta bosqichda faolsiz bo'lgani sababli o'yindan chetlashtirildi!\n"
+            afk_text += f"- {p.name_escaped} ({role_emoji} {p.role}): 2 ta bosqichda faolsiz bo'lgani sababli o'yindan chetlashtirildi!\n"
             log_game_event(game, f"🚶 {p.name} AFK sababli chetlashtirildi.")
         await bot.send_message(game.chat_id, afk_text, parse_mode="Markdown")
         
@@ -397,7 +400,11 @@ async def process_night(bot: Bot, game: Game):
     for role_name in ["detective", "doctor", "bodyguard", "maniac", "don"]:
         role_players = game.get_players_by_role(role_name.capitalize())
         if role_players and role_players[0].is_blocked:
-            game.night_actions[role_name] = None
+            if role_name == "detective":
+                game.night_actions["detective_check"] = None
+                game.night_actions["detective_shoot"] = None
+            else:
+                game.night_actions[role_name] = None
     # For mafia (if a mafia member is blocked, they can't vote, but we just check if all are blocked)
     # Actually, we will just filter out votes from blocked mafias
     mafia_members = game.get_players_by_role("Mafia") + game.get_players_by_role("Don")
@@ -439,7 +446,7 @@ async def process_night(bot: Bot, game: Game):
                 try:
                     await bot.send_message(
                         detectives[0].user_id,
-                        f"🔍 **Tekshiruv natijasi**:\n{checked_player.name} roli - {ROLE_EMOJIS.get(checked_player.role, '')} **{checked_player.role}** ({side})"
+                        f"🔍 **Tekshiruv natijasi**:\n{checked_player.name_escaped} roli - {ROLE_EMOJIS.get(checked_player.role, '')} **{checked_player.role}** ({side})"
                     )
                 except Exception:
                     pass
@@ -449,7 +456,7 @@ async def process_night(bot: Bot, game: Game):
             if shoot_player:
                 if shoot_player.is_healed:
                     pass # Saved by doctor
-                elif shoot_player.is_guarded:
+                elif shoot_player.is_guarded and any(b.is_alive for b in game.get_players_by_role("Bodyguard")):
                     # Bodyguard dies instead
                     bodyguards = game.get_players_by_role("Bodyguard")
                     alive_guards = [b for b in bodyguards if b.is_alive]
@@ -473,7 +480,7 @@ async def process_night(bot: Bot, game: Game):
                 try:
                     await bot.send_message(
                         dons[0].user_id,
-                        f"🔍 **Don tekshiruvi natijasi**:\n{checked_player.name} - {result_text}"
+                        f"🔍 **Don tekshiruvi natijasi**:\n{checked_player.name_escaped} - {result_text}"
                     )
                 except Exception:
                     pass
@@ -492,16 +499,13 @@ async def process_night(bot: Bot, game: Game):
     # 7. Calculate Maniac Kill
     maniac_kill_target = game.night_actions["maniac"]
     
-    # Process victims
-    victims = []
-    
     # Process Mafia Homicide
     if mafia_kill_target:
         victim = game.players.get(mafia_kill_target)
         if victim:
             if victim.is_healed:
                 pass # Saved by doctor
-            elif victim.is_guarded:
+            elif victim.is_guarded and any(b.is_alive for b in game.get_players_by_role("Bodyguard")):
                 # Saved by bodyguard, but bodyguard dies instead!
                 bodyguards = game.get_players_by_role("Bodyguard")
                 alive_guards = [b for b in bodyguards if b.is_alive]
@@ -519,7 +523,7 @@ async def process_night(bot: Bot, game: Game):
         if victim and victim.is_alive: # If not already killed by Mafia
             if victim.is_healed:
                 pass
-            elif victim.is_guarded:
+            elif victim.is_guarded and any(b.is_alive for b in game.get_players_by_role("Bodyguard")):
                 bodyguards = game.get_players_by_role("Bodyguard")
                 alive_guards = [b for b in bodyguards if b.is_alive]
                 if alive_guards:
@@ -588,7 +592,7 @@ async def process_night(bot: Bot, game: Game):
         day_text += "💀 **Tungi yo'qotishlar**:\n"
         for vic, details in victims:
             role_emoji = ROLE_EMOJIS.get(vic.role, "")
-            day_text += f"- {vic.name} ({role_emoji} {vic.role}): {details}\n"
+            day_text += f"- {vic.name_escaped} ({role_emoji} {vic.role}): {details}\n"
             log_game_event(game, f"💀 {vic.name} o'ldirildi ({vic.role}).")
         day_text += "\n"
         
@@ -597,16 +601,16 @@ async def process_night(bot: Bot, game: Game):
         for vic in victim_users:
             words = game.last_words.get(vic.user_id)
             if words:
-                day_text += f"- **{vic.name}**: _\"{words}\"_\n"
+                day_text += f"- **{vic.name_escaped}**: _\"{words}\"_\n"
             else:
-                day_text += f"- **{vic.name}**: _(vasiyat qoldirmadi)_\n"
+                day_text += f"- **{vic.name_escaped}**: _(vasiyat qoldirmadi)_\n"
         day_text += "\n"
         
     # Add alive players grid (Tirik o'yinchilar jadvali)
     alive_players = game.get_alive_players()
     day_text += f"👥 **Tirik qolgan o'yinchilar ro'yxati ({len(alive_players)})**:\n"
     for p in alive_players:
-        day_text += f"- {p.name}\n"
+        day_text += f"- {p.name_escaped}\n"
             
     await bot.send_message(game.chat_id, day_text, parse_mode="Markdown")
     
@@ -784,7 +788,7 @@ async def process_voting(bot: Bot, game: Game):
             await send_game_gif(bot, game.chat_id, "hang")
             role_emoji = ROLE_EMOJIS.get(hanged_player.role, "")
             result_text += (
-                f"\n🔥 **Anarxiya voqeasi sababli ovozlar teng bo'lsa-da, tasodifiy ravishda {hanged_player.name} osildi!**\n"
+                f"\n🔥 **Anarxiya voqeasi sababli ovozlar teng bo'lsa-da, tasodifiy ravishda {hanged_player.name_escaped} osildi!**\n"
                 f"Uning roli: {role_emoji} **{hanged_player.role}**"
             )
         else:
@@ -803,7 +807,7 @@ async def process_voting(bot: Bot, game: Game):
             await send_game_gif(bot, game.chat_id, "hang")
             role_emoji = ROLE_EMOJIS.get(hanged_player.role, "")
             result_text += (
-                f"\n⚖️ Ko'pchilikning qarori bilan **{hanged_player.name}** dorga osildi!\n"
+                f"\n⚖️ Ko'pchilikning qarori bilan **{hanged_player.name_escaped}** dorga osildi!\n"
                 f"Uning roli: {role_emoji} **{hanged_player.role}**"
             )
             log_game_event(game, f"⚖️ {hanged_player.name} dorda osildi ({hanged_player.role}).")
@@ -843,7 +847,7 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
     for p in game.players.values():
         status = "🟢 Tirik" if p.is_alive else "💀 O'lik"
         role_emoji = ROLE_EMOJIS.get(p.role, "")
-        win_text += f"- {p.name}: {role_emoji} {p.role} ({status})\n"
+        win_text += f"- {p.name_escaped}: {role_emoji} {p.role} ({status})\n"
         
     await bot.send_message(game.chat_id, win_text, parse_mode="Markdown")
     
@@ -884,9 +888,9 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
         if not is_winner and user_db.get("shield_active", 0) == 1:
             xp += 30
             await db.set_shield(player.user_id, False) # Consume shield
-            rewards_text += f"- {player.name}: +{xp} XP (🛡️ Qalqon ishlatildi), +{coins} tanga\n"
+            rewards_text += f"- {player.name_escaped}: +{xp} XP (🛡️ Qalqon ishlatildi), +{coins} tanga\n"
         else:
-            rewards_text += f"- {player.name}: +{xp} XP, +{coins} tanga\n"
+            rewards_text += f"- {player.name_escaped}: +{xp} XP, +{coins} tanga\n"
             
         # Save to DB
         leveled_up, new_level = await db.add_xp_and_coins(player.user_id, xp, coins)
@@ -895,6 +899,18 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
             
         # Update Role stats
         await db.update_stats(player.user_id, player.role.lower(), is_winner)
+
+        # Save Game History & Update Achievements/Quests (Phase 2)
+        try:
+            win_val = 1 if is_winner else 0
+            await db.save_game_history(player.user_id, str(game.chat_id), player.role, win_val, winning_faction)
+            await db.increment_daily_games(player.user_id)
+            if is_winner:
+                await db.unlock_achievement(player.user_id, "first_win")
+                if player.role not in ["Mafia", "Don", "Maniac"]:
+                    await db.increment_daily_mafia_killed(player.user_id)
+        except Exception as ex:
+            logging.error(f"Error saving game history/achievements: {ex}")
         
     await bot.send_message(game.chat_id, rewards_text, parse_mode="Markdown")
     

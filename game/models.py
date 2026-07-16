@@ -14,6 +14,22 @@ class Player:
         self.role_booster: Optional[str] = None # User can use booster card
         self.afk_streak = 0
 
+    @property
+    def name_escaped(self) -> str:
+        text = self.name
+        for char in ['_', '*', '[', '`']:
+            text = text.replace(char, f"\\{char}")
+        return text
+
+    @property
+    def username_escaped(self) -> Optional[str]:
+        if not self.username:
+            return None
+        text = self.username
+        for char in ['_', '*', '[', '`']:
+            text = text.replace(char, f"\\{char}")
+        return text
+
     def reset_night_status(self):
         self.is_blocked = False
         self.is_healed = False

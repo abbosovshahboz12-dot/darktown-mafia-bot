@@ -89,6 +89,29 @@ async def init_db():
             )
         """)
         
+        # Game History table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS game_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                room_id TEXT,
+                role TEXT,
+                is_winner INTEGER,
+                winning_faction TEXT,
+                played_at TEXT
+            )
+        """)
+
+        # User Achievements table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_achievements (
+                user_id INTEGER,
+                achievement_key TEXT,
+                unlocked_at TEXT,
+                PRIMARY KEY (user_id, achievement_key)
+            )
+        """)
+        
         # Migrations for existing database
         try:
             await db.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'uz'")
@@ -104,6 +127,18 @@ async def init_db():
             pass
         try:
             await db.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN daily_games_played INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN daily_mafia_killed INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN last_quest_reset TEXT")
         except Exception:
             pass
             
@@ -181,6 +216,18 @@ async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
                 (new_xp, new_level, new_coins, user_id)
             )
             await db.commit()
+
+            if new_coins >= 500:
+                async with db.execute("SELECT 1 FROM user_achievements WHERE user_id = ? AND achievement_key = 'rich_mafia'", (user_id,)) as cursor:
+                    if not await cursor.fetchone():
+                        unlocked_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        await db.execute(
+                            "INSERT INTO user_achievements (user_id, achievement_key, unlocked_at) VALUES (?, 'rich_mafia', ?)",
+                            (user_id, unlocked_at)
+                        )
+                        await db.execute("UPDATE users SET coins = coins + 200 WHERE user_id = ?", (user_id,))
+                        await db.commit()
+            
             return leveled_up, new_level
 
 async def get_user_stats(user_id: int):
@@ -592,3 +639,152 @@ async def get_all_user_ids() -> list[int]:
         async with db.execute("SELECT user_id FROM users") as cursor:
             rows = await cursor.fetchall()
             return [r[0] for r in rows]
+
+# --- PHASE 2 DATABASE FUNCTIONS ---
+
+async def save_game_history(user_id: int, room_id: str, role: str, is_winner: int, winning_faction: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        played_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await db.execute(
+            "INSERT INTO game_history (user_id, room_id, role, is_winner, winning_faction, played_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, room_id, role, is_winner, winning_faction, played_at)
+        )
+        await db.commit()
+
+async def get_game_history(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM game_history WHERE user_id = ? ORDER BY id DESC LIMIT 10", (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+ACHIEVEMENTS_LIST = {
+    "first_win": {
+        "name_uz": "Birinchi G'alaba", "name_ru": "Первая Победа",
+        "desc_uz": "Mafiya o'yinida 1-marta g'alaba qozoning", "desc_ru": "Выиграйте первую игру",
+        "reward": 50
+    },
+    "mafia_slayer": {
+        "name_uz": "Mafiya Qotili", "name_ru": "Истребитель Мафии",
+        "desc_uz": "O'yinchi sifatida mafiya a'zolarini o'ldiring", "desc_ru": "Убейте мафию будучи мирным",
+        "reward": 100
+    },
+    "active_player": {
+        "name_uz": "Faol O'yinchi", "name_ru": "Активный Игрок",
+        "desc_uz": "Jami 10 ta o'yinda qatnashish", "desc_ru": "Сыграйте всего 10 игр",
+        "reward": 150
+    },
+    "rich_mafia": {
+        "name_uz": "Boy Mafioz", "name_ru": "Богатый Мафиози",
+        "desc_uz": "Jami 500 tanga yig'ing", "desc_ru": "Соберите 500 монет",
+        "reward": 200
+    }
+}
+
+async def get_user_achievements(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = ?", (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            unlocked = {r[0]: r[1] for r in rows}
+            
+        result = []
+        for key, info in ACHIEVEMENTS_LIST.items():
+            is_unlocked = key in unlocked
+            result.append({
+                "key": key,
+                "name_uz": info["name_uz"],
+                "name_ru": info["name_ru"],
+                "desc_uz": info["desc_uz"],
+                "desc_ru": info["desc_ru"],
+                "reward": info["reward"],
+                "unlocked": is_unlocked,
+                "unlocked_at": unlocked.get(key) if is_unlocked else None
+            })
+        return result
+
+async def unlock_achievement(user_id: int, achievement_key: str) -> bool:
+    if achievement_key not in ACHIEVEMENTS_LIST:
+        return False
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Check if already unlocked
+        async with db.execute("SELECT 1 FROM user_achievements WHERE user_id = ? AND achievement_key = ?", (user_id, achievement_key)) as cursor:
+            if await cursor.fetchone():
+                return False
+                
+        # Unlock and give reward
+        unlocked_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await db.execute(
+            "INSERT INTO user_achievements (user_id, achievement_key, unlocked_at) VALUES (?, ?, ?)",
+            (user_id, achievement_key, unlocked_at)
+        )
+        reward = ACHIEVEMENTS_LIST[achievement_key]["reward"]
+        await db.execute("UPDATE users SET coins = coins + ? WHERE user_id = ?", (reward, user_id))
+        await db.commit()
+        return True
+
+async def get_daily_quests(user_id: int):
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT daily_games_played, daily_mafia_killed, last_quest_reset FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            
+        if not row:
+            return []
+            
+        games = row["daily_games_played"] or 0
+        killed = row["daily_mafia_killed"] or 0
+        last_reset = row["last_quest_reset"]
+        
+        if last_reset != today_str:
+            games = 0
+            killed = 0
+            await db.execute(
+                "UPDATE users SET daily_games_played = 0, daily_mafia_killed = 0, last_quest_reset = ? WHERE user_id = ?",
+                (today_str, user_id)
+            )
+            await db.commit()
+            
+        quests = [
+            {
+                "id": "play_3_games",
+                "name_uz": "3 ta o'yinda qatnashish",
+                "name_ru": "Сыграть 3 игры",
+                "progress": games,
+                "target": 3,
+                "reward": 30,
+                "completed": games >= 3
+            },
+            {
+                "id": "kill_1_mafia",
+                "name_uz": "1 ta mafiyani yo'q qilish",
+                "name_ru": "Убить 1 мафию",
+                "progress": killed,
+                "target": 1,
+                "reward": 50,
+                "completed": killed >= 1
+            }
+        ]
+        return quests
+
+async def increment_daily_games(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Make sure reset check runs first
+        await get_daily_quests(user_id)
+        await db.execute("UPDATE users SET daily_games_played = daily_games_played + 1 WHERE user_id = ?", (user_id,))
+        await db.commit()
+        
+        # Check active player achievement (10 total games played)
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT COUNT(*) FROM game_history WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            cnt = row[0] if row else 0
+            if cnt >= 10:
+                await unlock_achievement(user_id, "active_player")
+
+async def increment_daily_mafia_killed(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await get_daily_quests(user_id)
+        await db.execute("UPDATE users SET daily_mafia_killed = daily_mafia_killed + 1 WHERE user_id = ?", (user_id,))
+        await db.commit()
+        await unlock_achievement(user_id, "mafia_slayer")

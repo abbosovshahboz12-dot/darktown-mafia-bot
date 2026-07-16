@@ -9,6 +9,13 @@ from locales import get_text
 router = Router()
 router.message.filter(F.chat.type == "private")
 
+def escape_markdown(text: str) -> str:
+    if not text:
+        return ""
+    for char in ['_', '*', '[', '`']:
+        text = text.replace(char, f"\\{char}")
+    return text
+
 def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot") -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     # WebApp URL must contain user_id to load their profile
@@ -142,8 +149,12 @@ async def cmd_leaderboard(message: types.Message):
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
     
     for i, user in enumerate(leaders):
-        username_part = f" (@{user['username']})" if user['username'] else ""
-        text += f"{medals[i]} **{user['first_name']}**{username_part} — Level {user['level']} ({user['xp']} XP)\n"
+        first_name = escape_markdown(user['first_name'])
+        username_part = ""
+        if user['username']:
+            username_esc = escape_markdown(user['username'])
+            username_part = f" (@{username_esc})"
+        text += f"{medals[i]} **{first_name}**{username_part} — Level {user['level']} ({user['xp']} XP)\n"
         
     if not leaders:
         if lang == "uz":
