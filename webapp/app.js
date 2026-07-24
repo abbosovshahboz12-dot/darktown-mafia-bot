@@ -585,6 +585,28 @@ async function loadActiveGame() {
         const myRoleText = document.getElementById('game-my-role');
         myRoleText.innerText = `${roleEmojis[data.myRole] || "🎭"} ${data.myRole}`;
         
+        // Render Role Card Image (Phase 2)
+        const myRoleImg = document.getElementById('game-role-card-img');
+        if (myRoleImg) {
+            const roleImages = {
+                "Mafia": "mafia.png",
+                "Don": "don.jpg",
+                "Civilian": "civilian.jpg",
+                "Detective": "detective.jpg",
+                "Doctor": "doctor.jpg",
+                "Bodyguard": "bodyguard.jpg",
+                "Courtesan": "courtesan.jpg",
+                "Maniac": "maniac.jpg"
+            };
+            const imgFile = roleImages[data.myRole];
+            if (imgFile) {
+                myRoleImg.src = `/static/images/${imgFile}`;
+                myRoleImg.style.display = 'block';
+            } else {
+                myRoleImg.style.display = 'none';
+            }
+        }
+        
         // Render status instructions
         const statusText = document.getElementById('game-status-text');
         if (!data.isAlive) {

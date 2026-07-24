@@ -441,12 +441,13 @@
 
                 <!-- 4C. Active Game View -->
                 <div id="match-active-game-view" style="display:none;">
-                    <div class="game-header-card" style="position:relative;">
+                    <div class="game-header-card" style="position:relative; display:flex; flex-direction:column; align-items:center;">
                         <button class="btn btn-sm btn-danger" id="btn-active-game-leave" style="position:absolute; top:12px; right:12px; font-size:11px; padding:4px 10px; height:auto; line-height:1; border-radius:6px; cursor:pointer;">Chiqish</button>
-                        <div class="game-phase-badge" id="game-phase-badge">🌙 TUN</div>
-                        <div class="game-role-info">
-                            <span>Sizning rolingiz:</span>
-                            <span id="game-my-role" class="game-role-text">🕵️‍♂️ Komissar</span>
+                        <div class="game-phase-badge" id="game-phase-badge" style="align-self: flex-start; margin-bottom: 10px;">🌙 TUN</div>
+                        <div class="game-role-info" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                            <span style="font-size:12px; color:#94a3b8;">Sizning rolingiz:</span>
+                            <span id="game-my-role" class="game-role-text" style="font-size:16px; font-weight:800; color:#00f2fe; text-transform:uppercase;">🕵️‍♂️ Komissar</span>
+                            <img id="game-role-card-img" src="" style="width:120px; height:160px; border-radius:10px; border:2px solid rgba(0,242,254,0.3); box-shadow:0 0 15px rgba(0,242,254,0.15); object-fit:cover; display:none; margin-top:5px;">
                         </div>
                         <div class="game-status-text" id="game-status-text">Shahar ahlini tekshiring yoki otib yuboring.</div>
                     </div>

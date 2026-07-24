@@ -137,17 +137,21 @@ async def try_restrict_user(bot: Bot, chat_id: int, user_id: int, mute: bool):
 async def send_game_gif(bot: Bot, chat_id: int, event_type: str):
     if chat_id >= 0:
         return
+    from config import WEBAPP_URL
     gifs = {
         "start": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzM2MWF6bWdkZno4bmx4d3V1MW01ajBhMmhrbjR5MGw4NGZ3MGNtaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKrE1xs1sA5yyZ2/giphy.gif",
         "night": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZkMnJid2tmbjI5M2t3MHU4b3M2Yzg5dHc1Y293YTFtMWZhbzJ0NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKrE1xs1sA5yyZ2/giphy.gif",
         "day": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDV2bGNmMTBrOWUxeDVwNDNqMzdrbXh3OTN2c2U5cGRxNWlzNm9jMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5tq3c6tZ30c8F7lS8a/giphy.gif",
         "death": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3N2cWw2MzJrMmtnbjVwM2s0a3MxMGFtMTVnNTR5MXplM2MzaDJlYSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/h5NLPXL6M3FQPv805H/giphy.gif",
-        "hang": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzhidXJrbWJ0MG93djFidHpxODh6bXFvOTg5bzhpMmxrdGR0cWFqZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT8qBgfJdqBwepfLAI/giphy.gif"
+        "hang": f"{WEBAPP_URL}/static/images/hang.png"
     }
     url = gifs.get(event_type)
     if url:
         try:
-            await bot.send_animation(chat_id, url)
+            if event_type == "hang" or url.endswith(".png") or url.endswith(".jpg"):
+                await bot.send_photo(chat_id, url)
+            else:
+                await bot.send_animation(chat_id, url)
         except Exception as e:
             logging.warning(f"Could not send game GIF ({event_type}): {e}")
 
