@@ -5,7 +5,7 @@ import sys
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from datetime import datetime
-from config import BOT_TOKEN, PORT, ADMIN_ID
+from config import BOT_TOKEN, PORT, ADMIN_ID, WEBAPP_URL
 from database import db
 
 # Import handlers
@@ -1365,6 +1365,23 @@ def setup_web_server():
     
     return app
 
+async def self_ping_task(url: str):
+    if not url or "localhost" in url or "127.0.0.1" in url:
+        logging.info("Localhost aniqlandi, self-ping faollashtirilmadi.")
+        return
+        
+    logging.info(f"Self-ping faollashtirildi. Ping yuboriladigan manzil: {url}")
+    import aiohttp
+    async with aiohttp.ClientSession() as session:
+        while True:
+            try:
+                await asyncio.sleep(240)  # Sleep for 4 minutes
+                async with session.get(url) as response:
+                    status = response.status
+                    logging.info(f"Self-ping yuborildi. Status: {status}")
+            except Exception as e:
+                logging.error(f"Self-ping yuborishda xatolik: {e}")
+
 async def main():
     # 1. Setup Telegram Bot
     bot = Bot(token=BOT_TOKEN)
@@ -1397,6 +1414,10 @@ async def main():
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
     logging.info(f"Web app server started on port {PORT}")
+    
+    # Start self-ping task if WEBAPP_URL is configured
+    if WEBAPP_URL:
+        asyncio.create_task(self_ping_task(WEBAPP_URL))
     
     # 4. Start Bot Polling
     logging.info("Telegram Bot polling started...")
