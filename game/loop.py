@@ -174,11 +174,12 @@ async def night_phase(bot: Bot, game: Game):
     await send_game_gif(bot, game.chat_id, "night")
     
     # Send group night announcement
-    await bot.send_message(
+    msg = await bot.send_message(
         game.chat_id,
         "🌙 **Shahar uzra tun cho'kdi... Barcha tinch aholi shirin uyquda. Mafiya va faol rollar tunda uyg'onmoqda.**\n\n"
         "_(Harakatlarni bajarish uchun shaxsiy chatga o'ting yoki Mini App-ni oching!)_"
     )
+    game.night_message_id = msg.message_id
     
     # Mute group chat
     await try_mute_chat(bot, game.chat_id, True)
@@ -231,12 +232,22 @@ async def night_phase(bot: Bot, game: Game):
             elif player.role == "Don":
                 # Don looks for detective
                 mafia_and_don = [m.user_id for m in game.get_players_by_role("Mafia") + game.get_players_by_role("Don")]
-                kb = InlineKeyboardBuilder()
+                
+                # 1. Don Check Keyboard
+                kb_check = InlineKeyboardBuilder()
                 for p in alive_players:
                     if p.user_id not in mafia_and_don:
-                        kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"don_{p.user_id}"))
-                kb.adjust(2)
-                await bot.send_message(player.user_id, "🕶️ **Don tekshiruvi**: Komissarni topish uchun kimni tekshirmoqchisiz?", reply_markup=kb.as_markup())
+                        kb_check.add(types.InlineKeyboardButton(text=p.name, callback_data=f"don_{p.user_id}"))
+                kb_check.adjust(2)
+                await bot.send_message(player.user_id, "🕶️ **Don tekshiruvi**: Komissarni topish uchun kimni tekshirmoqchisiz?", reply_markup=kb_check.as_markup())
+                
+                # 2. Mafia Voting Keyboard
+                kb_mafia = InlineKeyboardBuilder()
+                for p in alive_players:
+                    if p.user_id not in mafia_and_don:
+                        kb_mafia.add(types.InlineKeyboardButton(text=p.name, callback_data=f"mafia_{p.user_id}"))
+                kb_mafia.adjust(2)
+                await bot.send_message(player.user_id, "🔴 **Mafiya ovoz berishi**: Bugun tunda kimni yo'qotmoqchisiz?", reply_markup=kb_mafia.as_markup())
                 
             elif player.role == "Detective":
                 # Check option choice keyboard
@@ -289,10 +300,17 @@ async def night_phase(bot: Bot, game: Game):
 async def night_timer(bot: Bot, game: Game, seconds: int):
     # Wait for actions or timeout
     for sec in range(seconds, 0, -1):
-        # We can optionally edit a message in group with the remaining time
-        # E.g. every 15 seconds
-        if sec in [45, 30, 15, 5]:
-            await bot.send_message(game.chat_id, f"🌙 Tun tugashiga {sec} soniya qoldi...")
+        if sec % 10 == 0 or sec in [5, 3, 2, 1]:
+            try:
+                await bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.night_message_id,
+                    text=f"🌙 **Shahar uzra tun cho'kdi... Barcha tinch aholi shirin uyquda. Mafiya va faol rollar tunda uyg'onmoqda.**\n\n"
+                         f"_(Harakatlarni bajarish uchun shaxsiy chatga o'ting yoki Mini App-ni oching!)_\n\n"
+                         f"⏳ **Tun tugashiga {sec} soniya qoldi...**"
+                )
+            except Exception:
+                pass
         
         # Check if all active players have finished their turns
         # To speed up the night phase
@@ -651,16 +669,29 @@ def check_win_conditions(game: Game) -> tuple[bool, Optional[str]]:
 async def day_phase(bot: Bot, game: Game):
     game.phase = "day"
     await try_mute_chat(bot, game.chat_id, False)
-    await bot.send_message(
+    msg = await bot.send_message(
         game.chat_id,
         "💬 **Shahar uyg'ondi! Kun boshlandi. Munozara maydoni ochiq.**\n"
         "Shubha ostidagilarni aniqlang, munozara qiling va gumondorlarni o'rtaga chiqaring.\n"
         "⏳ Ovoz berish bosqichi boshlanishiga **60 soniya** qoldi."
     )
+    game.day_message_id = msg.message_id
     game.timer_task = asyncio.create_task(discussion_timer(bot, game, 60))
 
 async def discussion_timer(bot: Bot, game: Game, seconds: int):
-    await asyncio.sleep(seconds)
+    for sec in range(seconds, 0, -1):
+        if sec % 10 == 0 or sec in [5, 3, 2, 1]:
+            try:
+                await bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.day_message_id,
+                    text=f"💬 **Shahar uyg'ondi! Kun boshlandi. Munozara maydoni ochiq.**\n"
+                         f"Shubha ostidagilarni aniqlang, munozara qiling va gumondorlarni o'rtaga chiqaring.\n\n"
+                         f"⏳ Ovoz berish bosqichi boshlanishiga **{sec} soniya** qoldi."
+                )
+            except Exception:
+                pass
+        await asyncio.sleep(1)
     await start_voting_phase(bot, game)
 
 async def start_voting_phase(bot: Bot, game: Game):
@@ -693,6 +724,27 @@ async def voting_timer(bot: Bot, game: Game, seconds: int):
         alive_ids = [p.user_id for p in game.get_alive_players()]
         if len(game.votes) >= len(alive_ids):
             break
+            
+        if sec % 5 == 0 or sec in [5, 3, 2, 1]:
+            try:
+                # Re-fetch keyboard to preserve it
+                alive = game.get_alive_players()
+                kb = InlineKeyboardBuilder()
+                for p in alive:
+                    kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"vote_{p.user_id}"))
+                kb.add(types.InlineKeyboardButton(text="⏩ Hech kimga", callback_data="vote_skip"))
+                kb.adjust(2)
+                
+                await bot.edit_message_text(
+                    chat_id=game.chat_id,
+                    message_id=game.vote_message_id,
+                    text=f"🗳️ **Ovoz berish boshlandi!**\n"
+                         f"Kimni dorda osmoqchisiz? Quyidagi tugmalardan birini tanlang.\n\n"
+                         f"⏳ **Ovoz berish tugashiga {sec} soniya qoldi...**",
+                    reply_markup=kb.as_markup()
+                )
+            except Exception:
+                pass
         await asyncio.sleep(1)
         
     await process_voting(bot, game)
@@ -948,5 +1000,8 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
                 
         asyncio.create_task(reset_room_to_lobby())
         
+    # Trigger DB backup to Telegram channel
+    asyncio.create_task(db.save_db_backup(bot))
+    
     # Remove game
     game_manager.remove_game(game.chat_id)

@@ -35,9 +35,9 @@ if (tg && tg.backgroundColor) {
 
 // Determine current user ID
 // Try from Telegram initData first, then fallback to URL parameter (for browser testing)
-let userId = 7759713314; // Sh.Abbosov Telegram ID
-let userFirstName = "Sh.Abbosov";
-let userUsername = "sh_abbosov";
+let userId = 123456789; // Mock test ID
+let userFirstName = "Mehmon";
+let userUsername = "guest";
 
 if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     userId = tg.initDataUnsafe.user.id;
@@ -728,6 +728,18 @@ async function loadActiveGame() {
             loadGhostChatMessages();
         } else {
             ghostChatSection.style.display = 'none';
+        }
+        
+        // Render mafia chat
+        const mafiaChatSection = document.getElementById('mafia-chat-section');
+        const myPlayer = data.players ? data.players.find(p => p.userId === userId) : null;
+        const isMafiaOrDon = myPlayer && (myPlayer.role === 'Mafia' || myPlayer.role === 'Don');
+        
+        if (data.isAlive && isMafiaOrDon && data.phase === 'night') {
+            mafiaChatSection.style.display = 'block';
+            loadMafiaChatMessages();
+        } else {
+            mafiaChatSection.style.display = 'none';
         }
         
     } catch (e) {
@@ -2054,6 +2066,64 @@ async function sendGhostChatMessage() {
     }
 }
 
+async function loadMafiaChatMessages() {
+    try {
+        const response = await fetch(`/api/game/mafia-chat/messages?user_id=${userId}`);
+        if (!response.ok) throw new Error("Mafia messages fetch failed");
+        const data = await response.json();
+        
+        const container = document.getElementById('mafia-messages');
+        container.innerHTML = '';
+        if (data.messages && data.messages.length > 0) {
+            data.messages.forEach(msg => {
+                const item = document.createElement('div');
+                item.style.padding = '4px 8px';
+                item.style.borderRadius = '8px';
+                item.style.background = 'rgba(239,68,68,0.05)';
+                item.style.border = '1px solid rgba(239,68,68,0.1)';
+                item.style.fontSize = '12px';
+                item.innerHTML = `
+                    <span style="color:#f87171; font-weight:bold;">${msg.sender}:</span>
+                    <span style="color:#fca5a5; margin-left:4px;">${msg.text}</span>
+                    <span style="float:right; font-size:9px; color:#f87171; opacity:0.5; margin-top:2px;">${msg.timestamp}</span>
+                `;
+                container.appendChild(item);
+            });
+            container.scrollTop = container.scrollHeight;
+        } else {
+            container.innerHTML = `<div style="color:#ef4444; opacity:0.6; text-align:center; margin-top:20px; font-size:12px;">${currentLang === 'ru' ? 'Сговор пуст. Начните обсуждение...' : currentLang === 'en' ? 'Chat empty. Start discussing...' : currentLang === 'kz' ? 'Чат бос. Талқылауды бастаңыз...' : 'Chat bo\'sh. Talqilashni boshlang...'}</div>`;
+        }
+    } catch (e) {
+        console.error("Mafia chat fetch error:", e);
+    }
+}
+
+async function sendMafiaChatMessage() {
+    const input = document.getElementById('mafia-input');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    try {
+        const response = await fetch('/api/game/mafia-chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                text: text
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            input.value = '';
+            loadMafiaChatMessages();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) {
+        console.error("Mafia message send error:", e);
+    }
+}
+
 async function startTelegramStarsPayment(packageKey) {
     try {
         const response = await fetch('/api/payment/checkout', {
@@ -2132,6 +2202,11 @@ safeAddListener('btn-copy-ref', 'click', () => {
 safeAddListener('btn-send-ghost', 'click', sendGhostChatMessage);
 safeAddListener('ghost-input', 'keypress', (e) => {
     if (e.key === 'Enter') sendGhostChatMessage();
+});
+
+safeAddListener('btn-send-mafia', 'click', sendMafiaChatMessage);
+safeAddListener('mafia-input', 'keypress', (e) => {
+    if (e.key === 'Enter') sendMafiaChatMessage();
 });
 
 document.addEventListener('click', (e) => {

@@ -79,8 +79,20 @@ async def lobby_timer(bot: Bot, game: Game):
                         reply_markup=get_lobby_keyboard(lang),
                         parse_mode="Markdown"
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    if "message to edit not found" in str(e).lower() or "message can't be edited" in str(e).lower():
+                        try:
+                            new_msg = await bot.send_message(
+                                chat_id=game.chat_id,
+                                text=text,
+                                reply_markup=get_lobby_keyboard(lang),
+                                parse_mode="Markdown"
+                            )
+                            game.lobby_message_id = new_msg.message_id
+                        except Exception:
+                            pass
+                    else:
+                        pass
         if len(game.players) >= 5:
             try:
                 await bot.edit_message_reply_markup(chat_id=game.chat_id, message_id=game.lobby_message_id, reply_markup=None)
@@ -666,3 +678,56 @@ async def cmd_forceclose(message: types.Message, bot: Bot):
     game_manager.remove_game(chat_id)
     
     await message.answer("🚨 **O'yin majburan to'xtatildi!** Barcha cheklovlar bekor qilindi va guruh ochildi.")
+
+@router.message(Command("groupboard", "gtop"))
+async def cmd_groupboard(message: types.Message):
+    chat_id = message.chat.id
+    lang = await db.get_group_language(chat_id)
+    
+    leaders = await db.get_group_leaderboard(chat_id, 10)
+    
+    if not leaders:
+        if lang == "ru":
+            await message.answer("📊 В этой группе пока нет сыгранных игр.")
+        elif lang == "en":
+            await message.answer("📊 No games have been played in this group yet.")
+        elif lang == "kz":
+            await message.answer("📊 Бұл топта әлі ешқандай ойын ойналмады.")
+        else:
+            await message.answer("📊 Ushbu guruhda hali o'yinlar o'ynalmagan.")
+        return
+        
+    title = "🏆 **Guruh Top 10 O'yinchilari**:\n\n"
+    if lang == "ru":
+        title = "🏆 **Топ-10 игроков этой группы**:\n\n"
+    elif lang == "en":
+        title = "🏆 **Top 10 Players of This Group**:\n\n"
+    elif lang == "kz":
+        title = "🏆 **Бұл топтың таңдаулы 10 ойыншысы**:\n\n"
+        
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    
+    text = title
+    for i, row in enumerate(leaders):
+        medal = medals[i] if i < len(medals) else f"{i+1}."
+        name = row['first_name']
+        username_str = f" (@{row['username']})" if row['username'] else ""
+        
+        # Escape markdown characters in name
+        escaped_name = name
+        for char in ['_', '*', '[', '`']:
+            escaped_name = escaped_name.replace(char, f"\\{char}")
+            
+        played = row['games_played']
+        won = row['games_won']
+        
+        if lang == "ru":
+            text += f"{medal} **{escaped_name}**{username_str}: Победил **{won}** из **{played}** игр\n"
+        elif lang == "en":
+            text += f"{medal} **{escaped_name}**{username_str}: Won **{won}** out of **{played}** games\n"
+        elif lang == "kz":
+            text += f"{medal} **{escaped_name}**{username_str}: **{played}** ойыннан **{won}** жеңіс\n"
+        else:
+            text += f"{medal} **{escaped_name}**{username_str}: **{played}** tadan **{won}** ta g'alaba\n"
+            
+    await message.answer(text, parse_mode="Markdown")

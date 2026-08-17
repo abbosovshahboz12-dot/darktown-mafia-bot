@@ -77,7 +77,8 @@ TEXTS = {
         "game_left_success": "🚪 Siz o'yinni tark etdingiz.",
         "cannot_leave_active": "⚠️ O'yin faol bosqichda bo'lganda uni tark eta olmaysiz!",
         "referral_welcome": "🎁 **Siz taklifnoma orqali qo'shildingiz!** Sizga va taklif qilgan do'stingizga **+50 tanga** bonus taqdim etildi!",
-        "referral_notification": "👥 **Do'stingiz botga qo'shildi!** Siz taklif qilganligingiz uchun **+50 tanga** bonus oldingiz!"
+        "referral_notification": "👥 **Do'stingiz botga qo'shildi!** Siz taklif qilganligingiz uchun **+50 tanga** bonus oldingiz!",
+        "card_purchase_success": "💳 **Karta orqali xarid!** Hisobingizga **{coins}** Dark Coins qo'shildi."
     },
     "ru": {
         "start_private": "👋 **Здравствуйте, {name}!**\n\nДобро пожаловать в бот Darktown Mafia!\n\nЭтот бот используется для организации увлекательных асинхронных игр в **Мафию** в группах. Чтобы начать игру, добавьте бота в группу и отправьте команду `/newgame`.",
@@ -155,7 +156,8 @@ TEXTS = {
         "game_left_success": "🚪 Вы покинули игру.",
         "cannot_leave_active": "⚠️ Вы не можете покинуть игру в активной фазе!",
         "referral_welcome": "🎁 **Вы присоединились по приглашению!** Вам и вашему другу начислено по **+50 монет**!",
-        "referral_notification": "👥 **Ваш друг присоединился по ссылке!** Вы получили бонус **+50 монет**!"
+        "referral_notification": "👥 **Ваш друг присоединился по ссылке!** Вы получили бонус **+50 монет**!",
+        "card_purchase_success": "💳 **Покупка по карте!** На ваш баланс зачислено **{coins}** Dark Coins."
     },
     "en": {
         "start_private": "👋 **Hello, {name}!**\n\nWelcome to Darktown Mafia bot!\n\nThis bot organizes exciting asynchronous **Mafia** games in groups. To start a game, add the bot to a group and send the `/newgame` command.",
@@ -233,7 +235,8 @@ TEXTS = {
         "game_left_success": "🚪 You have left the game.",
         "cannot_leave_active": "⚠️ You cannot leave the game when it is in progress!",
         "referral_welcome": "🎁 **You joined via invitation!** You and your friend received **+50 coins** bonus!",
-        "referral_notification": "👥 **Your friend joined via your link!** You received **+50 coins** bonus!"
+        "referral_notification": "👥 **Your friend joined via your link!** You received **+50 coins** bonus!",
+        "card_purchase_success": "💳 **Card Purchase!** **{coins}** Dark Coins have been added to your balance."
     },
     "kz": {
         "start_private": "👋 **Сәлеметсіз бе, {name}!**\n\nDarktown Mafia ботына қош келдіңіз!\n\nБұл бот топтарда қызықты асинхронды **Мафия** ойындарын ұйымдастыруға арналған. Ойынды бастау үшін оны топқа қосып, `/newgame` командасын жіберіңіз.",
@@ -311,7 +314,8 @@ TEXTS = {
         "game_left_success": "🚪 Сіз ойыннан шықтыңыз.",
         "cannot_leave_active": "⚠️ Белсенді кезеңде ойыннан шыға алмайсыз!",
         "referral_welcome": "🎁 **Сіз шақыру арқылы қосылдыңыз!** Сізге және досыңызға **+50 монета** бонус берілді!",
-        "referral_notification": "👥 **Досыңыз сіздің сілтемеңізбен қосылды!** Сіз **+50 монета** бонус алдыңыз!"
+        "referral_notification": "👥 **Досыңыз сіздің сілтемеңізбен қосылды!** Сіз **+50 монета** бонус алдыңыз!",
+        "card_purchase_success": "💳 **Карта арқылы сатып алу!** Балансыңызға **{coins}** Dark Coins қосылды."
     }
 }
 

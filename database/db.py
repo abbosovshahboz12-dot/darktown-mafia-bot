@@ -788,3 +788,59 @@ async def increment_daily_mafia_killed(user_id: int):
         await db.execute("UPDATE users SET daily_mafia_killed = daily_mafia_killed + 1 WHERE user_id = ?", (user_id,))
         await db.commit()
         await unlock_achievement(user_id, "mafia_slayer")
+
+# --- TELEGRAM BACKUP & RESTORE ---
+import logging
+
+async def restore_db_backup(bot):
+    backup_chat = os.getenv("BACKUP_CHAT_ID")
+    if not backup_chat:
+        logging.info("BACKUP_CHAT_ID aniqlanmadi, zaxiradan tiklash o'tkazib yuborildi.")
+        return False
+    try:
+        chat = await bot.get_chat(backup_chat)
+        if chat.pinned_message and chat.pinned_message.document:
+            doc = chat.pinned_message.document
+            if doc.file_name == "darktown.db":
+                os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+                await bot.download(doc.file_id, destination=DB_PATH)
+                logging.info("Database zaxiradan muvaffaqiyatli tiklandi!")
+                return True
+    except Exception as e:
+        logging.error(f"Error restoring DB backup: {e}")
+    return False
+
+async def save_db_backup(bot):
+    backup_chat = os.getenv("BACKUP_CHAT_ID")
+    if not backup_chat or not os.path.exists(DB_PATH):
+        return False
+    try:
+        from aiogram.types import FSInputFile
+        file_to_send = FSInputFile(DB_PATH, filename="darktown.db")
+        msg = await bot.send_document(
+            chat_id=backup_chat,
+            document=file_to_send,
+            caption=f"Darktown DB Auto-Backup\nSana: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        await bot.pin_chat_message(chat_id=backup_chat, message_id=msg.message_id)
+        logging.info("Database muvaffaqiyatli Telegram-ga yuklandi va pin qilindi!")
+        return True
+    except Exception as e:
+        logging.error(f"Error saving DB backup: {e}")
+    return False
+
+async def get_group_leaderboard(chat_id: int, limit: int = 10):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        query = """
+            SELECT gh.user_id, u.username, u.first_name, COUNT(gh.id) as games_played, SUM(gh.is_winner) as games_won
+            FROM game_history gh
+            JOIN users u ON gh.user_id = u.user_id
+            WHERE gh.room_id = ?
+            GROUP BY gh.user_id
+            ORDER BY games_won DESC, games_played ASC
+            LIMIT ?
+        """
+        async with db.execute(query, (str(chat_id), limit)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]

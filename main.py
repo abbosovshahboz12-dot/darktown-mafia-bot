@@ -11,6 +11,34 @@ from database import db
 # Import handlers
 from handlers import group_handlers, private_handlers, common
 
+from aiogram import BaseMiddleware
+from aiogram.types import TelegramObject, Message, CallbackQuery
+from typing import Callable, Dict, Any, Awaitable
+
+class BanCheckMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any]
+    ) -> Any:
+        user = None
+        if isinstance(event, Message):
+            user = event.from_user
+        elif isinstance(event, CallbackQuery):
+            user = event.from_user
+
+        if user:
+            if await db.is_user_banned(user.id):
+                if isinstance(event, Message):
+                    if event.chat.type == "private":
+                        await event.answer("⚠️ Siz botda bloklangansiz! Xizmatlardan foydalana olmaysiz.")
+                elif isinstance(event, CallbackQuery):
+                    await event.answer("⚠️ Siz bloklangansiz!", show_alert=True)
+                return
+        return await handler(event, data)
+
+
 # Initialize logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -648,8 +676,7 @@ async def post_game_vote_handler(request):
         logging.error(f"Error in post_game_vote_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
-# In-memory Ghost Chat store
-ghost_chats = {}
+# In-memory Ghost Chat store is now managed inside game_manager
 
 async def set_language_handler(request):
     try:
@@ -848,13 +875,7 @@ async def mock_payment_success_handler(request):
         try:
             bot = request.app['bot']
             lang = await db.get_user_language(user_id)
-            msg = f"💳 **Karta orqali xarid!** Hisobingizga **{coins}** Dark Coins qo'shildi."
-            if lang == "ru":
-                msg = f"💳 **Покупка по карте!** На ваш баланс зачислено **{coins}** Dark Coins."
-            elif lang == "en":
-                msg = f"💳 **Card Purchase!** **{coins}** Dark Coins have been added to your balance."
-            elif lang == "kz":
-                msg = f"💳 **Карта арқылы сатып алу!** Балансыңызға **{coins}** Dark Coins қосылды."
+            msg = get_text(lang, "card_purchase_success", coins=coins)
             await bot.send_message(user_id, msg, parse_mode="Markdown")
         except Exception:
             pass
@@ -883,18 +904,18 @@ async def ghost_chat_send_handler(request):
             return web.json_response({"error": "Faqat vafot etgan (arvoxlar) chatga yozishi mumkin!"}, status=400)
             
         chat_id = game.chat_id
-        if chat_id not in ghost_chats:
-            ghost_chats[chat_id] = []
+        if chat_id not in game_manager.ghost_chats:
+            game_manager.ghost_chats[chat_id] = []
             
         msg = {
             "sender": player.name,
             "text": text,
             "timestamp": datetime.now().strftime("%H:%M")
         }
-        ghost_chats[chat_id].append(msg)
+        game_manager.ghost_chats[chat_id].append(msg)
         
-        if len(ghost_chats[chat_id]) > 50:
-            ghost_chats[chat_id].pop(0)
+        if len(game_manager.ghost_chats[chat_id]) > 50:
+            game_manager.ghost_chats[chat_id].pop(0)
             
         return web.json_response({"success": True})
     except Exception as e:
@@ -913,11 +934,71 @@ async def ghost_chat_messages_handler(request):
             return web.json_response({"messages": []})
             
         chat_id = game.chat_id
-        msgs = ghost_chats.get(chat_id, [])
+        msgs = game_manager.ghost_chats.get(chat_id, [])
             
         return web.json_response({"messages": msgs})
     except Exception as e:
         logging.error(f"Error in ghost_chat_messages_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def mafia_chat_send_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        text = data.get("text", "").strip()
+        
+        if not user_id or not text:
+            return web.json_response({"error": "user_id va matn kiritilishi shart"}, status=400)
+            
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game or game.phase != "night":
+            return web.json_response({"error": "Hozir tungi bosqich emas!"}, status=400)
+            
+        player = game.players.get(user_id)
+        if not player or not player.is_alive or player.role not in ["Mafia", "Don"]:
+            return web.json_response({"error": "Faqat tirik mafiya a'zolari yozishi mumkin!"}, status=403)
+            
+        chat_id = game.chat_id
+        if chat_id not in game_manager.mafia_chats:
+            game_manager.mafia_chats[chat_id] = []
+            
+        msg = {
+            "sender": player.name,
+            "text": text,
+            "timestamp": datetime.now().strftime("%H:%M")
+        }
+        game_manager.mafia_chats[chat_id].append(msg)
+        
+        if len(game_manager.mafia_chats[chat_id]) > 50:
+            game_manager.mafia_chats[chat_id].pop(0)
+            
+        return web.json_response({"success": True})
+    except Exception as e:
+        logging.error(f"Error in mafia_chat_send_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def mafia_chat_messages_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        from game.manager import game_manager
+        game = game_manager.get_game_by_player(user_id)
+        if not game:
+            return web.json_response({"messages": []})
+            
+        player = game.players.get(user_id)
+        if not player or player.role not in ["Mafia", "Don"]:
+            return web.json_response({"messages": []})
+            
+        chat_id = game.chat_id
+        msgs = game_manager.mafia_chats.get(chat_id, [])
+            
+        return web.json_response({"messages": msgs})
+    except Exception as e:
+        logging.error(f"Error in mafia_chat_messages_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
 # TMA Matchmaking & Party Handlers
@@ -1260,6 +1341,8 @@ def setup_web_server():
     app.router.add_post("/api/payment/mock-success", mock_payment_success_handler)
     app.router.add_post("/api/game/ghost-chat/send", ghost_chat_send_handler)
     app.router.add_get("/api/game/ghost-chat/messages", ghost_chat_messages_handler)
+    app.router.add_post("/api/game/mafia-chat/send", mafia_chat_send_handler)
+    app.router.add_get("/api/game/mafia-chat/messages", mafia_chat_messages_handler)
     
     # TMA Matchmaking & Party Routing
     app.router.add_post("/api/rooms/create", create_room_handler)
@@ -1283,13 +1366,20 @@ def setup_web_server():
     return app
 
 async def main():
-    # 1. Initialize SQLite Database
+    # 1. Setup Telegram Bot
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher()
+    
+    # 2. Restore Database Backup if BACKUP_CHAT_ID is set
+    await db.restore_db_backup(bot)
+    
+    # 3. Initialize SQLite Database
     await db.init_db()
     logging.info("Database initialized successfully.")
     
-    # 2. Setup Telegram Bot
-    bot = Bot(token=BOT_TOKEN)
-    dp = Dispatcher()
+    # Register ban check middleware
+    dp.message.outer_middleware(BanCheckMiddleware())
+    dp.callback_query.outer_middleware(BanCheckMiddleware())
     
     # Register routers
     dp.include_router(common.router)

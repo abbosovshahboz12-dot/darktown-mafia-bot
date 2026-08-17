@@ -4,6 +4,8 @@ from game.models import Game, Player
 class GameManager:
     def __init__(self):
         self.games: Dict[int, Game] = {}
+        self.ghost_chats: Dict[int, list] = {}
+        self.mafia_chats: Dict[int, list] = {}
 
     def get_game(self, chat_id: int) -> Optional[Game]:
         return self.games.get(chat_id)
@@ -26,6 +28,10 @@ class GameManager:
                 del self.games[room_id]
             if chat_id in self.games:
                 del self.games[chat_id]
+        if chat_id in self.ghost_chats:
+            del self.ghost_chats[chat_id]
+        if chat_id in self.mafia_chats:
+            del self.mafia_chats[chat_id]
 
     def get_game_by_player(self, user_id: int) -> Optional[Game]:
         for game in self.games.values():
