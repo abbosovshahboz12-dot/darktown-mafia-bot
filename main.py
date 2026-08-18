@@ -715,9 +715,9 @@ async def checkout_handler(request):
         package_key = data.get("package_key")
         
         packages = {
-            "coins_100": {"name": "100 Dark Coins", "description": "100 ta tanga paketi", "price_stars": 50, "coins": 100},
-            "coins_500": {"name": "500 Dark Coins", "description": "500 ta tanga paketi", "price_stars": 200, "coins": 500},
-            "coins_1000": {"name": "1000 Dark Coins", "description": "1000 ta tanga paketi", "price_stars": 350, "coins": 1000}
+            "coins_100": {"name": "100 Dark Coins", "description": "100 ta tanga paketi", "price_stars": 25, "coins": 100},
+            "coins_500": {"name": "500 Dark Coins", "description": "500 ta tanga paketi", "price_stars": 100, "coins": 500},
+            "coins_1000": {"name": "1000 Dark Coins", "description": "1000 ta tanga paketi", "price_stars": 175, "coins": 1000}
         }
         
         if not user_id or package_key not in packages:
