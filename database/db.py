@@ -608,7 +608,7 @@ async def get_party_members(party_id: str):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         query = """
-            SELECT p.*, u.username, u.first_name, u.level FROM parties p
+            SELECT p.*, u.user_id, u.username, u.first_name, u.level FROM parties p
             JOIN users u ON p.member_id = u.user_id
             WHERE p.party_id = ?
         """

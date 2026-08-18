@@ -371,6 +371,7 @@ body {
     width: 80px;
     height: 80px;
     background: radial-gradient(circle, rgba(255, 255, 255, 0.01) 0%, transparent 70%);
+    pointer-events: none;
 }
 
 .item-icon {
