@@ -600,12 +600,12 @@ async def cmd_group_rules(message: types.Message):
     lang = await db.get_group_language(message.chat.id)
     await message.answer(get_text(lang, "rules_text"), parse_mode="Markdown")
 
-@router.message(Command("friend"))
+@router.message(Command("friend", "friends"))
 async def cmd_group_friend(message: types.Message):
     lang = await db.get_group_language(message.chat.id)
     
     kb = InlineKeyboardBuilder()
-    kb.add(types.InlineKeyboardButton(text="🎮 Rasmiy O'yin Guruhi" if lang=="uz" else "🎮 Официальная группа" if lang=="ru" else "🎮 Official Game Group" if lang=="en" else "🎮 Ресми ойын тобы", url="https://t.me/+jJAWhi60hLxjZjI6"))
+    kb.add(types.InlineKeyboardButton(text="🎮 Rasmiy O'yin Guruhi" if lang=="uz" else "🎮 Официальная группа" if lang=="ru" else "🎮 Official Game Group" if lang=="en" else "🎮 Ресми ойын тобы", url="https://t.me/+OHOeijnLYglkOTli"))
     kb.add(types.InlineKeyboardButton(text="📢 Admin Kanali" if lang=="uz" else "📢 Канал Админа" if lang=="ru" else "📢 Admin Channel" if lang=="en" else "📢 Админ арнасы", url="https://t.me/sh_abbosov"))
     kb.adjust(1)
     
