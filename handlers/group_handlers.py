@@ -762,3 +762,34 @@ async def cmd_groupboard(message: types.Message):
             text += f"{medal} **{escaped_name}**{username_str}: **{played}** tadan **{won}** ta g'alaba\n"
             
     await message.answer(text, parse_mode="Markdown")
+
+# Enforce group chat rules (mute on night phase, silence dead players)
+@router.message()
+async def handle_group_chat_rules(message: types.Message, bot: Bot):
+    # Ignore commands
+    if message.text and message.text.startswith("/"):
+        return
+        
+    chat_id = message.chat.id
+    game = game_manager.get_game(chat_id)
+    if not game or game.phase == "ended" or game.phase == "lobby":
+        return
+        
+    user_id = message.from_user.id
+    player = game.players.get(user_id)
+    
+    # 1. If player is dead, delete their message (dead players don't talk)
+    if player and not player.is_alive:
+        try:
+            await bot.delete_message(chat_id, message.message_id)
+        except Exception:
+            pass
+        return
+        
+    # 2. If phase is night, delete players' messages (city is asleep)
+    if game.phase == "night":
+        try:
+            await bot.delete_message(chat_id, message.message_id)
+        except Exception:
+            pass
+        return
