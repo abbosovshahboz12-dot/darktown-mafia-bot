@@ -107,6 +107,14 @@
                     <button class="btn btn-sm btn-primary" id="btn-copy-ref" style="width:100%;">Sizning Havolangizni Nusxalash</button>
                 </div>
 
+                <!-- VIP Custom Background Card (Hidden by default, shown for VIPs) -->
+                <div class="referral-card" id="vip-bg-card" style="display:none; background:linear-gradient(135deg, rgba(255,196,57,0.1) 0%, rgba(255,196,57,0.05) 100%); border:1px solid rgba(255,196,57,0.3); padding:16px; border-radius:12px; margin-bottom:20px; text-align:center;">
+                    <div style="font-size:16px; font-weight:bold; margin-bottom:4px; color:#ffc439;">👑 VIP Shaxsiy Orqa Fon</div>
+                    <div style="font-size:12px; color:#cbd5e1; margin-bottom:12px;">Mini App foniga qo'yish uchun rasm URL havolasini kiriting:</div>
+                    <input type="text" id="vip-bg-url" placeholder="https://example.com/rasm.jpg" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:13px; padding:10px; margin-bottom:10px; text-align:center;">
+                    <button class="btn btn-sm btn-primary" id="btn-save-vip-bg" style="width:100%; background:#ffc439; color:#000;">Fonga o'rnatish</button>
+                </div>
+
                 <!-- Achievements -->
                 <div class="section-title" id="lbl-achievements-title">Erishilgan Yutuqlar</div>
                 <div class="achievements-list" id="achievements-container" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:10px; margin-bottom:20px;">
@@ -217,6 +225,26 @@
                 <div class="section-title" id="lbl-inventory-title" style="margin-top: 24px;">Sizning Inventaringiz</div>
                 <div class="inventory-list" id="inventory-list">
                     <div class="no-data">Inventar bo'sh.</div>
+                </div>
+
+                <!-- VIP Status Section -->
+                <div class="section-title" id="lbl-vip-title" style="margin-top: 24px;">👑 VIP Status</div>
+                <div class="coins-list" style="margin-bottom: 16px;">
+                    <div class="coin-package-card" style="border: 1px solid #ffc439; background: linear-gradient(135deg, rgba(255, 196, 57, 0.08) 0%, rgba(0, 0, 0, 0.25) 100%);">
+                        <div class="coin-info-group">
+                            <div class="coin-icon" style="font-size: 2.2rem;">👑</div>
+                            <div class="coin-details">
+                                <div class="coin-name" style="color: #ffc439; font-weight: bold;">1 Oylik VIP Status</div>
+                                <div class="coin-desc" id="lbl-vip-desc">Oltin ramka, 2x XP yutuqlar, shaxsiy orqa fon rasmi va Topda ajralib turish.</div>
+                            </div>
+                        </div>
+                        <div class="coin-action-group">
+                            <div class="coin-price" id="lbl-vip-price">⭐️ 150 Stars / $3.00</div>
+                            <div class="coin-buttons">
+                                <button class="btn-pay-option btn-stars btn-checkout" data-pack="vip_1month" style="background: #ffc439; color: #000; font-weight: bold;">⭐️ Telegram Stars</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Buy Coins Packages -->

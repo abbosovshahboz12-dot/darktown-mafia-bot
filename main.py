@@ -66,6 +66,7 @@ async def get_profile_handler(request):
             
         stats = await db.get_user_stats(user_id)
         inventory = await db.get_inventory(user_id)
+        achievements = await db.get_user_achievements(user_id)
         
         is_admin = (user_id == ADMIN_ID)
         
@@ -73,6 +74,7 @@ async def get_profile_handler(request):
             "user": user,
             "stats": stats,
             "inventory": inventory,
+            "achievements": achievements,
             "isAdmin": is_admin
         })
     except Exception as e:
@@ -692,6 +694,23 @@ async def set_language_handler(request):
         logging.error(f"Error in set_language_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+async def set_custom_bg_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        bg_url = data.get("bg_url", "").strip()
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        success = await db.set_custom_bg(user_id, bg_url)
+        if success:
+            return web.json_response({"success": True, "message": "Orqa fon muvaffaqiyatli o'zgartirildi!"})
+        else:
+            return web.json_response({"error": "Siz VIP emassiz yoki xatolik yuz berdi"}, status=403)
+    except Exception as e:
+        logging.error(f"Error in set_custom_bg_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 async def daily_claim_handler(request):
     try:
         data = await request.json()
@@ -717,7 +736,8 @@ async def checkout_handler(request):
         packages = {
             "coins_100": {"name": "100 Dark Coins", "description": "100 ta tanga paketi", "price_stars": 25, "coins": 100},
             "coins_500": {"name": "500 Dark Coins", "description": "500 ta tanga paketi", "price_stars": 100, "coins": 500},
-            "coins_1000": {"name": "1000 Dark Coins", "description": "1000 ta tanga paketi", "price_stars": 175, "coins": 1000}
+            "coins_1000": {"name": "1000 Dark Coins", "description": "1000 ta tanga paketi", "price_stars": 175, "coins": 1000},
+            "vip_1month": {"name": "1 Month VIP Status", "description": "1 oylik VIP obuna (Oltin ramka, 2x XP, shaxsiy fon)", "price_stars": 150, "coins": 0}
         }
         
         if not user_id or package_key not in packages:
@@ -1335,6 +1355,7 @@ def setup_web_server():
     app.router.add_post("/api/game/action", post_game_action_handler)
     app.router.add_post("/api/game/vote", post_game_vote_handler)
     app.router.add_post("/api/profile/language", set_language_handler)
+    app.router.add_post("/api/profile/custom-bg", set_custom_bg_handler)
     app.router.add_post("/api/daily-claim", daily_claim_handler)
     app.router.add_post("/api/payment/checkout", checkout_handler)
     app.router.add_get("/payment/mock", mock_payment_handler)

@@ -142,6 +142,20 @@ async def init_db():
         except Exception:
             pass
             
+        # VIP migrations
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN is_vip INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN vip_expires_at TEXT")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN custom_bg TEXT")
+        except Exception:
+            pass
+            
         await db.commit()
 
 async def get_user(user_id: int, username: str = None, first_name: str = None):
@@ -150,6 +164,19 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
         async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             if row:
+                # Expire VIP if past expiry
+                is_vip = row['is_vip'] or 0
+                vip_expires_at = row['vip_expires_at']
+                if is_vip == 1 and vip_expires_at:
+                    try:
+                        from datetime import datetime
+                        expiry = datetime.strptime(vip_expires_at, "%Y-%m-%d %H:%M:%S")
+                        if datetime.now() > expiry:
+                            await db.execute("UPDATE users SET is_vip = 0 WHERE user_id = ?", (user_id,))
+                            await db.commit()
+                    except Exception:
+                        pass
+                        
                 # Update username/first_name if they changed
                 if username or first_name:
                     await db.execute(
@@ -184,11 +211,15 @@ async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
         
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT xp, level, coins FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT xp, level, coins, is_vip FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             if not row:
                 return
             
+            is_vip = row['is_vip'] or 0
+            if is_vip == 1:
+                xp_amount *= 2
+                
             current_xp = row['xp']
             current_level = row['level']
             new_coins = row['coins'] + coins_amount
@@ -216,19 +247,16 @@ async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
                 (new_xp, new_level, new_coins, user_id)
             )
             await db.commit()
-
-            if new_coins >= 500:
-                async with db.execute("SELECT 1 FROM user_achievements WHERE user_id = ? AND achievement_key = 'rich_mafia'", (user_id,)) as cursor:
-                    if not await cursor.fetchone():
-                        unlocked_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        await db.execute(
-                            "INSERT INTO user_achievements (user_id, achievement_key, unlocked_at) VALUES (?, 'rich_mafia', ?)",
-                            (user_id, unlocked_at)
-                        )
-                        await db.execute("UPDATE users SET coins = coins + 200 WHERE user_id = ?", (user_id,))
-                        await db.commit()
             
-            return leveled_up, new_level
+    # Check achievements outside active transaction
+    if new_coins >= 500:
+        await unlock_achievement(user_id, "rich_mafia")
+    if new_level >= 10:
+        await unlock_achievement(user_id, "lvl_10")
+    if new_level >= 100:
+        await unlock_achievement(user_id, "lvl_100")
+            
+    return leveled_up, new_level
 
 async def get_user_stats(user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
@@ -238,6 +266,7 @@ async def get_user_stats(user_id: int):
             return [dict(row) for row in rows]
 
 async def update_stats(user_id: int, role: str, won: bool):
+    keys_to_unlock = []
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             "SELECT games_played, games_won FROM stats WHERE user_id = ? AND role = ?",
@@ -257,6 +286,30 @@ async def update_stats(user_id: int, role: str, won: bool):
                     (user_id, role, 1 if won else 0)
                 )
         await db.commit()
+        
+        if won:
+            # Get stats for this user
+            async with db.execute("SELECT role, games_won FROM stats WHERE user_id = ?", (user_id,)) as cursor:
+                rows = await cursor.fetchall()
+                stats_dict = {r[0]: r[1] for r in rows}
+                
+            mafia_wins = stats_dict.get('mafia', 0) + stats_dict.get('don', 0)
+            det_wins = stats_dict.get('detective', 0)
+            doc_wins = stats_dict.get('doctor', 0)
+            bg_wins = stats_dict.get('bodyguard', 0)
+            maniac_wins = stats_dict.get('maniac', 0)
+            
+            if mafia_wins >= 5:
+                keys_to_unlock.append("mafia_veteran")
+            if det_wins >= 5:
+                keys_to_unlock.append("detective_holmes")
+            if (doc_wins + bg_wins) >= 5:
+                keys_to_unlock.append("guardian_angel")
+            if maniac_wins >= 5:
+                keys_to_unlock.append("serial_killer")
+                
+    for key in keys_to_unlock:
+        await unlock_achievement(user_id, key)
 
 async def get_leaderboard(limit: int = 10):
     async with aiosqlite.connect(DB_PATH) as db:
@@ -634,6 +687,33 @@ async def is_user_banned(user_id: int) -> bool:
             row = await cursor.fetchone()
             return (row[0] == 1) if row else False
 
+async def upgrade_to_vip(user_id: int, days: int = 30) -> bool:
+    from datetime import datetime, timedelta
+    expiry = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute(
+                "UPDATE users SET is_vip = 1, vip_expires_at = ? WHERE user_id = ?",
+                (expiry, user_id)
+            )
+            await db.commit()
+            return True
+        except Exception:
+            return False
+
+async def set_custom_bg(user_id: int, bg_url: str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            async with db.execute("SELECT is_vip FROM users WHERE user_id = ?", (user_id,)) as cursor:
+                row = await cursor.fetchone()
+                if not row or row[0] != 1:
+                    return False
+            await db.execute("UPDATE users SET custom_bg = ? WHERE user_id = ?", (bg_url, user_id))
+            await db.commit()
+            return True
+        except Exception:
+            return False
+
 async def get_all_user_ids() -> list[int]:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT user_id FROM users") as cursor:
@@ -660,24 +740,54 @@ async def get_game_history(user_id: int):
 
 ACHIEVEMENTS_LIST = {
     "first_win": {
-        "name_uz": "Birinchi G'alaba", "name_ru": "Первая Победа",
-        "desc_uz": "Mafiya o'yinida 1-marta g'alaba qozoning", "desc_ru": "Выиграйте первую игру",
-        "reward": 50
+        "name_uz": "Birinchi G'alaba", "name_ru": "Первая Победа", "name_en": "First Win", "name_kz": "Бірінші Жеңіс",
+        "desc_uz": "Mafiya o'yinida 1-marta g'alaba qozonish", "desc_ru": "Выиграть 1 игру", "desc_en": "Win 1 game", "desc_kz": "1 ойында жеңіске жету",
+        "icon": "🏆", "reward": 50
     },
     "mafia_slayer": {
-        "name_uz": "Mafiya Qotili", "name_ru": "Истребитель Мафии",
-        "desc_uz": "O'yinchi sifatida mafiya a'zolarini o'ldiring", "desc_ru": "Убейте мафию будучи мирным",
-        "reward": 100
+        "name_uz": "Mafiya Qotili", "name_ru": "Истребитель Мафии", "name_en": "Mafia Slayer", "name_kz": "Мафия Қолынан",
+        "desc_uz": "Tinch aholi bo'lib mafiyani o'ldirish", "desc_ru": "Убить мафию будучи мирным", "desc_en": "Kill a mafia member as a civilian", "desc_kz": "Бейбіт тұрғын болып мафияны өлтіру",
+        "icon": "⚔️", "reward": 100
     },
     "active_player": {
-        "name_uz": "Faol O'yinchi", "name_ru": "Активный Игрок",
-        "desc_uz": "Jami 10 ta o'yinda qatnashish", "desc_ru": "Сыграйте всего 10 игр",
-        "reward": 150
+        "name_uz": "Faol O'yinchi", "name_ru": "Активный Игрок", "name_en": "Active Player", "name_kz": "Белсенді Ойыншы",
+        "desc_uz": "Jami 10 ta o'yinda qatnashish", "desc_ru": "Сыграть всего 10 игр", "desc_en": "Play a total of 10 games", "desc_kz": "Барлығы 10 ойын ойнау",
+        "icon": "🎮", "reward": 150
     },
     "rich_mafia": {
-        "name_uz": "Boy Mafioz", "name_ru": "Богатый Мафиози",
-        "desc_uz": "Jami 500 tanga yig'ing", "desc_ru": "Соберите 500 монет",
-        "reward": 200
+        "name_uz": "Boy Mafioz", "name_ru": "Богатый Мафиози", "name_en": "Rich Mafia", "name_kz": "Бай Мафиози",
+        "desc_uz": "Jami 500 tanga yig'ish", "desc_ru": "Собрать 500 монет", "desc_en": "Accumulate 500 coins", "desc_kz": "Барлығы 500 монета жинау",
+        "icon": "💰", "reward": 200
+    },
+    "mafia_veteran": {
+        "name_uz": "Mafiya Veterani", "name_ru": "Ветеран Мафии", "name_en": "Mafia Veteran", "name_kz": "Мафия Ардагері",
+        "desc_uz": "Mafiya/Don bo'lib 5 ta o'yinda yutish", "desc_ru": "5 побед за Мафию/Дона", "desc_en": "Win 5 games as Mafia/Don", "desc_kz": "Мафия/Дон болып 5 ойынды жеңу",
+        "icon": "🕶️", "reward": 100
+    },
+    "detective_holmes": {
+        "name_uz": "Komissar Xolms", "name_ru": "Комиссар Холмс", "name_en": "Detective Holmes", "name_kz": "Комиссар Холмс",
+        "desc_uz": "Komissar bo'lib 5 ta o'yinda yutish", "desc_ru": "5 побед за Комиссара", "desc_en": "Win 5 games as Detective", "desc_kz": "Комиссар болып 5 ойынды жеңу",
+        "icon": "🔍", "reward": 100
+    },
+    "guardian_angel": {
+        "name_uz": "Himoyachi Farishta", "name_ru": "Ангел-Хранитель", "name_en": "Guardian Angel", "name_kz": "Қорғаушы Періште",
+        "desc_uz": "Shifokor/Tansoqchi bo'lib 5 marta yutish", "desc_ru": "5 побед за Доктора/Телохранителя", "desc_en": "Win 5 games as Doctor/Bodyguard", "desc_kz": "Дәрігер/Қорғаушы болып 5 рет жеңу",
+        "icon": "👼", "reward": 100
+    },
+    "serial_killer": {
+        "name_uz": "Telba Qotil", "name_ru": "Безумный Убийца", "name_en": "Maniac Killer", "name_kz": "Жынды Қанішер",
+        "desc_uz": "Telba (Maniac) bo'lib 5 marta yutish", "desc_ru": "5 побед за Маньяка", "desc_en": "Win 5 games as Maniac", "desc_kz": "Маньяк болып 5 рет жеңу",
+        "icon": "🔪", "reward": 100
+    },
+    "lvl_10": {
+        "name_uz": "Tajribali Jangchi", "name_ru": "Опытный Боец", "name_en": "Seasoned Fighter", "name_kz": "Тәжірибелі Жауынгер",
+        "desc_uz": "10-darajaga erishish", "desc_ru": "Достичь 10 уровня", "desc_en": "Reach Level 10", "desc_kz": "10-деңгейге жету",
+        "icon": "🎖️", "reward": 150
+    },
+    "lvl_100": {
+        "name_uz": "Afsonaviy Master", "name_ru": "Легендарный Мастер", "name_en": "Legendary Master", "name_kz": "Аңызға айналған Шебер",
+        "desc_uz": "100-darajaga erishish", "desc_ru": "Достичь 100 уровня", "desc_en": "Reach Level 100", "desc_kz": "100-деңгейге жету",
+        "icon": "👑", "reward": 500
     }
 }
 
@@ -694,8 +804,13 @@ async def get_user_achievements(user_id: int):
                 "key": key,
                 "name_uz": info["name_uz"],
                 "name_ru": info["name_ru"],
+                "name_en": info.get("name_en", key),
+                "name_kz": info.get("name_kz", key),
                 "desc_uz": info["desc_uz"],
                 "desc_ru": info["desc_ru"],
+                "desc_en": info.get("desc_en", ""),
+                "desc_kz": info.get("desc_kz", ""),
+                "icon": info.get("icon", "🏆"),
                 "reward": info["reward"],
                 "unlocked": is_unlocked,
                 "unlocked_at": unlocked.get(key) if is_unlocked else None

@@ -217,10 +217,33 @@ async function loadProfile() {
         // Render inventory
         renderInventory(data.inventory, shieldActive);
         
+        // VIP Checks
+        const isVip = data.user.is_vip === 1;
+        const avatarEl = document.getElementById('user-avatar');
+        const bgCardEl = document.getElementById('vip-bg-card');
+        const bgInputEl = document.getElementById('vip-bg-url');
+        
+        if (isVip) {
+            avatarEl.style.border = '3px solid #ffc439';
+            avatarEl.style.boxShadow = '0 0 15px rgba(255, 196, 57, 0.6)';
+            bgCardEl.style.display = 'block';
+            if (data.user.custom_bg) {
+                bgInputEl.value = data.user.custom_bg;
+                document.body.style.backgroundImage = `url(${data.user.custom_bg})`;
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundPosition = 'center';
+            }
+        } else {
+            avatarEl.style.border = 'none';
+            avatarEl.style.boxShadow = 'none';
+            bgCardEl.style.display = 'none';
+            document.body.style.backgroundImage = '';
+        }
+        
         // Update localization and fields
         updateLang(data.user.language || 'uz');
         updateDailyClaimTimer(data.user.last_daily_claim);
-        renderAchievements(data.stats, data.user.level);
+        renderAchievements(data.achievements);
         loadDailyQuests();
         loadGameHistory();
         
@@ -1909,63 +1932,39 @@ function updateLang(lang) {
     if (calcTitle) calcTitle.innerText = "🎮 " + t("calc_title");
 }
 
-function renderAchievements(stats, level) {
+function renderAchievements(achievements) {
     const container = document.getElementById('achievements-container');
     container.innerHTML = '';
     
-    // Check stats
-    let totalWins = 0;
-    let mafiaWins = 0;
-    let detectiveWins = 0;
-    let doctorWins = 0;
-    let bodyguardWins = 0;
-    let maniacWins = 0;
-    
-    if (stats && stats.length > 0) {
-        stats.forEach(s => {
-            totalWins += s.games_won;
-            const role = s.role.toLowerCase();
-            if (role === 'mafia' || role === 'don') mafiaWins += s.games_won;
-            if (role === 'detective') detectiveWins += s.games_won;
-            if (role === 'doctor') doctorWins += s.games_won;
-            if (role === 'bodyguard') bodyguardWins += s.games_won;
-            if (role === 'maniac') maniacWins += s.games_won;
-        });
+    if (!achievements || achievements.length === 0) {
+        container.innerHTML = '<div class="no-data">Yutuqlar yuklanmadi.</div>';
+        return;
     }
-    
-    const achievements = [
-        { id: "first_win", name: "Birinchi G'alaba", name_ru: "Первая Победа", name_en: "First Win", name_kz: "Бірінші Жеңіс", desc: "1 ta o'yinda g'alaba qozonish", desc_ru: "Выиграть 1 игру", desc_en: "Win 1 game", desc_kz: "1 ойында жеңіске жету", icon: "🏆", active: totalWins >= 1 },
-        { id: "mafia_veteran", name: "Mafiya Veterani", name_ru: "Ветеран Мафии", name_en: "Mafia Veteran", name_kz: "Мафия Ардагері", desc: "Mafiya/Don sifatida 5 ta g'alaba", desc_ru: "5 побед за Мафию/Дона", desc_en: "5 wins as Mafia/Don", desc_kz: "Мафия/Дон ретінде 5 жеңіс", icon: "🕶️", active: mafiaWins >= 5 },
-        { id: "detective_holmes", name: "Komissar Xolms", name_ru: "Комиссар Холмс", name_en: "Detective Holmes", name_kz: "Комиссар Холмс", desc: "Komissar sifatida 5 ta g'alaba", desc_ru: "5 побед за Комиссара", desc_en: "5 wins as Detective", desc_kz: "Комиссар ретінде 5 жеңіс", icon: "🔍", active: detectiveWins >= 5 },
-        { id: "guardian_angel", name: "Himoyachi Farishta", name_ru: "Ангел-Хранитель", name_en: "Guardian Angel", name_kz: "Қорғаушы Періште", desc: "Shifokor/Tansoqchi sifatida 5 ta g'alaba", desc_ru: "5 побед за Доктора/Телохранителя", desc_en: "5 wins as Doctor/Bodyguard", desc_kz: "Дәрігер/Қорғаушы ретінде 5 жеңіс", icon: "👼", active: (doctorWins + bodyguardWins) >= 5 },
-        { id: "serial_killer", name: "Telba Qotil", name_ru: "Безумный Убийца", name_en: "Maniac Killer", name_kz: "Жынды Қанішер", desc: "Telba sifatida 5 ta g'alaba", desc_ru: "5 побед за Маньяка", desc_en: "5 wins as Maniac", desc_kz: "Маньяк ретінде 5 жеңіс", icon: "🔪", active: maniacWins >= 5 },
-        { id: "lvl_10", name: "Tajribali Jangchi", name_ru: "Опытный Боец", name_en: "Seasoned Fighter", name_kz: "Тәжірибелі Жауынгер", desc: "10-darajaga erishish", desc_ru: "Достичь 10 уровня", desc_en: "Reach Level 10", desc_kz: "10-деңгейге жету", icon: "🎖️", active: level >= 10 },
-        { id: "lvl_100", name: "Afsonaviy Master", name_ru: "Легендарный Мастер", name_en: "Legendary Master", name_kz: "Аңызға айналған Шебер", desc: "100-darajaga erishish", desc_ru: "Достичь 100 уровня", desc_en: "Reach Level 100", desc_kz: "100-деңгейге жету", icon: "👑", active: level >= 100 }
-    ];
     
     achievements.forEach(ach => {
         const item = document.createElement('div');
         item.className = 'achievement-badge';
-        item.style.opacity = ach.active ? '1' : '0.35';
-        item.style.filter = ach.active ? 'none' : 'grayscale(100%)';
-        item.style.background = ach.active ? 'rgba(0, 242, 254, 0.1)' : 'rgba(255, 255, 255, 0.02)';
-        item.style.border = ach.active ? '1px solid rgba(0, 242, 254, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)';
+        item.style.opacity = ach.unlocked ? '1' : '0.35';
+        item.style.filter = ach.unlocked ? 'none' : 'grayscale(100%)';
+        item.style.background = ach.unlocked ? 'rgba(0, 242, 254, 0.1)' : 'rgba(255, 255, 255, 0.02)';
+        item.style.border = ach.unlocked ? '1px solid rgba(0, 242, 254, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)';
         item.style.padding = '10px';
         item.style.borderRadius = '12px';
         item.style.minWidth = '110px';
         item.style.textAlign = 'center';
         item.style.fontSize = '11px';
         
-        let display_name = ach.name;
-        let display_desc = ach.desc;
+        let display_name = ach.name_uz;
+        let display_desc = ach.desc_uz;
         if (currentLang === 'ru') { display_name = ach.name_ru; display_desc = ach.desc_ru; }
         else if (currentLang === 'en') { display_name = ach.name_en; display_desc = ach.desc_en; }
         else if (currentLang === 'kz') { display_name = ach.name_kz; display_desc = ach.desc_kz; }
         
         item.innerHTML = `
             <div style="font-size:24px; margin-bottom:4px;">${ach.icon}</div>
-            <div style="font-weight:bold; color:${ach.active ? '#fff' : '#94a3b8'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${display_name}</div>
+            <div style="font-weight:bold; color:${ach.unlocked ? '#fff' : '#94a3b8'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${display_name}</div>
             <div style="font-size:9px; color:#64748b; margin-top:2px;">${display_desc}</div>
+            <div style="font-size:10px; color:#ffc439; font-weight:bold; margin-top:4px;">+🪙 ${ach.reward}</div>
         `;
         container.appendChild(item);
     });
@@ -2265,4 +2264,24 @@ safeAddListener('admin-user-search-input', 'keypress', (e) => {
 });
 safeAddListener('admin-maintenance-toggle', 'change', (e) => {
     toggleMaintenance(e.target.checked);
+});
+
+// VIP Custom background save listener
+safeAddListener('btn-save-vip-bg', 'click', async () => {
+    const bgUrl = document.getElementById('vip-bg-url').value.trim();
+    try {
+        const response = await fetch('/api/profile/custom-bg', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, bg_url: bgUrl })
+        });
+        const data = await response.json();
+        alert(data.message || data.error);
+        if (data.success) {
+            loadProfile();
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Serverga ulanishda xatolik!");
+    }
 });

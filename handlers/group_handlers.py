@@ -28,6 +28,35 @@ def get_lobby_keyboard(lang: str) -> types.InlineKeyboardMarkup:
     kb.adjust(1)
     return kb.as_markup()
 
+import random
+
+MEMES_UZ = [
+    "🎭 **Mafiya Memi**:\nTinch aholi birinchi kunda Komissarni osib yuborib, keyin: 'Nega mafiya yutyapti?' deb hayron bo'lishi... 🤡",
+    "🎭 **Mafiya Memi**:\nDon birinchi tunda Shifokorni tekshirganida, Shifokor o'zini o'zi davolayotganini ko'rib: 'Aka, sal insof qiling' degan ekan... 😭",
+    "🎭 **Mafiya Memi**:\nKomissar: 'Men uni tekshirdim, u MAFIYA!'\nTinch aholi: 'Ishonmaymiz, sening o'zing mafiyasan, osamiz!' 🤦‍♂️",
+    "🎭 **Mafiya Memi**:\nShifokor birinchi tunda o'zini davolasa, ikkinchi tunda ham o'zini davolamoqchi bo'lganida bot: 'Aka, shaharliklarni ham o'ylang!' deb aytishi... 🩺🏥",
+    "🎭 **Mafiya Memi**:\nO'yin boshlanganda botni shaxsiyda `/start` qilmagani uchun guruhda 'Nega men kira olmayapman?!' deb baqiradigan o'yinchilar... 🤫",
+    "🎭 **Mafiya Memi**:\nTelba (Maniac) har kecha bir boshdan hammaga pichoq suqib, tongda: 'Men tinch aholiman, shunchaki ko'chada aylanib yurgandim' deyishi... 🔪☠️",
+    "🎭 **Mafiya Memi**:\nTansoqchi (Bodyguard) o'zi himoya qilayotgan odamni o'ldirib qo'yganida: 'Akajon, uzr, shamol bo'lib ketdi' deb tushuntirishi... 🛡️😅"
+]
+
+MEMES_RU = [
+    "🎭 **Мафия Мем**:\nМирные жители вешают Комиссара в первый день, а потом: 'Почему мафия побеждает?' 🤡",
+    "🎭 **Мафия Мем**:\nДон проверяет Доктора в первую ночь, а Доктор лечит себя: 'Брат, имей совесть' 😭",
+    "🎭 **Мафия Мем**:\nКомиссар: 'Я проверил его, он МАФИЯ!'\nМирные: 'Не верим, ты сам мафия, вешаем тебя!' 🤦‍♂️",
+    "🎭 **Мафия Мем**:\nДоктор лечит себя в первую ночь, во вторую ночь тоже хочет лечить себя, а бот говорит: 'Брат, подумай о городе!' 🩺🏥",
+    "🎭 **Мафия Мем**:\nИгроки, которые не нажали `/start` в личке бота перед игрой, а потом кричат в группе: 'Почему я не могу зайти?!' 🤫",
+    "🎭 **Мафия Мем**:\nМаньяк каждую ночь режет кого-то, а утром пишет: 'Я мирный, просто гулял по ночному городу' 🔪☠️"
+]
+
+async def send_random_lobby_meme(bot: Bot, chat_id: int, lang: str):
+    try:
+        memes = MEMES_RU if lang == "ru" else MEMES_UZ
+        meme = random.choice(memes)
+        await bot.send_message(chat_id, meme, parse_mode="Markdown")
+    except Exception as e:
+        logging.error(f"Error sending lobby meme: {e}")
+
 async def lobby_timer(bot: Bot, game: Game):
     lang = await db.get_group_language(game.chat_id)
     try:
@@ -35,6 +64,8 @@ async def lobby_timer(bot: Bot, game: Game):
             await asyncio.sleep(1)
             if game.phase != "lobby":
                 return
+            if sec == 60:
+                await send_random_lobby_meme(bot, game.chat_id, lang)
             if sec in [90, 60, 30, 15, 5]:
                 try:
                     players_list = "\n".join([f"{i}. {p.name_escaped}" for i, p in enumerate(game.players.values(), 1)])

@@ -396,6 +396,21 @@ async def successful_payment_handler(message: types.Message):
     payment = message.successful_payment
     payload = payment.invoice_payload
     
+    lang = await db.get_user_language(message.from_user.id)
+    
+    if payload == "vip_1month":
+        await db.upgrade_to_vip(message.from_user.id, 30)
+        success_msg = "👑 **Tabriklaymiz! VIP status muvaffaqiyatli faollashtirildi!**\nSiz 1 oy davomida maxsus oltin ramka, 2x XP mukofotlari va orqa fonga shaxsiy rasm yuklash imkoniyatiga ega bo'ldingiz."
+        if lang == "ru":
+            success_msg = "👑 **Поздравляем! VIP-статус успешно активирован!**\nВ течение 1 месяца вам доступны золотая рамка, 2x XP и возможность установить фоновое изображение."
+        elif lang == "en":
+            success_msg = "👑 **Congratulations! VIP status activated successfully!**\nFor 1 month, you have access to a gold avatar frame, 2x XP rewards, and custom WebApp backgrounds."
+        elif lang == "kz":
+            success_msg = "👑 **Құттықтаймыз! VIP мәртебесі сәтті белсендірілді!**\n1 ай бойы сізге алтын жақтау, 2 еселенген XP және жеке фондық сурет орнату мүмкіндігі беріледі."
+            
+        await message.answer(success_msg, parse_mode="Markdown")
+        return
+
     coins = 0
     if payload.startswith("coins_"):
         try:
@@ -405,7 +420,6 @@ async def successful_payment_handler(message: types.Message):
             
     if coins > 0:
         await db.add_xp_and_coins(message.from_user.id, 0, coins)
-        lang = await db.get_user_language(message.from_user.id)
         
         success_msg = f"🎉 **Xarid muvaffaqiyatli yakunlandi!** Hisobingizga **{coins}** tanga qo'shildi."
         if lang == "ru":
