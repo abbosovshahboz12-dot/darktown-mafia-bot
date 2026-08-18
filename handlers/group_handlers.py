@@ -786,7 +786,15 @@ async def handle_group_chat_rules(message: types.Message, bot: Bot):
             pass
         return
         
-    # 2. If phase is night, delete players' messages (city is asleep)
+    # 2. If user is NOT in the game (spectator), delete their message to prevent game disruption
+    if not player:
+        try:
+            await bot.delete_message(chat_id, message.message_id)
+        except Exception:
+            pass
+        return
+        
+    # 3. If phase is night, delete players' messages (city is asleep)
     if game.phase == "night":
         try:
             await bot.delete_message(chat_id, message.message_id)
