@@ -1382,6 +1382,18 @@ async def self_ping_task(url: str):
             except Exception as e:
                 logging.error(f"Self-ping yuborishda xatolik: {e}")
 
+async def periodic_backup_task(bot):
+    if not os.getenv("BACKUP_CHAT_ID"):
+        return
+        
+    logging.info("Ma'lumotlar bazasini davriy zaxiralash (periodic backup) faollashtirildi.")
+    while True:
+        try:
+            await asyncio.sleep(600)  # Zaxiralash har 10 daqiqada
+            await db.save_db_backup(bot)
+        except Exception as e:
+            logging.error(f"Davriy zaxiralashda xatolik: {e}")
+
 async def main():
     # 1. Setup Telegram Bot
     bot = Bot(token=BOT_TOKEN)
@@ -1393,6 +1405,9 @@ async def main():
     # 3. Initialize SQLite Database
     await db.init_db()
     logging.info("Database initialized successfully.")
+    
+    # 3.1 Initial database backup to Telegram channel
+    await db.save_db_backup(bot)
     
     # Register ban check middleware
     dp.message.outer_middleware(BanCheckMiddleware())
@@ -1418,6 +1433,9 @@ async def main():
     # Start self-ping task if WEBAPP_URL is configured
     if WEBAPP_URL:
         asyncio.create_task(self_ping_task(WEBAPP_URL))
+        
+    # Start periodic database backup task
+    asyncio.create_task(periodic_backup_task(bot))
     
     # 4. Start Bot Polling
     logging.info("Telegram Bot polling started...")
