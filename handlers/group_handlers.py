@@ -164,6 +164,34 @@ async def cmd_newgame(message: types.Message, bot: Bot):
     chat_id = message.chat.id
     lang = await db.get_group_language(chat_id)
     
+    # Check if bot is admin in the group
+    try:
+        bot_member = await bot.get_chat_member(chat_id, bot.id)
+        if bot_member.status not in ["administrator", "creator"]:
+            err_msg = (
+                "⚠️ **Xatolik!** Bot ushbu guruhda o'yin boshlashi va tartibni saqlashi uchun guruhda **Admin** bo'lishi shart.\n\n"
+                "Iltimos, botni guruhga admin qilib tayinlang va barcha huquqlarni (ayniqsa, xabarlarni o'chirish huquqini) bering!"
+            )
+            if lang == "ru":
+                err_msg = (
+                    "⚠️ **Ошибка!** Для запуска игры бот должен быть назначен **Администратором** группы.\n\n"
+                    "Пожалуйста, сделайте бота администратором и предоставьте все права (особенно право на удаление сообщений)!"
+                )
+            elif lang == "en":
+                err_msg = (
+                    "⚠️ **Error!** The bot must be an **Administrator** in this group to start a game.\n\n"
+                    "Please make the bot an administrator and grant all permissions (especially message deletion rights)!"
+                )
+            elif lang == "kz":
+                err_msg = (
+                    "⚠️ **Қате!** Ойынды бастау үшін бот топтың **Әкімшісі** (Администраторы) болуы тиіс.\n\n"
+                    "Ботты әкімші етіп тағайындап, барлық рұқсаттарды (әсіресе хабарламаларды өшіру құқығын) беріңіз!"
+                )
+            await message.answer(err_msg, parse_mode="Markdown")
+            return
+    except Exception as e:
+        logging.error(f"Error checking bot admin privileges: {e}")
+        
     # Check if a game already exists
     existing = game_manager.get_game(chat_id)
     if existing:
