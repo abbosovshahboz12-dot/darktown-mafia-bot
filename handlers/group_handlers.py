@@ -15,6 +15,14 @@ router = Router()
 # Only process group and supergroup messages
 router.message.filter(F.chat.type.in_({"group", "supergroup"}))
 
+@router.message(F.new_chat_members)
+async def on_new_chat_members(message: types.Message, bot: Bot):
+    inviter_id = message.from_user.id
+    new_members = message.new_chat_members
+    human_members = [m for m in new_members if not m.is_bot]
+    if human_members and inviter_id:
+        await db.track_group_invite(bot, inviter_id, len(human_members))
+
 def get_lobby_keyboard(lang: str) -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.add(types.InlineKeyboardButton(

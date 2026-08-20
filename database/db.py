@@ -494,13 +494,16 @@ async def get_chat_language(chat_id: int) -> str:
 async def claim_daily_reward(user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT coins, last_daily_claim FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT coins, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             if not row:
                 return False, 0, "Foydalanuvchi topilmadi."
             
             now = datetime.now()
             last_claim_str = row['last_daily_claim']
+            row_dict = dict(row)
+            current_streak = row_dict.get('streak_days', 0) or 0
+            
             if last_claim_str:
                 try:
                     last_claim = datetime.fromisoformat(last_claim_str)
@@ -510,16 +513,67 @@ async def claim_daily_reward(user_id: int):
                         hours = seconds_left // 3600
                         minutes = (seconds_left % 3600) // 60
                         return False, 0, f"keyingi_bonus_kutish_{hours}_{minutes}"
+                    elif delta.total_seconds() > 172800:
+                        current_streak = 0
                 except Exception:
                     pass
             
-            bonus_coins = 50
+            new_streak = current_streak + 1
+            if new_streak > 7:
+                new_streak = 1
+                
+            streak_rewards = {
+                1: 10,
+                2: 20,
+                3: 30,
+                4: 50,
+                5: 75,
+                6: 100,
+                7: 200
+            }
+            bonus_coins = streak_rewards.get(new_streak, 50)
+            
             await db.execute(
-                "UPDATE users SET coins = coins + ?, last_daily_claim = ? WHERE user_id = ?",
-                (bonus_coins, now.isoformat(), user_id)
+                "UPDATE users SET coins = coins + ?, last_daily_claim = ?, streak_days = ? WHERE user_id = ?",
+                (bonus_coins, now.isoformat(), new_streak, user_id)
             )
+            
+            if new_streak == 7:
+                await upgrade_to_vip(user_id, 3)
+                
             await db.commit()
-            return True, bonus_coins, None
+            return True, bonus_coins, {"streak_day": new_streak, "is_vip_awarded": (new_streak == 7)}
+
+async def track_group_invite(bot, inviter_id: int, new_members_count: int = 1):
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (inviter_id, f"User{inviter_id}", "User"))
+            
+            async with db.execute("SELECT group_invites FROM users WHERE user_id = ?", (inviter_id,)) as cursor:
+                row = await cursor.fetchone()
+                old_invites = row[0] if (row and row[0]) else 0
+                
+            new_total = old_invites + new_members_count
+            await db.execute("UPDATE users SET group_invites = ? WHERE user_id = ?", (new_total, inviter_id))
+            await db.commit()
+            
+            old_milestone = old_invites // 5
+            new_milestone = new_total // 5
+            
+            if new_milestone > old_milestone:
+                await upgrade_to_vip(inviter_id, 3)
+                await add_xp_and_coins(inviter_id, 0, 200)
+                try:
+                    await bot.send_message(
+                        inviter_id,
+                        f"🎉 **TABRIKLAYMIZ!** Siz guruhga {new_total} ta do'stingizni taklif qildingiz va **3 kunlik VIP Status** hamda **200 ta Dark Coins** yutib oldingiz!",
+                        parse_mode="Markdown"
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            import logging
+            logging.error(f"Error in track_group_invite: {e}")
 
 async def add_referral(invitee_id: int, inviter_id: int) -> bool:
     if invitee_id == inviter_id:
