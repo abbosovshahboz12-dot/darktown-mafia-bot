@@ -118,6 +118,9 @@ navItems.forEach(item => {
         } else if (tabName === 'match') {
             loadActiveGame();
             initCalculator();
+        } else if (tabName === 'clans') {
+            loadClanData();
+            loadClanLeaderboard();
         } else if (tabName === 'admin') {
             loadAdminStats();
         }
@@ -2293,5 +2296,190 @@ safeAddListener('btn-save-vip-bg', 'click', async () => {
     } catch (e) {
         console.error(e);
         alert("Serverga ulanishda xatolik!");
+    }
+});
+
+// Clan System JS Functions
+async function loadClanData() {
+    const container = document.getElementById('user-clan-container');
+    if (!container) return;
+    try {
+        const response = await apiFetch(`/api/clan/status?user_id=${userId}`);
+        const data = await response.json();
+        
+        if (data.inClan && data.clan) {
+            const clan = data.clan;
+            const members = data.members || [];
+            let membersHtml = members.map(m => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>${m.role === 'leader' ? '👑' : '👥'}</span>
+                        <span style="font-weight:bold; color:#fff; font-size:13px;">${escapeHtml(m.first_name || 'A\'zo')}</span>
+                        <span style="font-size:11px; color:#94a3b8;">(Lvl ${m.level || 1})</span>
+                    </div>
+                    <span style="font-size:11px; color:${m.role === 'leader' ? '#ffc439' : '#94a3b8'}; text-transform:uppercase;">${m.role === 'leader' ? 'Lider' : 'A\'zo'}</span>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div style="background:linear-gradient(135deg, rgba(157,78,221,0.15) 0%, rgba(0,242,254,0.15) 100%); border:1px solid rgba(0,242,254,0.3); padding:20px; border-radius:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                        <div>
+                            <h3 style="color:#00f2fe; margin:0; font-size:18px;">🛡️ ${escapeHtml(clan.name)}</h3>
+                            <div style="font-size:11px; color:#94a3b8; margin-top:2px;">ID: ${clan.clan_id}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:bold; color:#ffc439; font-size:16px;">🏆 ${clan.total_points || 0} ball</div>
+                            <div style="font-size:11px; color:#94a3b8;">${clan.total_wins || 0} ta g'alaba</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top:15px; background:rgba(0,0,0,0.2); padding:12px; border-radius:10px;">
+                        <div style="font-size:12px; font-weight:bold; color:#cbd5e1; margin-bottom:8px;">A'zolar ro'yxati (${members.length} ta):</div>
+                        ${membersHtml}
+                    </div>
+
+                    <div style="margin-top:15px; text-align:right;">
+                        <button class="btn btn-danger btn-sm" onclick="leaveClan()" style="font-size:11px; padding:6px 12px;">Klandan Chiqish</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div style="text-align:center; padding:30px; background:rgba(255,255,255,0.03); border-radius:16px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="font-size:36px; margin-bottom:10px;">👥</div>
+                    <h3 style="color:#fff; margin-bottom:6px;">Siz hali hech qaysi klanda emassiz</h3>
+                    <p style="color:#94a3b8; font-size:12px; margin-bottom:16px;">O'zingizning Mafiya oilangizni tuzing yoki mavjud klanga qo'shiling!</p>
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-create-clan').style.display='flex'" style="flex:1;">🛡️ Klan Yaratish</button>
+                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modal-join-clan').style.display='flex'" style="flex:1;">🔑 Klanga Qo'shilish</button>
+                    </div>
+                </div>
+            `;
+        }
+    } catch(e) {
+        console.error("Clan data error:", e);
+    }
+}
+
+async function loadClanLeaderboard() {
+    const list = document.getElementById('clans-leaderboard-list');
+    if (!list) return;
+    try {
+        const response = await apiFetch('/api/clan/leaderboard?limit=10');
+        const data = await response.json();
+        
+        if (data.clans && data.clans.length > 0) {
+            list.innerHTML = data.clans.map((c, index) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="font-weight:bold; font-size:14px; color:${index === 0 ? '#ffc439' : (index === 1 ? '#e2e8f0' : (index === 2 ? '#cd7f32' : '#94a3b8'))}; width:20px;">#${index + 1}</span>
+                        <div>
+                            <div style="font-weight:bold; color:#fff; font-size:14px;">🛡️ ${escapeHtml(c.name)}</div>
+                            <div style="font-size:11px; color:#94a3b8;">Lider: ${escapeHtml(c.leader_name)} | ${c.member_count || 1} a'zo</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:bold; color:#00f2fe; font-size:14px;">${c.total_points || 0} pts</div>
+                        <div style="font-size:10px; color:#94a3b8;">${c.total_wins || 0} g'alaba</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = `<div style="padding:20px; text-align:center; color:#94a3b8; font-size:12px;">Hozircha hech qanday klanlar yo'q. Birinchi klaningizni yarating!</div>`;
+        }
+    } catch(e) {
+        console.error("Clan leaderboard error:", e);
+    }
+}
+
+window.leaveClan = async function() {
+    if (!confirm("Haqiqatan ham klandan chiqmoqchimisiz?")) return;
+    try {
+        const response = await apiFetch('/api/clan/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            loadClanData();
+            loadClanLeaderboard();
+        } else {
+            alert(data.error || "Xatolik");
+        }
+    } catch(e) {
+        alert("Xato: " + e.message);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnOpenCreate = document.getElementById('btn-open-create-clan');
+    const btnCloseCreate = document.getElementById('btn-close-create-clan');
+    const btnSubmitCreate = document.getElementById('btn-submit-create-clan');
+    const modalCreate = document.getElementById('modal-create-clan');
+
+    const btnOpenJoin = document.getElementById('btn-open-join-clan');
+    const btnCloseJoin = document.getElementById('btn-close-join-clan');
+    const btnSubmitJoin = document.getElementById('btn-submit-join-clan');
+    const modalJoin = document.getElementById('modal-join-clan');
+
+    if (btnOpenCreate) btnOpenCreate.onclick = () => modalCreate.style.display = 'flex';
+    if (btnCloseCreate) btnCloseCreate.onclick = () => modalCreate.style.display = 'none';
+    
+    if (btnOpenJoin) btnOpenJoin.onclick = () => modalJoin.style.display = 'flex';
+    if (btnCloseJoin) btnCloseJoin.onclick = () => modalJoin.style.display = 'none';
+
+    if (btnSubmitCreate) {
+        btnSubmitCreate.onclick = async () => {
+            const nameInput = document.getElementById('input-clan-name');
+            const name = nameInput ? nameInput.value.trim() : '';
+            if (!name) { alert("Klan nomini kiriting"); return; }
+            try {
+                const response = await apiFetch('/api/clan/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, name: name })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    if (modalCreate) modalCreate.style.display = 'none';
+                    loadClanData();
+                    loadClanLeaderboard();
+                } else {
+                    alert(data.error || "Xatolik");
+                }
+            } catch(e) {
+                alert("Xato: " + e.message);
+            }
+        };
+    }
+
+    if (btnSubmitJoin) {
+        btnSubmitJoin.onclick = async () => {
+            const joinInput = document.getElementById('input-clan-join-id');
+            const clanId = joinInput ? joinInput.value.trim() : '';
+            if (!clanId) { alert("Klan ID yoki nomini kiriting"); return; }
+            try {
+                const response = await apiFetch('/api/clan/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, clan_id: clanId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    if (modalJoin) modalJoin.style.display = 'none';
+                    loadClanData();
+                    loadClanLeaderboard();
+                } else {
+                    alert(data.error || "Xatolik");
+                }
+            } catch(e) {
+                alert("Xato: " + e.message);
+            }
+        };
     }
 });

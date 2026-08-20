@@ -111,6 +111,29 @@ async def init_db():
                 PRIMARY KEY (user_id, achievement_key)
             )
         """)
+
+        # Clans table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS clans (
+                clan_id TEXT PRIMARY KEY,
+                name TEXT UNIQUE,
+                leader_id INTEGER,
+                logo_url TEXT,
+                total_wins INTEGER DEFAULT 0,
+                total_points INTEGER DEFAULT 0,
+                created_at TEXT
+            )
+        """)
+        
+        # Clan Members table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS clan_members (
+                clan_id TEXT,
+                user_id INTEGER PRIMARY KEY,
+                role TEXT DEFAULT 'member',
+                joined_at TEXT
+            )
+        """)
         
         # Migrations for existing database
         try:
@@ -1000,3 +1023,153 @@ async def get_group_leaderboard(chat_id: int, limit: int = 10):
         async with db.execute(query, (str(chat_id), limit)) as cursor:
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
+
+# Clans System helper functions
+async def create_clan(name: str, leader_id: int, logo_url: str = None) -> tuple[bool, str, dict | None]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (leader_id, f"User{leader_id}", "Leader"))
+            
+            async with db.execute("SELECT clan_id FROM clan_members WHERE user_id = ?", (leader_id,)) as cursor:
+                if await cursor.fetchone():
+                    return False, "Siz allaqachon klan a'zosisiz! Yangi klan yaratish uchun avvalgisidan chiqing.", None
+            
+            async with db.execute("SELECT clan_id FROM clans WHERE name = ?", (name,)) as cursor:
+                if await cursor.fetchone():
+                    return False, "Ushbu nomdagi klan allaqachon mavjud!", None
+                    
+            import uuid
+            clan_id = f"clan_{uuid.uuid4().hex[:8]}"
+            created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            await db.execute(
+                "INSERT INTO clans (clan_id, name, leader_id, logo_url, total_wins, total_points, created_at) "
+                "VALUES (?, ?, ?, ?, 0, 0, ?)",
+                (clan_id, name, leader_id, logo_url, created_at)
+            )
+            await db.execute(
+                "INSERT INTO clan_members (clan_id, user_id, role, joined_at) VALUES (?, ?, 'leader', ?)",
+                (clan_id, leader_id, created_at)
+            )
+            await db.commit()
+            return True, "Klan muvaffaqiyatli yaratildi!", {"clan_id": clan_id, "name": name, "leader_id": leader_id}
+        except Exception as e:
+            import logging
+            logging.error(f"Error in create_clan: {e}")
+            return False, "Klan yaratishda xatolik yuz berdi", None
+
+async def join_clan(clan_id: str, user_id: int) -> tuple[bool, str]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (user_id, f"User{user_id}", "Mafiozi"))
+            
+            async with db.execute("SELECT clan_id FROM clan_members WHERE user_id = ?", (user_id,)) as cursor:
+                if await cursor.fetchone():
+                    return False, "Siz allaqachon klan a'zosisiz!"
+                    
+            async with db.execute("SELECT clan_id, name FROM clans WHERE clan_id = ? OR name = ?", (clan_id, clan_id)) as cursor:
+                clan = await cursor.fetchone()
+                if not clan:
+                    return False, "Bunday klan topilmadi!"
+                target_clan_id = clan[0]
+                
+            joined_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            await db.execute(
+                "INSERT INTO clan_members (clan_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)",
+                (target_clan_id, user_id, joined_at)
+            )
+            await db.commit()
+            return True, "Klanga muvaffaqiyatli qo'shildingiz!"
+        except Exception as e:
+            import logging
+            logging.error(f"Error in join_clan: {e}")
+            return False, "Klanga qo'shilishda xatolik yuz berdi"
+
+async def leave_clan(user_id: int) -> tuple[bool, str]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            async with db.execute("SELECT clan_id, role FROM clan_members WHERE user_id = ?", (user_id,)) as cursor:
+                row = await cursor.fetchone()
+                if not row:
+                    return False, "Siz hech qaysi klanda emassiz!"
+                clan_id, role = row[0], row[1]
+                
+            if role == 'leader':
+                async with db.execute("SELECT user_id FROM clan_members WHERE clan_id = ? AND user_id != ?", (clan_id, user_id)) as cursor:
+                    other_members = await cursor.fetchall()
+                    if other_members:
+                        new_leader = other_members[0][0]
+                        await db.execute("UPDATE clan_members SET role = 'leader' WHERE user_id = ?", (new_leader,))
+                        await db.execute("UPDATE clans SET leader_id = ? WHERE clan_id = ?", (new_leader, clan_id))
+                    else:
+                        await db.execute("DELETE FROM clans WHERE clan_id = ?", (clan_id,))
+                        
+            await db.execute("DELETE FROM clan_members WHERE user_id = ?", (user_id,))
+            await db.commit()
+            return True, "Klandan muvaffaqiyatli chiqdingiz!"
+        except Exception as e:
+            import logging
+            logging.error(f"Error in leave_clan: {e}")
+            return False, "Klandan chiqishda xatolik yuz berdi"
+
+async def get_user_clan(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        query = """
+            SELECT c.*, cm.role as user_role, cm.joined_at 
+            FROM clan_members cm
+            JOIN clans c ON cm.clan_id = c.clan_id
+            WHERE cm.user_id = ?
+        """
+        async with db.execute(query, (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def get_clan_members(clan_id: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        query = """
+            SELECT cm.*, u.username, u.first_name, u.level, u.xp, u.coins 
+            FROM clan_members cm
+            JOIN users u ON cm.user_id = u.user_id
+            WHERE cm.clan_id = ?
+            ORDER BY CASE WHEN cm.role = 'leader' THEN 0 ELSE 1 END, cm.joined_at ASC
+        """
+        async with db.execute(query, (clan_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+async def get_clan_leaderboard(limit: int = 10):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        query = """
+            SELECT c.*, COUNT(cm.user_id) as member_count, COALESCE(u.first_name, 'Lider') as leader_name 
+            FROM clans c
+            LEFT JOIN clan_members cm ON c.clan_id = cm.clan_id
+            LEFT JOIN users u ON c.leader_id = u.user_id
+            GROUP BY c.clan_id
+            ORDER BY c.total_points DESC, c.total_wins DESC
+            LIMIT ?
+        """
+        async with db.execute(query, (limit,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+async def add_clan_points(user_id: int, points: int = 10, is_win: bool = False):
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            async with db.execute("SELECT clan_id FROM clan_members WHERE user_id = ?", (user_id,)) as cursor:
+                row = await cursor.fetchone()
+                if not row:
+                    return
+                clan_id = row[0]
+                
+            win_val = 1 if is_win else 0
+            await db.execute(
+                "UPDATE clans SET total_points = total_points + ?, total_wins = total_wins + ? WHERE clan_id = ?",
+                (points, win_val, clan_id)
+            )
+            await db.commit()
+        except Exception as e:
+            import logging
+            logging.error(f"Error adding clan points: {e}")

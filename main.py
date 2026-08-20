@@ -1491,6 +1491,105 @@ async def party_leave_handler(request):
         logging.error(f"Error in party_leave_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+# Clan Handlers
+async def clan_create_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        name = data.get("name", "").strip()
+        logo_url = data.get("logo_url", "").strip()
+        
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id)
+        if not is_auth:
+            return err_resp
+            
+        if not user_id or not name:
+            return web.json_response({"error": "user_id va klan nomi kiritilishi shart"}, status=400)
+            
+        if len(name) < 3 or len(name) > 20:
+            return web.json_response({"error": "Klan nomi 3 dan 20 belgichada bo'lishi kerak"}, status=400)
+            
+        success, message, clan_info = await db.create_clan(name, user_id, logo_url)
+        if success:
+            return web.json_response({"success": True, "message": message, "clan": clan_info})
+        else:
+            return web.json_response({"error": message}, status=400)
+    except Exception as e:
+        logging.error(f"Error in clan_create_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def clan_join_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        clan_id = data.get("clan_id", "").strip()
+        
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id)
+        if not is_auth:
+            return err_resp
+            
+        if not user_id or not clan_id:
+            return web.json_response({"error": "user_id va clan_id kiritilishi shart"}, status=400)
+            
+        success, message = await db.join_clan(clan_id, user_id)
+        if success:
+            return web.json_response({"success": True, "message": message})
+        else:
+            return web.json_response({"error": message}, status=400)
+    except Exception as e:
+        logging.error(f"Error in clan_join_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def clan_leave_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id)
+        if not is_auth:
+            return err_resp
+            
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        success, message = await db.leave_clan(user_id)
+        if success:
+            return web.json_response({"success": True, "message": message})
+        else:
+            return web.json_response({"error": message}, status=400)
+    except Exception as e:
+        logging.error(f"Error in clan_leave_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def clan_status_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        clan = await db.get_user_clan(user_id)
+        if not clan:
+            return web.json_response({"inClan": False})
+            
+        members = await db.get_clan_members(clan['clan_id'])
+        return web.json_response({
+            "inClan": True,
+            "clan": clan,
+            "members": members
+        })
+    except Exception as e:
+        logging.error(f"Error in clan_status_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def clan_leaderboard_handler(request):
+    try:
+        limit = int(request.query.get("limit", 10))
+        clans = await db.get_clan_leaderboard(limit)
+        return web.json_response({"clans": clans})
+    except Exception as e:
+        logging.error(f"Error in clan_leaderboard_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 # Setup Web Server Routing
 def setup_web_server():
     app = web.Application()
@@ -1527,6 +1626,13 @@ def setup_web_server():
     app.router.add_post("/api/game/mafia-chat/send", mafia_chat_send_handler)
     app.router.add_get("/api/game/mafia-chat/messages", mafia_chat_messages_handler)
     app.router.add_get("/ws", websocket_handler)
+    
+    # Clan API Routes
+    app.router.add_post("/api/clan/create", clan_create_handler)
+    app.router.add_post("/api/clan/join", clan_join_handler)
+    app.router.add_post("/api/clan/leave", clan_leave_handler)
+    app.router.add_get("/api/clan/status", clan_status_handler)
+    app.router.add_get("/api/clan/leaderboard", clan_leaderboard_handler)
     
     # TMA Matchmaking & Party Routing
     app.router.add_post("/api/rooms/create", create_room_handler)

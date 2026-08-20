@@ -74,11 +74,11 @@ async def register_night_choice(cb: types.CallbackQuery, action_type: str, targe
         await cb.message.edit_text(f"🛡️ Siz **{target_player.name}**ni himoya qilishni tanladingiz. Tanlov qabul qilindi!")
         
     elif action_type == "block":
-        if player.role != "Courtesan":
-            await cb.answer("⚠️ Siz Kutizanka emassiz!", show_alert=True)
+        if player.role != "Witch":
+            await cb.answer("⚠️ Siz Jodugar emassiz!", show_alert=True)
             return
         game.night_actions["courtesan"] = target_id
-        await cb.message.edit_text(f"🌸 Siz **{target_player.name}**ni bloklashni tanladingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"🧹 Siz **{target_player.name}**ni afsunlab, uning harakatini blokladingiz. Tanlov qabul qilindi!")
         
     elif action_type == "maniac":
         if player.role != "Maniac":
@@ -158,10 +158,6 @@ async def cb_detshoot(cb: types.CallbackQuery):
                 game.night_actions["detective_shoot"] = target_id
                 await cb.message.edit_text(f"🔫 Siz **{target_player.name}**ni otib o'ldirishni tanladingiz. Tanlov qabul qilindi!")
                 await cb.answer("Tanlov qabul qilindi!")
-            if target_player and target_player.is_alive:
-                game.night_actions["detective_shoot"] = target_id
-                await cb.message.edit_text(f"🔫 Siz **{target_player.name}**ni otib o'ldirishni tanladingiz. Tanlov qabul qilindi!")
-                await cb.answer("Tanlov qabul qilindi!")
 
 @router.callback_query(F.data.startswith("det_"))
 async def cb_det(cb: types.CallbackQuery):
@@ -187,6 +183,34 @@ async def cb_block(cb: types.CallbackQuery):
 async def cb_maniac(cb: types.CallbackQuery):
     target_id = int(cb.data.replace("maniac_", ""))
     await register_night_choice(cb, "maniac", target_id)
+
+# Telegram Stars Payment Handlers
+@router.pre_checkout_query()
+async def process_pre_checkout(pre_checkout_query: types.PreCheckoutQuery):
+    await pre_checkout_query.answer(ok=True)
+
+@router.message(F.successful_payment)
+async def process_successful_payment(message: types.Message):
+    user_id = message.from_user.id
+    payment = message.successful_payment
+    payload = payment.invoice_payload
+    
+    logging.info(f"Successful Telegram Stars Payment from User {user_id}: Payload {payload}")
+    
+    if payload == "coins_100":
+        await db.add_xp_and_coins(user_id, 0, 100)
+        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **100 ta Dark Coins** qo'shildi!")
+    elif payload == "coins_500":
+        await db.add_xp_and_coins(user_id, 0, 500)
+        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **500 ta Dark Coins** qo'shildi!")
+    elif payload == "coins_1000":
+        await db.add_xp_and_coins(user_id, 0, 1000)
+        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **1000 ta Dark Coins** qo'shildi!")
+    elif payload == "vip_1month":
+        await db.upgrade_to_vip(user_id, 30)
+        await message.answer("👑 **Tabriklaymiz!** Siz **VIP status**ga ega bo'ldingiz! Profilingizda Oltin ramka va Shaxsiy Fon imkoniyati ochildi.")
+    else:
+        await message.answer("🎉 **To'lov qabul qilindi!** Rahmat!")
 
 @router.message()
 async def private_text_handler(message: types.Message):

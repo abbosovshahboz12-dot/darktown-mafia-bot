@@ -19,7 +19,7 @@ ROLE_EMOJIS = {
     "Sergeant": "🎖️",
     "Doctor": "🟡",
     "Bodyguard": "🛡️",
-    "Courtesan": "🌸",
+    "Witch": "🧹",
     "Maniac": "🦹",
     "Jester": "🃏"
 }
@@ -34,7 +34,7 @@ def get_role_details(role: str) -> str:
         "Sergeant": "🎖️ **Serjant**: Komissarning yordamchisi. Komissar halok bo'lgach, siz uning o'rniga yangi Komissar bo'lib o'yinchilarni tekshirishni davom ettirasiz.",
         "Doctor": "🟡 **Shifokor**: Har kecha bir o'yinchini davolaysiz. Agar u tunda hujumga uchrasa, tirik qoladi.",
         "Bodyguard": "🛡️ **Tansoqchi**: Har kecha bir o'yinchini himoya qilasiz. Agar unga hujum bo'lsa, siz uning o'rniga halok bo'lasiz.",
-        "Courtesan": "🌸 **Kutizanka**: Har kecha bir o'yinchini jalb qilib, uning tungi qobiliyatini bloklaysiz.",
+        "Witch": "🧹 **Jodugar**: Har kecha bir o'yinchini afsunlab, uning tungi qobiliyatini bloklaysiz.",
         "Maniac": "🦹 **Telba (Maniac)**: Yolg'iz qotil. Maqsadingiz - barcha o'yinchilarni o'ldirish va yagona tirik qolgan odam bo'lish.",
         "Jester": "🃏 **Mazxaraboz (Jester)**: Yolg'iz o'yinchi. Maqsadingiz - shaharni aldab, kunduzgi ovoz berishda o'zingizni dorda osishlariga erishish. Dorda osilsangiz g'olib bo'lasiz!"
     }
@@ -52,16 +52,16 @@ def distribute_roles(players_count: int) -> List[str]:
     elif players_count == 8:
         return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Jester", "Civilian"]
     elif players_count == 9:
-        return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Courtesan", "Jester", "Civilian"]
+        return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Witch", "Jester", "Civilian"]
     elif players_count == 10:
-        return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Sergeant", "Bodyguard", "Courtesan", "Jester", "Civilian"]
+        return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Jester", "Civilian"]
     elif 11 <= players_count <= 13:
-        base = ["Mafia", "Mafia", "Don", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Courtesan", "Jester", "Maniac"]
+        base = ["Mafia", "Mafia", "Don", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Jester", "Maniac"]
         while len(base) < players_count:
             base.append("Civilian")
         return base
     else: # 14+ players
-        base = ["Mafia", "Mafia", "Mafia", "Don", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Courtesan", "Jester", "Maniac"]
+        base = ["Mafia", "Mafia", "Mafia", "Don", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Jester", "Maniac"]
         while len(base) < players_count:
             base.append("Civilian")
         return base
@@ -290,10 +290,10 @@ async def night_phase(bot: Bot, game: Game):
                 kb = target_keyboard("guard", exclude_id=player.user_id, last_target=game.last_bodyguard_target)
                 await bot.send_message(player.user_id, "🛡️ **Tansoqchi himoyasi**: Kimni himoya qilmoqchisiz?", reply_markup=kb)
                 
-            elif player.role == "Courtesan":
+            elif player.role == "Witch":
                 # Block target (not self)
                 kb = target_keyboard("block", exclude_id=player.user_id)
-                await bot.send_message(player.user_id, "🌸 **Kutizanka jalb qilishi**: Tungi qobiliyatini cheklamoqchi bo'lgan o'yinchini tanlang:", reply_markup=kb)
+                await bot.send_message(player.user_id, "🧹 **Jodugar afsuni**: Tungi qobiliyatini bloklamoqchi bo'lgan o'yinchini tanlang:", reply_markup=kb)
                 
             elif player.role == "Lawyer":
                 mafia_allies = [m for m in alive_players if m.role in ["Mafia", "Don", "Lawyer"]]
@@ -359,7 +359,7 @@ def all_active_roles_acted(game: Game) -> bool:
     doctor_alive = any(p.role == "Doctor" for p in alive_players)
     detective_alive = any(p.role == "Detective" for p in alive_players)
     guard_alive = any(p.role == "Bodyguard" for p in alive_players)
-    courtesan_alive = any(p.role == "Courtesan" for p in alive_players)
+    courtesan_alive = any(p.role == "Witch" for p in alive_players)
     maniac_alive = any(p.role == "Maniac" for p in alive_players)
 
     # Check if they have chosen
@@ -409,7 +409,7 @@ async def process_night(bot: Bot, game: Game):
             acted = False
         elif player.role == "Bodyguard" and not game.night_actions["bodyguard"]:
             acted = False
-        elif player.role == "Courtesan" and not game.night_actions["courtesan"]:
+        elif player.role == "Witch" and not game.night_actions["courtesan"]:
             acted = False
         elif player.role == "Maniac" and not game.night_actions["maniac"] and not (game.event and game.event["key"] == "curfew"):
             acted = False
@@ -437,11 +437,11 @@ async def process_night(bot: Bot, game: Game):
             await end_game(bot, game, winner)
             return
     
-    # 1. Apply Courtesan Block
+    # 1. Apply Witch Block
     blocked_user = game.night_actions["courtesan"]
     if blocked_user:
         # Check if courtesan is alive and not blocked herself (if there could be two courtesans, but we have 1)
-        courtesans = game.get_players_by_role("Courtesan")
+        courtesans = game.get_players_by_role("Witch")
         if courtesans and courtesans[0].is_alive:
             target_player = game.players.get(blocked_user)
             if target_player:
@@ -1024,6 +1024,9 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
                 await db.unlock_achievement(player.user_id, "first_win")
                 if player.role not in ["Mafia", "Don", "Maniac"]:
                     await db.increment_daily_mafia_killed(player.user_id)
+            
+            # Award Clan points
+            await db.add_clan_points(player.user_id, points=(25 if is_winner else 5), is_win=is_winner)
         except Exception as ex:
             logging.error(f"Error saving game history/achievements: {ex}")
         

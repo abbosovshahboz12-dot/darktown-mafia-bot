@@ -664,6 +664,57 @@
                 </div>
             </section>
 
+            <!-- 5. Clans Tab -->
+            <section id="tab-clans" class="tab-content">
+                <div class="section-title">🛡️ Mafiya Oilalari (Klanlar)</div>
+
+                <!-- User's Clan Card -->
+                <div id="user-clan-container" style="margin-bottom:20px;">
+                    <!-- Will be dynamically filled by JavaScript -->
+                    <div style="text-align:center; padding:30px; background:rgba(255,255,255,0.03); border-radius:16px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:36px; margin-bottom:10px;">👥</div>
+                        <h3 style="color:#fff; margin-bottom:6px;">Siz hali hech qaysi klanda emassiz</h3>
+                        <p style="color:#94a3b8; font-size:12px; margin-bottom:16px;">O'zingizning Mafiya oilangizni tuzing yoki mavjud klanga qo'shiling!</p>
+                        <div style="display:flex; gap:10px; justify-center;">
+                            <button class="btn btn-primary btn-sm" id="btn-open-create-clan" style="flex:1;">🛡️ Klan Yaratish</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-open-join-clan" style="flex:1;">🔑 Klanga Qo'shilish</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clan Leaderboard -->
+                <div class="section-title">🏆 Klanlar Reytingi</div>
+                <div class="card" style="padding:0; overflow:hidden; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:16px;">
+                    <div id="clans-leaderboard-list" style="display:flex; flex-direction:column; divide-y divide-white/5;">
+                        <div style="padding:20px; text-align:center; color:#94a3b8; font-size:12px;">Yuklanmoqda...</div>
+                    </div>
+                </div>
+
+                <!-- Create Clan Modal -->
+                <div id="modal-create-clan" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+                    <div style="background:#13071b; border:1px solid rgba(255,255,255,0.1); border-radius:20px; width:100%; max-width:340px; padding:24px; text-align:center;">
+                        <h3 style="color:#fff; margin-bottom:15px;">🛡️ Yangi Klan Yaratish</h3>
+                        <input type="text" id="input-clan-name" placeholder="Klan nomi (masalan: Don Corleone)" style="width:100%; box-sizing:border-box; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff; font-size:14px; margin-bottom:15px; text-align:center;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-secondary btn-sm" id="btn-close-create-clan" style="flex:1;">Bekor qilish</button>
+                            <button class="btn btn-primary btn-sm" id="btn-submit-create-clan" style="flex:1;">Yaratish</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Join Clan Modal -->
+                <div id="modal-join-clan" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+                    <div style="background:#13071b; border:1px solid rgba(255,255,255,0.1); border-radius:20px; width:100%; max-width:340px; padding:24px; text-align:center;">
+                        <h3 style="color:#fff; margin-bottom:15px;">🔑 Klanga Qo'shilish</h3>
+                        <input type="text" id="input-clan-join-id" placeholder="Klan nomi yoki ID kodi" style="width:100%; box-sizing:border-box; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:12px; border-radius:10px; color:#fff; font-size:14px; margin-bottom:15px; text-align:center;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-secondary btn-sm" id="btn-close-join-clan" style="flex:1;">Bekor qilish</button>
+                            <button class="btn btn-primary btn-sm" id="btn-submit-join-clan" style="flex:1;">Qo'shilish</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
 
         <!-- Bottom Navigation Bar -->
@@ -675,6 +726,10 @@
             <button class="nav-item" data-tab="shop">
                 <span class="nav-icon">🛒</span>
                 <span class="nav-lbl" id="nav-lbl-shop">Do'kon</span>
+            </button>
+            <button class="nav-item" data-tab="clans">
+                <span class="nav-icon">🛡️</span>
+                <span class="nav-lbl" id="nav-lbl-clans">Klanlar</span>
             </button>
             <button class="nav-item" data-tab="leaderboard">
                 <span class="nav-icon">🏆</span>
