@@ -43,10 +43,18 @@ async def register_night_choice(cb: types.CallbackQuery, action_type: str, targe
             return
         game.night_actions["don"] = target_id
         await cb.message.edit_text(f"🕶️ Siz **{target_player.name}**ni tekshirishni tanladingiz. Tanlov qabul qilindi!")
+
+    elif action_type == "lawyer":
+        if player.role != "Lawyer":
+            await cb.answer("⚠️ Siz Advokat emassiz!", show_alert=True)
+            return
+        game.night_actions["lawyer"] = target_id
+        await cb.message.edit_text(f"⚖️ Siz **{target_player.name}**ni Komissardan yashirishni tanladingiz. Tanlov qabul qilindi!")
         
     elif action_type == "det":
-        if player.role != "Detective":
-            await cb.answer("⚠️ Siz Komissar emassiz!", show_alert=True)
+        has_det_rights = (player.role == "Detective") or (player.role == "Sergeant" and not any(p.role == "Detective" and p.is_alive for p in game.get_alive_players()))
+        if not has_det_rights:
+            await cb.answer("⚠️ Sizda tekshirish huquqi yo'q!", show_alert=True)
             return
         game.night_actions["detective_check"] = target_id
         await cb.message.edit_text(f"🔵 Siz **{target_player.name}**ni tekshirishni tanladingiz. Tun oxirida natija yuboriladi.")
@@ -92,13 +100,19 @@ async def cb_don(cb: types.CallbackQuery):
     target_id = int(cb.data.replace("don_", ""))
     await register_night_choice(cb, "don", target_id)
 
+@router.callback_query(F.data.startswith("lawyer_"))
+async def cb_lawyer(cb: types.CallbackQuery):
+    target_id = int(cb.data.replace("lawyer_", ""))
+    await register_night_choice(cb, "lawyer", target_id)
+
 @router.callback_query(F.data == "det_choice_check")
 async def cb_det_choice_check(cb: types.CallbackQuery):
     user_id = cb.from_user.id
     game = game_manager.get_game_by_player(user_id)
     if game and game.phase == "night":
         player = game.players.get(user_id)
-        if player and player.role == "Detective" and player.is_alive:
+        has_det_rights = player and player.is_alive and ((player.role == "Detective") or (player.role == "Sergeant" and not any(p.role == "Detective" and p.is_alive for p in game.get_alive_players())))
+        if has_det_rights:
             # Check for event Fog
             if game.event and game.event["key"] == "fog":
                 await cb.answer("🌫️ Qalin tuman sababli bugun tunda tekshiruv o'tkaza olmaysiz!", show_alert=True)
@@ -110,7 +124,7 @@ async def cb_det_choice_check(cb: types.CallbackQuery):
                 if p.user_id != user_id:
                     kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"det_{p.user_id}"))
             kb.adjust(2)
-            await cb.message.edit_text("🔍 **Komissar tekshiruvi**: Rolini aniqlamoqchi bo'lgan o'yinchini tanlang:", reply_markup=kb.as_markup())
+            await cb.message.edit_text("🔍 **Tekshiruv**: Rolini aniqlamoqchi bo'lgan o'yinchini tanlang:", reply_markup=kb.as_markup())
             await cb.answer()
 
 @router.callback_query(F.data == "det_choice_shoot")
@@ -119,14 +133,15 @@ async def cb_det_choice_shoot(cb: types.CallbackQuery):
     game = game_manager.get_game_by_player(user_id)
     if game and game.phase == "night":
         player = game.players.get(user_id)
-        if player and player.role == "Detective" and player.is_alive:
+        has_det_rights = player and player.is_alive and ((player.role == "Detective") or (player.role == "Sergeant" and not any(p.role == "Detective" and p.is_alive for p in game.get_alive_players())))
+        if has_det_rights:
             alive_players = game.get_alive_players()
             kb = InlineKeyboardBuilder()
             for p in alive_players:
                 if p.user_id != user_id:
                     kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"detshoot_{p.user_id}"))
             kb.adjust(2)
-            await cb.message.edit_text("🔫 **Komissar o'q otishi**: Kimni otib o'ldirmoqchisiz?", reply_markup=kb.as_markup())
+            await cb.message.edit_text("🔫 **O'q otish**: Kimni otib o'ldirmoqchisiz?", reply_markup=kb.as_markup())
             await cb.answer()
 
 @router.callback_query(F.data.startswith("detshoot_"))
@@ -136,8 +151,13 @@ async def cb_detshoot(cb: types.CallbackQuery):
     game = game_manager.get_game_by_player(user_id)
     if game and game.phase == "night":
         player = game.players.get(user_id)
-        if player and player.role == "Detective" and player.is_alive:
+        has_det_rights = player and player.is_alive and ((player.role == "Detective") or (player.role == "Sergeant" and not any(p.role == "Detective" and p.is_alive for p in game.get_alive_players())))
+        if has_det_rights:
             target_player = game.players.get(target_id)
+            if target_player and target_player.is_alive:
+                game.night_actions["detective_shoot"] = target_id
+                await cb.message.edit_text(f"🔫 Siz **{target_player.name}**ni otib o'ldirishni tanladingiz. Tanlov qabul qilindi!")
+                await cb.answer("Tanlov qabul qilindi!")
             if target_player and target_player.is_alive:
                 game.night_actions["detective_shoot"] = target_id
                 await cb.message.edit_text(f"🔫 Siz **{target_player.name}**ni otib o'ldirishni tanladingiz. Tanlov qabul qilindi!")

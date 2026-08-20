@@ -47,6 +47,7 @@ class Game:
         self.night_actions = {
             "mafia": {},       # voter_id -> target_id (Mafia vote)
             "don": None,       # target_id (Don check)
+            "lawyer": None,    # target_id (Lawyer protect check)
             "detective_check": None, # Detective check target
             "detective_shoot": None, # Detective shoot target
             "doctor": None,    # target_id (Doctor heal)
