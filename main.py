@@ -763,6 +763,78 @@ async def checkout_handler(request):
         logging.error(f"Error in checkout_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    
+    user_id = request.query.get("user_id")
+    room_id = request.query.get("room_id")
+    
+    if not user_id or not room_id:
+        await ws.close(code=4000, message=b"Missing user_id or room_id")
+        return ws
+        
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        await ws.close(code=4000, message=b"Invalid user_id")
+        return ws
+        
+    room_id = str(room_id)
+    
+    rooms = request.app.setdefault('ws_rooms', {})
+    if room_id not in rooms:
+        rooms[room_id] = {}
+    rooms[room_id][user_id] = ws
+    
+    logging.info(f"WebSocket connected: User {user_id} in Room {room_id}")
+    
+    # Broadcast join to others
+    join_payload = {"type": "join", "user_id": user_id}
+    for uid, peer_ws in rooms[room_id].items():
+        if uid != user_id and not peer_ws.closed:
+            try:
+                await peer_ws.send_json(join_payload)
+            except Exception:
+                pass
+                
+    try:
+        async for msg in ws:
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                try:
+                    data = msg.json()
+                    data["user_id"] = user_id
+                    
+                    # Broadcast to everyone else in the room
+                    for uid, peer_ws in rooms[room_id].items():
+                        if uid != user_id and not peer_ws.closed:
+                            try:
+                                await peer_ws.send_json(data)
+                            except Exception:
+                                pass
+                except Exception as e:
+                    logging.error(f"Error processing WS message: {e}")
+            elif msg.type == aiohttp.WSMsgType.ERROR:
+                logging.error(f'ws connection closed with exception {ws.exception()}')
+    finally:
+        if room_id in rooms and user_id in rooms[room_id]:
+            del rooms[room_id][user_id]
+            if not rooms[room_id]:
+                del rooms[room_id]
+                
+        logging.info(f"WebSocket disconnected: User {user_id} in Room {room_id}")
+        
+        disconnect_payload = {"type": "disconnect", "user_id": user_id}
+        if room_id in rooms:
+            for uid, peer_ws in rooms[room_id].items():
+                if uid != user_id and not peer_ws.closed:
+                    try:
+                        await peer_ws.send_json(disconnect_payload)
+                    except Exception:
+                        pass
+                        
+    return ws
+
 async def mock_payment_handler(request):
     user_id = request.query.get("user_id", "0")
     coins = request.query.get("coins", "100")
@@ -1364,6 +1436,7 @@ def setup_web_server():
     app.router.add_get("/api/game/ghost-chat/messages", ghost_chat_messages_handler)
     app.router.add_post("/api/game/mafia-chat/send", mafia_chat_send_handler)
     app.router.add_get("/api/game/mafia-chat/messages", mafia_chat_messages_handler)
+    app.router.add_get("/ws", websocket_handler)
     
     # TMA Matchmaking & Party Routing
     app.router.add_post("/api/rooms/create", create_room_handler)
