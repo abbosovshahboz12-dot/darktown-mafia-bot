@@ -121,6 +121,10 @@ navItems.forEach(item => {
         } else if (tabName === 'clans') {
             loadClanData();
             loadClanLeaderboard();
+        } else if (tabName === 'tournaments') {
+            loadTournaments();
+        } else if (tabName === 'pass') {
+            loadBattlePass();
         } else if (tabName === 'admin') {
             loadAdminStats();
         }
@@ -2482,4 +2486,89 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+});
+
+// Tournaments JS Functions
+async function loadTournaments() {
+    const container = document.getElementById('tournaments-container');
+    if (!container) return;
+    try {
+        const response = await apiFetch('/api/tournaments');
+        const data = await response.json();
+        
+        if (data.tournaments && data.tournaments.length > 0) {
+            container.innerHTML = data.tournaments.map(t => `
+                <div style="background:linear-gradient(135deg, rgba(79,172,254,0.1) 0%, rgba(0,242,254,0.1) 100%); border:1px solid rgba(0,242,254,0.3); border-radius:16px; padding:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h3 style="color:#00f2fe; margin:0; font-size:16px;">🏆 ${escapeHtml(t.title)}</h3>
+                        <span style="background:rgba(0,242,254,0.2); color:#00f2fe; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; text-transform:uppercase;">${t.status === 'active' ? 'Ochiq' : 'Tez kunda'}</span>
+                    </div>
+                    <div style="font-size:12px; color:#cbd5e1; margin-bottom:8px;">🎁 Sovrin jamg'armasi: <strong style="color:#ffc439;">${escapeHtml(t.prize_pool)}</strong></div>
+                    <div style="font-size:11px; color:#94a3b8; margin-bottom:14px;">📅 Boshlanishi: ${t.start_time} | 👥 A'zolar: ${t.participants_count || 0} kishi</div>
+                    <button class="btn btn-primary btn-sm" onclick="joinTournament(${t.id})" style="width:100%;">Ro'yxatdan O'tish</button>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = `<div style="padding:20px; text-align:center; color:#94a3b8; font-size:12px;">Hozircha faol turnirlar yo'q.</div>`;
+        }
+    } catch(e) {
+        console.error("Tournaments error:", e);
+    }
+}
+
+window.joinTournament = async function(tournamentId) {
+    try {
+        const response = await apiFetch('/api/tournaments/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, tournament_id: tournamentId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            loadTournaments();
+        } else {
+            alert(data.error || "Xatolik");
+        }
+    } catch(e) {
+        alert("Xato: " + e.message);
+    }
+};
+
+// Battle Pass JS Functions
+async function loadBattlePass() {
+    try {
+        const response = await apiFetch(`/api/battle-pass?user_id=${userId}`);
+        const data = await response.json();
+        
+        if (data.battle_pass) {
+            const bp = data.battle_pass;
+            const lvlTxt = document.getElementById('bp-level-txt');
+            const xpTxt = document.getElementById('bp-xp-txt');
+            const fill = document.getElementById('bp-fill');
+            
+            if (lvlTxt) lvlTxt.innerText = `Daraja ${bp.pass_level || 1}`;
+            if (xpTxt) xpTxt.innerText = `${bp.pass_xp || 0} / 100 XP`;
+            if (fill) fill.style.width = `${Math.min(100, bp.pass_xp || 0)}%`;
+        }
+    } catch(e) {
+        console.error("Battle pass error:", e);
+    }
+}
+
+// Channel Sub Check on Launch
+async function checkChannelSubscription() {
+    try {
+        const response = await apiFetch(`/api/check-sub?user_id=${userId}`);
+        const data = await response.json();
+        if (data && data.is_subscribed === false) {
+            alert(`⚠️ DIQQAT! O'yinlardan foydalanish uchun rasmiy ${data.channel || '@DarkTownuz'} kanalimizga obuna bo'ling!`);
+        }
+    } catch(e) {
+        console.error("Check sub error:", e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkChannelSubscription, 1000);
 });

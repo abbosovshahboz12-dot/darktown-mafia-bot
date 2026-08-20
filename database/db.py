@@ -135,6 +135,47 @@ async def init_db():
             )
         """)
         
+        # Tournaments table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS tournaments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                prize_pool TEXT,
+                status TEXT DEFAULT 'upcoming',
+                start_time TEXT,
+                winner_name TEXT
+            )
+        """)
+        
+        # Tournament Participants table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS tournament_participants (
+                tournament_id INTEGER,
+                user_id INTEGER,
+                joined_at TEXT,
+                PRIMARY KEY (tournament_id, user_id)
+            )
+        """)
+        
+        # Battle Pass table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS battle_pass (
+                user_id INTEGER PRIMARY KEY,
+                pass_level INTEGER DEFAULT 1,
+                pass_xp INTEGER DEFAULT 0,
+                is_premium INTEGER DEFAULT 0
+            )
+        """)
+        
+        # Seed Tournament if empty
+        async with db.execute("SELECT COUNT(*) FROM tournaments") as cursor:
+            count = (await cursor.fetchone())[0]
+            if count == 0:
+                await db.execute(
+                    "INSERT INTO tournaments (title, prize_pool, status, start_time, winner_name) "
+                    "VALUES ('DarkTown Haftalik Turnir #1', '1000 Telegram Stars + 5000 Coins', 'active', 'Yakshanba 20:00', NULL)"
+                )
+        
         # Migrations for existing database
         try:
             await db.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'uz'")
@@ -1173,3 +1214,53 @@ async def add_clan_points(user_id: int, points: int = 10, is_win: bool = False):
         except Exception as e:
             import logging
             logging.error(f"Error adding clan points: {e}")
+
+# Tournaments DB Functions
+async def get_tournaments():
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT t.*, (SELECT COUNT(*) FROM tournament_participants tp WHERE tp.tournament_id = t.id) as participants_count FROM tournaments t ORDER BY t.id DESC") as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+async def join_tournament(tournament_id: int, user_id: int) -> tuple[bool, str]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (user_id, f"User{user_id}", "Turnirchi"))
+            joined_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            await db.execute(
+                "INSERT INTO tournament_participants (tournament_id, user_id, joined_at) VALUES (?, ?, ?)",
+                (tournament_id, user_id, joined_at)
+            )
+            await db.commit()
+            return True, "Turnirga muvaffaqiyatli ro'yxatdan o'tdingiz!"
+        except Exception:
+            return False, "Siz allaqachon ushbu turnirga ro'yxatdan o'tgansiz!"
+
+# Battle Pass DB Functions
+async def get_user_battle_pass(user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM battle_pass WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            if not row:
+                await db.execute("INSERT INTO battle_pass (user_id, pass_level, pass_xp, is_premium) VALUES (?, 1, 0, 0)", (user_id,))
+                await db.commit()
+                return {"user_id": user_id, "pass_level": 1, "pass_xp": 0, "is_premium": 0}
+            return dict(row)
+
+async def add_battle_pass_xp(user_id: int, xp_gain: int):
+    bp = await get_user_battle_pass(user_id)
+    new_xp = bp["pass_xp"] + xp_gain
+    new_level = bp["pass_level"]
+    
+    while new_xp >= 100 and new_level < 30:
+        new_xp -= 100
+        new_level += 1
+        
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE battle_pass SET pass_level = ?, pass_xp = ? WHERE user_id = ?",
+            (new_level, new_xp, user_id)
+        )
+        await db.commit()

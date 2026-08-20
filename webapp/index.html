@@ -715,6 +715,34 @@
                 </div>
             </section>
 
+            <!-- 6. Tournaments Tab -->
+            <section id="tab-tournaments" class="tab-content">
+                <div class="section-title">🏆 Rasmiy Turnirlar</div>
+                <div id="tournaments-container" style="display:flex; flex-direction:column; gap:16px;">
+                    <div style="padding:20px; text-align:center; color:#94a3b8; font-size:12px;">Yuklanmoqda...</div>
+                </div>
+            </section>
+
+            <!-- 7. Battle Pass Tab -->
+            <section id="tab-pass" class="tab-content">
+                <div class="section-title">📜 Mavsumiy Battle Pass</div>
+                <div id="battle-pass-container" style="background:linear-gradient(135deg, rgba(255,196,57,0.15) 0%, rgba(157,78,221,0.15) 100%); border:1px solid rgba(255,196,57,0.3); border-radius:20px; padding:20px; text-align:center; margin-bottom:20px;">
+                    <div style="font-size:36px; margin-bottom:6px;">🌟</div>
+                    <h2 style="color:#ffc439; margin:0 0 6px 0; font-size:20px;">DarkTown Season Pass #1</h2>
+                    <p style="color:#cbd5e1; font-size:12px; margin-bottom:15px;">O'yinlar o'ynang, XP yiging va maxsus sovg'alarga ega bo'ling!</p>
+                    
+                    <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:15px; margin-bottom:15px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; color:#fff; margin-bottom:6px;">
+                            <span id="bp-level-txt">Daraja 1</span>
+                            <span id="bp-xp-txt">0 / 100 XP</span>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.1); border-radius:6px; height:10px; overflow:hidden;">
+                            <div id="bp-fill" style="background:linear-gradient(90deg, #ffc439, #9d4edd); width:0%; height:100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
 
         <!-- Bottom Navigation Bar -->
@@ -731,9 +759,13 @@
                 <span class="nav-icon">🛡️</span>
                 <span class="nav-lbl" id="nav-lbl-clans">Klanlar</span>
             </button>
-            <button class="nav-item" data-tab="leaderboard">
+            <button class="nav-item" data-tab="tournaments">
                 <span class="nav-icon">🏆</span>
-                <span class="nav-lbl" id="nav-lbl-leaderboard">Reyting</span>
+                <span class="nav-lbl" id="nav-lbl-tournaments">Turnirlar</span>
+            </button>
+            <button class="nav-item" data-tab="pass">
+                <span class="nav-icon">📜</span>
+                <span class="nav-lbl" id="nav-lbl-pass">Pass</span>
             </button>
             <button class="nav-item" data-tab="match">
                 <span class="nav-icon">🎲</span>

@@ -1590,6 +1590,71 @@ async def clan_leaderboard_handler(request):
         logging.error(f"Error in clan_leaderboard_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+# Channel Sub, Tournaments, and Battle Pass Handlers
+async def check_sub_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        bot = request.app['bot']
+        from config import REQUIRED_CHANNEL
+        if not REQUIRED_CHANNEL:
+            return web.json_response({"is_subscribed": True})
+            
+        try:
+            member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+            is_sub = member.status in ["creator", "administrator", "member"]
+        except Exception:
+            is_sub = False
+            
+        return web.json_response({"is_subscribed": is_sub, "channel": REQUIRED_CHANNEL})
+    except Exception as e:
+        logging.error(f"Error in check_sub_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def tournaments_list_handler(request):
+    try:
+        tournaments = await db.get_tournaments()
+        return web.json_response({"tournaments": tournaments})
+    except Exception as e:
+        logging.error(f"Error in tournaments_list_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def tournament_join_handler(request):
+    try:
+        data = await request.json()
+        user_id = int(data.get("user_id", 0))
+        tournament_id = int(data.get("tournament_id", 0))
+        
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id)
+        if not is_auth:
+            return err_resp
+            
+        if not user_id or not tournament_id:
+            return web.json_response({"error": "user_id va tournament_id kiritilishi shart"}, status=400)
+            
+        success, message = await db.join_tournament(tournament_id, user_id)
+        if success:
+            return web.json_response({"success": True, "message": message})
+        else:
+            return web.json_response({"error": message}, status=400)
+    except Exception as e:
+        logging.error(f"Error in tournament_join_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
+async def battle_pass_handler(request):
+    try:
+        user_id = int(request.query.get("user_id", 0))
+        if not user_id:
+            return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        bp = await db.get_user_battle_pass(user_id)
+        return web.json_response({"battle_pass": bp})
+    except Exception as e:
+        logging.error(f"Error in battle_pass_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 # Setup Web Server Routing
 def setup_web_server():
     app = web.Application()
@@ -1633,6 +1698,12 @@ def setup_web_server():
     app.router.add_post("/api/clan/leave", clan_leave_handler)
     app.router.add_get("/api/clan/status", clan_status_handler)
     app.router.add_get("/api/clan/leaderboard", clan_leaderboard_handler)
+    
+    # Sub Check, Tournaments & Battle Pass Routes
+    app.router.add_get("/api/check-sub", check_sub_handler)
+    app.router.add_get("/api/tournaments", tournaments_list_handler)
+    app.router.add_post("/api/tournaments/join", tournament_join_handler)
+    app.router.add_get("/api/battle-pass", battle_pass_handler)
     
     # TMA Matchmaking & Party Routing
     app.router.add_post("/api/rooms/create", create_room_handler)

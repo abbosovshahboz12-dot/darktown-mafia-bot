@@ -62,6 +62,26 @@ async def cmd_start(message: types.Message):
     user = await db.get_user(user_id, username, first_name)
     lang = user.get('language', 'uz')
     
+    # Check channel subscription (@DarkTownuz)
+    from config import REQUIRED_CHANNEL
+    if REQUIRED_CHANNEL:
+        try:
+            member = await message.bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+            if member.status not in ["creator", "administrator", "member"]:
+                kb = InlineKeyboardBuilder()
+                kb.add(types.InlineKeyboardButton(text="📢 Kanalga obuna bo'lish", url=f"https://t.me/{REQUIRED_CHANNEL.replace('@', '')}"))
+                kb.add(types.InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data="check_channel_sub"))
+                kb.adjust(1)
+                await message.answer(
+                    f"⚠️ **DIQQAT!** Bot va o'yinlardan foydalanish uchun rasmiy **{REQUIRED_CHANNEL}** kanalimizga obuna bo'lishingiz shart!\n\n"
+                    f"Kanalga obuna bo'ling va pastdagi 'Obunani tekshirish' tugmasini bosing:",
+                    reply_markup=kb.as_markup(),
+                    parse_mode="Markdown"
+                )
+                return
+        except Exception as e:
+            logging.warning(f"Error checking channel sub: {e}")
+    
     # Notify referral rewards if referred successfully
     if referred:
         await message.answer(get_text(lang, "referral_welcome"), parse_mode="Markdown")
@@ -430,3 +450,25 @@ async def successful_payment_handler(message: types.Message):
             success_msg = f"🎉 **Сатып алу сәтті аяқталды!** Балансыңызға **{coins}** монета қосылды."
             
         await message.answer(success_msg, parse_mode="Markdown")
+
+@router.callback_query(F.data == "check_channel_sub")
+async def cb_check_channel_sub(cb: types.CallbackQuery):
+    from config import REQUIRED_CHANNEL
+    if REQUIRED_CHANNEL:
+        try:
+            member = await cb.bot.get_chat_member(REQUIRED_CHANNEL, cb.from_user.id)
+            if member.status in ["creator", "administrator", "member"]:
+                await cb.answer("✅ Rahmat! Obuna tasdiqlandi.", show_alert=True)
+                try:
+                    await cb.message.delete()
+                except Exception:
+                    pass
+                bot_user = (await cb.bot.get_me()).username
+                user = await db.get_user(cb.from_user.id, cb.from_user.username, cb.from_user.full_name)
+                lang = user.get('language', 'uz')
+                welcome_text = get_text(lang, "start_private", name=cb.from_user.full_name)
+                await cb.message.answer(welcome_text, reply_markup=get_start_keyboard(cb.from_user.id, bot_user), parse_mode="Markdown")
+            else:
+                await cb.answer(f"⚠️ Siz hali {REQUIRED_CHANNEL} kanaliga obuna bo'lmadingiz!", show_alert=True)
+        except Exception:
+            await cb.answer("✅ Obuna tasdiqlandi.")
