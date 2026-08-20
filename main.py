@@ -45,6 +45,67 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 # Maintenance Mode Flag
 MAINTENANCE_MODE = False
 
+import hmac
+import hashlib
+import time
+import json
+from urllib.parse import parse_qsl
+
+def verify_telegram_webapp_data(init_data_str: str, bot_token: str) -> dict | None:
+    if not init_data_str or not bot_token:
+        return None
+    try:
+        parsed_data = dict(parse_qsl(init_data_str, keep_blank_values=True))
+        if "hash" not in parsed_data:
+            return None
+        
+        received_hash = parsed_data.pop("hash")
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed_data.items()))
+        secret_key = hmac.new(b"WebAppData", bot_token.encode('utf-8'), hashlib.sha256).digest()
+        calculated_hash = hmac.new(secret_key, data_check_string.encode('utf-8'), hashlib.sha256).hexdigest()
+        
+        if not hmac.compare_digest(calculated_hash.lower(), received_hash.lower()):
+            return None
+            
+        auth_date = int(parsed_data.get("auth_date", 0))
+        if auth_date > 0 and (time.time() - auth_date > 86400):
+            return None
+            
+        user_json = parsed_data.get("user")
+        if user_json:
+            return json.loads(user_json)
+        return {}
+    except Exception as e:
+        logging.warning(f"WebApp auth verification error: {e}")
+        return None
+
+async def authenticate_webapp_request(request, requested_user_id: int = 0, require_admin: bool = False):
+    init_data = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        init_data = auth_header[7:].strip()
+    elif "X-Telegram-Init-Data" in request.headers:
+        init_data = request.headers["X-Telegram-Init-Data"].strip()
+        
+    auth_user = None
+    if init_data:
+        auth_user = verify_telegram_webapp_data(init_data, BOT_TOKEN)
+
+    auth_user_id = auth_user.get("id") if (auth_user and isinstance(auth_user, dict)) else None
+
+    if auth_user_id is not None:
+        if require_admin and auth_user_id != ADMIN_ID:
+            return False, auth_user_id, web.json_response({"error": "Siz admin emassiz!"}, status=403)
+        if requested_user_id and requested_user_id != auth_user_id and auth_user_id != ADMIN_ID:
+            return False, auth_user_id, web.json_response({"error": "Ruxsat etilmagan foydalanuvchi ma'lumotlari"}, status=403)
+        return True, auth_user_id, None
+
+    if require_admin:
+        if requested_user_id != ADMIN_ID:
+            return False, 0, web.json_response({"error": "Ruxsat etilmagan (initData kerak)"}, status=403)
+
+    return True, requested_user_id, None
+
 # Setup aiohttp web server handlers
 async def get_profile_handler(request):
     try:
@@ -54,6 +115,10 @@ async def get_profile_handler(request):
         
         if not user_id:
             return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
+            
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id)
+        if not is_auth:
+            return err_resp
             
         if MAINTENANCE_MODE and user_id != ADMIN_ID:
             return web.json_response({"maintenance": True})
@@ -87,6 +152,10 @@ async def buy_handler(request):
         user_id = int(data.get("user_id", 0))
         item_key = data.get("item_key")
         
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id)
+        if not is_auth:
+            return err_resp
+        
         shop_items = {
             "shield": {"name": "XP Qalqoni", "cost": 150},
             "booster_mafia": {"name": "Mafiya Booster", "cost": 250},
@@ -114,6 +183,10 @@ async def activate_handler(request):
         data = await request.json()
         user_id = int(data.get("user_id", 0))
         item_key = data.get("item_key")
+        
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id)
+        if not is_auth:
+            return err_resp
         
         if not user_id or item_key != "shield":
             return web.json_response({"error": "Noto'g'ri so'rov"}, status=400)
@@ -151,8 +224,9 @@ async def index_handler(request):
 async def admin_stats_handler(request):
     try:
         admin_id = int(request.query.get("admin_id", 0))
-        if admin_id != ADMIN_ID:
-            return web.json_response({"error": "Ruxsat etilmagan"}, status=403)
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=admin_id, require_admin=True)
+        if not is_auth:
+            return err_resp
             
         stats = await db.get_global_stats()
         from game.manager import game_manager
@@ -173,8 +247,9 @@ async def admin_give_handler(request):
     try:
         data = await request.json()
         admin_id = int(data.get("admin_id", 0))
-        if admin_id != ADMIN_ID:
-            return web.json_response({"error": "Ruxsat etilmagan"}, status=403)
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=admin_id, require_admin=True)
+        if not is_auth:
+            return err_resp
             
         target_uid = int(data.get("target_id", 0))
         coins = int(data.get("coins", 0))
@@ -193,11 +268,12 @@ async def admin_broadcast_handler(request):
     try:
         data = await request.json()
         user_id = int(data.get("user_id", 0))
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id, require_admin=True)
+        if not is_auth:
+            return err_resp
+            
         text = data.get("text", "").strip()
         image_url = data.get("image_url", "").strip()
-        
-        if user_id != ADMIN_ID:
-            return web.json_response({"error": "Siz admin emassiz!"}, status=403)
             
         if not text:
             return web.json_response({"error": "Matn kiritilishi shart!"}, status=400)
@@ -231,11 +307,12 @@ async def admin_ban_handler(request):
     try:
         data = await request.json()
         user_id = int(data.get("user_id", 0))
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id, require_admin=True)
+        if not is_auth:
+            return err_resp
+            
         target_id = int(data.get("target_id", 0))
         ban = bool(data.get("ban", False))
-        
-        if user_id != ADMIN_ID:
-            return web.json_response({"error": "Siz admin emassiz!"}, status=403)
             
         if not target_id:
             return web.json_response({"error": "Nishon Telegram ID kiritilishi shart!"}, status=400)
@@ -250,8 +327,9 @@ async def admin_ban_handler(request):
 async def admin_active_games_handler(request):
     try:
         user_id = int(request.query.get("user_id", 0))
-        if user_id != ADMIN_ID:
-            return web.json_response({"error": "Siz admin emassiz!"}, status=403)
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=user_id, require_admin=True)
+        if not is_auth:
+            return err_resp
             
         from game.manager import game_manager
         active_list = []

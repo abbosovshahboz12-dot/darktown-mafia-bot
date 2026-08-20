@@ -26,6 +26,16 @@ if (tg) {
     }
 }
 
+// Helper for authenticated API requests
+async function apiFetch(url, options = {}) {
+    options = options || {};
+    options.headers = options.headers || {};
+    if (tg && tg.initData) {
+        options.headers['Authorization'] = 'Bearer ' + tg.initData;
+    }
+    return fetch(url, options);
+}
+
 // Apply Telegram theme colors if desired
 if (tg && tg.backgroundColor) {
     document.documentElement.style.setProperty('--bg-color', tg.backgroundColor);
@@ -74,7 +84,7 @@ if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
 
 async function autoJoinParty(partyId) {
     try {
-        await fetch('/api/party/join', {
+        await apiFetch('/api/party/join', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, party_id: partyId })
@@ -117,7 +127,7 @@ navItems.forEach(item => {
 // Load Profile and Stats
 async function loadProfile() {
     try {
-        const response = await fetch(`/api/profile?user_id=${userId}&username=${encodeURIComponent(userUsername)}&first_name=${encodeURIComponent(userFirstName)}`);
+        const response = await apiFetch(`/api/profile?user_id=${userId}&username=${encodeURIComponent(userUsername)}&first_name=${encodeURIComponent(userFirstName)}`);
         if (!response.ok) throw new Error("Profile fetch failed");
         
         const data = await response.json();
@@ -304,7 +314,7 @@ function renderInventory(inventory, shieldActive) {
 // Load Global Leaderboard
 async function loadLeaderboard() {
     try {
-        const response = await fetch('/api/leaderboard');
+        const response = await apiFetch('/api/leaderboard');
         if (!response.ok) throw new Error("Leaderboard fetch failed");
         
         const data = await response.json();
@@ -345,7 +355,7 @@ async function loadLeaderboard() {
 // Buy Item API Call
 async function buyItem(itemKey) {
     try {
-        const response = await fetch('/api/buy', {
+        const response = await apiFetch('/api/buy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, item_key: itemKey })
@@ -368,7 +378,7 @@ async function buyItem(itemKey) {
 // Activate Shield API Call
 async function activateShield() {
     try {
-        const response = await fetch('/api/activate', {
+        const response = await apiFetch('/api/activate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, item_key: 'shield' })
@@ -503,7 +513,7 @@ setInterval(loadActiveGame, 4000);
 // Active Game Arena Actions
 async function loadActiveGame() {
     try {
-        const response = await fetch(`/api/game/status?user_id=${userId}`);
+        const response = await apiFetch(`/api/game/status?user_id=${userId}`);
         if (!response.ok) throw new Error("Game status fetch failed");
         
         const data = await response.json();
@@ -773,7 +783,7 @@ async function loadActiveGame() {
 // Party Management functions
 async function loadPartyStatus() {
     try {
-        const response = await fetch(`/api/party/status?user_id=${userId}`);
+        const response = await apiFetch(`/api/party/status?user_id=${userId}`);
         const data = await response.json();
         
         const badge = document.getElementById('party-status-badge');
@@ -819,7 +829,7 @@ async function loadPartyStatus() {
 async function createParty() {
     alert("Partiya yaratish tugmasi bosildi! Yuborilayotgan User ID: " + userId);
     try {
-        const response = await fetch('/api/party/create', {
+        const response = await apiFetch('/api/party/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId })
@@ -840,7 +850,7 @@ async function createParty() {
 async function leaveParty() {
     if (!currentPartyId) return;
     try {
-        const response = await fetch('/api/party/leave', {
+        const response = await apiFetch('/api/party/leave', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, party_id: currentPartyId })
@@ -897,14 +907,14 @@ async function autoMatchmaking() {
     alert("Avto Matching tugmasi bosildi! Yuborilayotgan User ID: " + userId);
     try {
         // Query public rooms first
-        const response = await fetch('/api/rooms/list');
+        const response = await apiFetch('/api/rooms/list');
         const data = await response.json();
         
         if (data.rooms && data.rooms.length > 0) {
             // Join the first open public room
             const firstRoom = data.rooms[0];
             alert("Ochiq xona topildi: #" + firstRoom.room_id + ". Qo'shilmoqda...");
-            const joinRes = await fetch('/api/rooms/join', {
+            const joinRes = await apiFetch('/api/rooms/join', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: userId, room_id: firstRoom.room_id })
@@ -918,7 +928,7 @@ async function autoMatchmaking() {
         
         // No open room found, automatically create one
         alert("Ochiq xonalar yo'q. Yangi ochiq xona yaratilmoqda...");
-        const createRes = await fetch('/api/rooms/create', {
+        const createRes = await apiFetch('/api/rooms/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, is_private: 0, pin_code: "", day_limit: 60, night_limit: 60 })
@@ -943,7 +953,7 @@ async function submitCreateRoom() {
     const nightLimit = parseInt(document.getElementById('room-night-limit').value) || 60;
     
     try {
-        const response = await fetch('/api/rooms/create', {
+        const response = await apiFetch('/api/rooms/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, is_private: isPrivate, pin_code: pinCode, day_limit: dayLimit, night_limit: nightLimit })
@@ -973,7 +983,7 @@ async function submitJoinRoom() {
     }
     
     try {
-        const response = await fetch('/api/rooms/join', {
+        const response = await apiFetch('/api/rooms/join', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, room_id: roomId, pin_code: pin })
@@ -995,7 +1005,7 @@ async function forceCloseRoom() {
     if (!currentRoomId) return;
     if (!confirm("🚨 Haqiqatan ham o'yin xonasini majburan yopmoqchimisiz? Barcha o'yinchilar guruhidan bloklar yechiladi.")) return;
     try {
-        const response = await fetch('/api/rooms/force-close', {
+        const response = await apiFetch('/api/rooms/force-close', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, room_id: currentRoomId })
@@ -1075,7 +1085,7 @@ function showPhaseTransition(phase) {
 async function leaveRoom() {
     if (!currentRoomId) return;
     try {
-        const response = await fetch('/api/rooms/leave', {
+        const response = await apiFetch('/api/rooms/leave', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, room_id: currentRoomId })
@@ -1095,7 +1105,7 @@ async function leaveRoom() {
 async function startRoom() {
     if (!currentRoomId) return;
     try {
-        const response = await fetch('/api/rooms/start', {
+        const response = await apiFetch('/api/rooms/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, room_id: currentRoomId })
@@ -1113,7 +1123,7 @@ async function startRoom() {
 
 async function loadPublicRoomsList() {
     try {
-        const response = await fetch('/api/rooms/list');
+        const response = await apiFetch('/api/rooms/list');
         const data = await response.json();
         
         const container = document.getElementById('active-rooms-list');
@@ -1141,7 +1151,7 @@ async function loadPublicRoomsList() {
 
 window.directJoinRoom = async function(roomId) {
     try {
-        const response = await fetch('/api/rooms/join', {
+        const response = await apiFetch('/api/rooms/join', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, room_id: roomId })
@@ -1160,7 +1170,7 @@ window.directJoinRoom = async function(roomId) {
 // Day chat messages inside room
 async function loadRoomDayChatMessages() {
     try {
-        const response = await fetch(`/api/rooms/chat/messages?user_id=${userId}`);
+        const response = await apiFetch(`/api/rooms/chat/messages?user_id=${userId}`);
         const data = await response.json();
         
         const container = document.getElementById('room-day-messages');
@@ -1192,7 +1202,7 @@ async function sendRoomDayChatMessage() {
     if (!text) return;
     
     try {
-        const response = await fetch('/api/rooms/chat/send', {
+        const response = await apiFetch('/api/rooms/chat/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, text: text })
@@ -1219,7 +1229,7 @@ function addActionBtn(container, text, onClick, className) {
 
 async function sendAction(targetId, actionType) {
     try {
-        const response = await fetch('/api/game/action', {
+        const response = await apiFetch('/api/game/action', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1243,7 +1253,7 @@ async function sendAction(targetId, actionType) {
 
 async function sendVote(targetId) {
     try {
-        const response = await fetch('/api/game/vote', {
+        const response = await apiFetch('/api/game/vote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1267,7 +1277,7 @@ async function sendVote(targetId) {
 // Admin Tab Actions
 async function loadAdminStats() {
     try {
-        const response = await fetch(`/api/admin/stats?admin_id=${userId}`);
+        const response = await apiFetch(`/api/admin/stats?admin_id=${userId}`);
         if (!response.ok) throw new Error("Admin stats fetch failed");
         
         const data = await response.json();
@@ -1283,7 +1293,7 @@ async function loadAdminStats() {
         }
         
         // Fetch active games list
-        const gamesRes = await fetch(`/api/admin/active-games?user_id=${userId}`);
+        const gamesRes = await apiFetch(`/api/admin/active-games?user_id=${userId}`);
         const gamesData = await gamesRes.json();
         const container = document.getElementById('admin-active-rooms-list');
         if (container) {
@@ -1317,7 +1327,7 @@ async function loadAdminStats() {
 window.forceCloseRoom = async function(roomId) {
     if (!confirm(`Haqiqatan ham #${roomId} xonani majburan yopmoqchimisiz?`)) return;
     try {
-        const response = await fetch('/api/admin/force-close', {
+        const response = await apiFetch('/api/admin/force-close', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, room_id: roomId })
@@ -1393,7 +1403,7 @@ const audioManager = new AudioManager();
 
 async function loadDailyQuests() {
     try {
-        const response = await fetch(`/api/quests?user_id=${userId}`);
+        const response = await apiFetch(`/api/quests?user_id=${userId}`);
         const data = await response.json();
         const container = document.getElementById('quests-container');
         if (!container) return;
@@ -1423,7 +1433,7 @@ async function loadDailyQuests() {
 
 async function loadGameHistory() {
     try {
-        const response = await fetch(`/api/game/history?user_id=${userId}`);
+        const response = await apiFetch(`/api/game/history?user_id=${userId}`);
         const data = await response.json();
         const container = document.getElementById('history-container');
         if (!container) return;
@@ -1458,7 +1468,7 @@ async function searchUsers() {
     const query = document.getElementById('admin-user-search-input').value.trim();
     if (!query) return;
     try {
-        const response = await fetch(`/api/admin/users/search?admin_id=${userId}&q=${encodeURIComponent(query)}`);
+        const response = await apiFetch(`/api/admin/users/search?admin_id=${userId}&q=${encodeURIComponent(query)}`);
         const data = await response.json();
         const container = document.getElementById('admin-user-search-results');
         if (!container) return;
@@ -1499,7 +1509,7 @@ async function editUserPrompt(targetUserId, field, currentVal) {
     try {
         const body = { admin_id: userId, user_id: targetUserId };
         body[field] = parseInt(newVal);
-        const response = await fetch('/api/admin/users/edit', {
+        const response = await apiFetch('/api/admin/users/edit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -1519,7 +1529,7 @@ async function editUserPrompt(targetUserId, field, currentVal) {
 async function toggleUserBan(targetUserId, banStatus) {
     if (!confirm(`Haqiqatan ham ushbu foydalanuvchini ${banStatus ? 'bloklamoqchimisiz' : 'blokdan chiqarmoqchimisiz'}?`)) return;
     try {
-        const response = await fetch('/api/admin/users/edit', {
+        const response = await apiFetch('/api/admin/users/edit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ admin_id: userId, user_id: targetUserId, banned: banStatus })
@@ -1538,7 +1548,7 @@ async function toggleUserBan(targetUserId, banStatus) {
 
 async function toggleMaintenance(enabled) {
     try {
-        const response = await fetch('/api/admin/system/maintenance', {
+        const response = await apiFetch('/api/admin/system/maintenance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ admin_id: userId, enabled: enabled })
@@ -1569,7 +1579,7 @@ async function submitAdminBroadcast() {
     }
     
     try {
-        const response = await fetch('/api/admin/broadcast', {
+        const response = await apiFetch('/api/admin/broadcast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, text: text, image_url: imageUrl })
@@ -1593,7 +1603,7 @@ async function submitAdminBan(isBan) {
     }
     
     try {
-        const response = await fetch('/api/admin/ban', {
+        const response = await apiFetch('/api/admin/ban', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, target_id: parseInt(targetId), ban: isBan })
@@ -1624,7 +1634,7 @@ safeAddListener('admin-submit-btn', 'click', async () => {
     }
     
     try {
-        const response = await fetch('/api/admin/give', {
+        const response = await apiFetch('/api/admin/give', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2010,7 +2020,7 @@ function updateDailyClaimTimer(lastClaimTimestamp) {
 
 async function loadGhostChatMessages() {
     try {
-        const response = await fetch(`/api/game/ghost-chat/messages?user_id=${userId}`);
+        const response = await apiFetch(`/api/game/ghost-chat/messages?user_id=${userId}`);
         if (!response.ok) throw new Error("Ghost messages fetch failed");
         const data = await response.json();
         
@@ -2045,7 +2055,7 @@ async function sendGhostChatMessage() {
     if (!text) return;
     
     try {
-        const response = await fetch('/api/game/ghost-chat/send', {
+        const response = await apiFetch('/api/game/ghost-chat/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2067,7 +2077,7 @@ async function sendGhostChatMessage() {
 
 async function loadMafiaChatMessages() {
     try {
-        const response = await fetch(`/api/game/mafia-chat/messages?user_id=${userId}`);
+        const response = await apiFetch(`/api/game/mafia-chat/messages?user_id=${userId}`);
         if (!response.ok) throw new Error("Mafia messages fetch failed");
         const data = await response.json();
         
@@ -2103,7 +2113,7 @@ async function sendMafiaChatMessage() {
     if (!text) return;
     
     try {
-        const response = await fetch('/api/game/mafia-chat/send', {
+        const response = await apiFetch('/api/game/mafia-chat/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2125,7 +2135,7 @@ async function sendMafiaChatMessage() {
 
 async function startTelegramStarsPayment(packageKey) {
     try {
-        const response = await fetch('/api/payment/checkout', {
+        const response = await apiFetch('/api/payment/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2164,7 +2174,7 @@ safeAddListener('select-lang', 'change', async (e) => {
     const selected = e.target.value;
     updateLang(selected);
     try {
-        await fetch('/api/profile/language', {
+        await apiFetch('/api/profile/language', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, language: selected })
@@ -2176,7 +2186,7 @@ safeAddListener('select-lang', 'change', async (e) => {
 
 safeAddListener('daily-claim-card', 'click', async () => {
     try {
-        const response = await fetch('/api/daily-claim', {
+        const response = await apiFetch('/api/daily-claim', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId })
@@ -2270,7 +2280,7 @@ safeAddListener('admin-maintenance-toggle', 'change', (e) => {
 safeAddListener('btn-save-vip-bg', 'click', async () => {
     const bgUrl = document.getElementById('vip-bg-url').value.trim();
     try {
-        const response = await fetch('/api/profile/custom-bg', {
+        const response = await apiFetch('/api/profile/custom-bg', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, bg_url: bgUrl })
