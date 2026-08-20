@@ -1224,6 +1224,8 @@ async def join_room_handler(request):
         if not user_id or not room_id:
             return web.json_response({"error": "user_id va room_id kiritilishi shart"}, status=400)
             
+        await db.get_user(user_id)
+            
         async with aiosqlite.connect(db.DB_PATH) as sqlite_db:
             sqlite_db.row_factory = aiosqlite.Row
             async with sqlite_db.execute("SELECT * FROM rooms WHERE room_id = ?", (room_id,)) as cursor:
@@ -1235,15 +1237,22 @@ async def join_room_handler(request):
         if room['status'] != 'lobby':
             return web.json_response({"error": "O'yin allaqachon boshlangan!"}, status=400)
             
-        if room['is_private'] and room['pin_code'] != pin_code:
+        room_pin = str(room['pin_code'] or "").strip()
+        if room['is_private'] and room_pin != pin_code:
             return web.json_response({"error": "PIN-kod noto'g'ri!"}, status=403)
             
         active_room = await db.get_active_room(user_id)
-        if active_room and active_room['room_id'] == room_id:
-            return web.json_response({"success": True})
-            
         if active_room:
-            return web.json_response({"error": "Siz allaqachon boshqa o'yin xonasidasiz!"}, status=400)
+            if active_room['room_id'] == room_id:
+                return web.json_response({"success": True})
+            elif active_room['status'] == 'finished':
+                await db.leave_room(active_room['room_id'], user_id)
+            else:
+                # If room status is lobby, leave old lobby to join new room
+                if active_room['status'] == 'lobby':
+                    await db.leave_room(active_room['room_id'], user_id)
+                else:
+                    return web.json_response({"error": "Siz allaqachon aktiv o'yindasiz!"}, status=400)
             
         party_row = await db.get_user_party(user_id)
         party_members = []
@@ -1252,8 +1261,11 @@ async def join_room_handler(request):
             for m in party_members:
                 if m['user_id'] != user_id:
                     m_active = await db.get_active_room(m['user_id'])
-                    if m_active:
-                        return web.json_response({"error": f"Partiya a'zosi {m['first_name']} boshqa o'yin xonasida!"}, status=400)
+                    if m_active and m_active['room_id'] != room_id:
+                        if m_active['status'] in ('lobby', 'finished'):
+                            await db.leave_room(m_active['room_id'], m['user_id'])
+                        else:
+                            return web.json_response({"error": f"Partiya a'zosi {m['first_name']} boshqa faol o'yinda!"}, status=400)
                         
         success = await db.join_room(room_id, user_id)
         if success:

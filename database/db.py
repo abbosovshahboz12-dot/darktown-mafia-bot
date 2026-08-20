@@ -488,6 +488,7 @@ async def add_referral(invitee_id: int, inviter_id: int) -> bool:
 async def create_room(room_id: str, owner_id: int, is_private: int, pin_code: str, day_limit: int, night_limit: int) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (owner_id, f"User{owner_id}", "Mafiozi"))
             await db.execute(
                 "INSERT INTO rooms (room_id, owner_id, status, is_private, pin_code, day_limit, night_limit, created_at) "
                 "VALUES (?, ?, 'lobby', ?, ?, ?, ?, ?)",
@@ -500,7 +501,9 @@ async def create_room(room_id: str, owner_id: int, is_private: int, pin_code: st
             )
             await db.commit()
             return True
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Error in create_room: {e}")
             return False
 
 async def get_active_room(user_id: int):
@@ -519,8 +522,12 @@ async def get_room_players(room_id: str):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         query = """
-            SELECT rp.*, u.username, u.first_name, u.level FROM room_players rp
-            JOIN users u ON rp.user_id = u.user_id
+            SELECT rp.*, 
+                   COALESCE(u.username, '') as username, 
+                   COALESCE(u.first_name, 'O\'yinchi') as first_name, 
+                   COALESCE(u.level, 1) as level 
+            FROM room_players rp
+            LEFT JOIN users u ON rp.user_id = u.user_id
             WHERE rp.room_id = ?
         """
         async with db.execute(query, (room_id,)) as cursor:
@@ -530,6 +537,8 @@ async def get_room_players(room_id: str):
 async def join_room(room_id: str, user_id: int) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (user_id, f"User{user_id}", "Mafiozi"))
+            
             # Check if already in the room
             async with db.execute("SELECT 1 FROM room_players WHERE room_id = ? AND user_id = ?", (room_id, user_id)) as cursor:
                 if await cursor.fetchone():
@@ -542,7 +551,9 @@ async def join_room(room_id: str, user_id: int) -> bool:
             )
             await db.commit()
             return True
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Error in join_room: {e}")
             return False
 
 async def leave_room(room_id: str, user_id: int) -> bool:
@@ -567,7 +578,9 @@ async def leave_room(room_id: str, user_id: int) -> bool:
                 
             await db.commit()
             return True
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Error in leave_room: {e}")
             return False
 
 async def get_open_rooms():
@@ -600,6 +613,17 @@ async def update_room_player_role(room_id: str, user_id: int, role: str):
         await db.execute("UPDATE room_players SET role = ? WHERE room_id = ? AND user_id = ?", (role, room_id, user_id))
         await db.commit()
 
+async def set_player_alive(room_id: str, user_id: int, is_alive: bool):
+    async with aiosqlite.connect(DB_PATH) as db:
+        val = 1 if is_alive else 0
+        await db.execute("UPDATE room_players SET is_alive = ? WHERE room_id = ? AND user_id = ?", (val, room_id, user_id))
+        await db.commit()
+
+async def reset_room_afk(room_id: str, user_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE room_players SET afk_streak = 0 WHERE room_id = ? AND user_id = ?", (room_id, user_id))
+        await db.commit()
+
 async def kill_room_player(room_id: str, user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE room_players SET is_alive = 0 WHERE room_id = ? AND user_id = ?", (room_id, user_id))
@@ -625,27 +649,39 @@ async def reset_room_player_afk(room_id: str, user_id: int):
 async def create_party(party_id: str, leader_id: int) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (leader_id, f"User{leader_id}", "Leader"))
             # Delete old parties of leader
-            await db.execute("DELETE FROM parties WHERE leader_id = ?", (leader_id,))
+            await db.execute("DELETE FROM parties WHERE leader_id = ? OR member_id = ?", (leader_id, leader_id))
             # Add leader as member
             await db.execute("INSERT INTO parties (party_id, leader_id, member_id) VALUES (?, ?, ?)", (party_id, leader_id, leader_id))
             await db.commit()
             return True
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Error in create_party: {e}")
             return False
 
 async def add_to_party(party_id: str, leader_id: int, member_id: int) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         try:
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (member_id, f"User{member_id}", "Mafiozi"))
+            await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (leader_id, f"User{leader_id}", "Leader"))
+            
             # Check if already in party
             async with db.execute("SELECT 1 FROM parties WHERE party_id = ? AND member_id = ?", (party_id, member_id)) as cursor:
                 if await cursor.fetchone():
                     return True
+                    
+            # Delete member from old parties if any
+            await db.execute("DELETE FROM parties WHERE member_id = ?", (member_id,))
+            
             # Add member
             await db.execute("INSERT INTO parties (party_id, leader_id, member_id) VALUES (?, ?, ?)", (party_id, leader_id, member_id))
             await db.commit()
             return True
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.error(f"Error in add_to_party: {e}")
             return False
 
 async def remove_from_party(party_id: str, member_id: int) -> bool:
@@ -661,8 +697,13 @@ async def get_party_members(party_id: str):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         query = """
-            SELECT p.*, u.user_id, u.username, u.first_name, u.level FROM parties p
-            JOIN users u ON p.member_id = u.user_id
+            SELECT p.*, 
+                   u.user_id, 
+                   COALESCE(u.username, '') as username, 
+                   COALESCE(u.first_name, 'O\'yinchi') as first_name, 
+                   COALESCE(u.level, 1) as level 
+            FROM parties p
+            LEFT JOIN users u ON p.member_id = u.user_id
             WHERE p.party_id = ?
         """
         async with db.execute(query, (party_id,)) as cursor:
