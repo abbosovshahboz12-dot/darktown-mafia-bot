@@ -1357,16 +1357,20 @@ async def add_tournament_points(user_id: int, points: int):
             import logging
             logging.error(f"Error adding tournament points: {e}")
 
-async def distribute_tournament_prizes(tournament_id: int, winner_user_id: int, coins: int = 1000, vip_days: int = 7) -> tuple[bool, str, str | None]:
+async def distribute_tournament_prizes(tournament_id: int, winner_user_id: int, coins: int = 1000, vip_days: int = 7) -> tuple[bool, str, str | None, dict | None]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         try:
             async with db.execute("SELECT * FROM users WHERE user_id = ?", (winner_user_id,)) as cursor:
                 user_row = await cursor.fetchone()
                 if not user_row:
-                    return False, "G'olib foydalanuvchi topilmadi!", None
+                    return False, "G'olib foydalanuvchi topilmadi!", None, None
                 user_dict = dict(user_row)
                 winner_name = user_dict.get('first_name') or user_dict.get('username') or f"User{winner_user_id}"
+                
+            async with db.execute("SELECT * FROM tournaments WHERE id = ?", (tournament_id,)) as cursor2:
+                t_row = await cursor2.fetchone()
+                t_dict = dict(t_row) if t_row else {}
                 
             await db.execute("UPDATE tournaments SET status = 'completed', winner_name = ? WHERE id = ?", (winner_name, tournament_id))
             await db.commit()
@@ -1377,11 +1381,19 @@ async def distribute_tournament_prizes(tournament_id: int, winner_user_id: int, 
             username = user_dict.get('username')
             t_link = f"https://t.me/{username}" if username else f"tg://user?id={winner_user_id}"
             
-            return True, f"Turnir muvaffaqiyatli yakunlandi! G'olib **{winner_name}**ga +{coins} Coins va {vip_days} Kunlik VIP berildi.", t_link
+            details = {
+                "title": t_dict.get("title", "DarkTown Turnir"),
+                "prize_pool": t_dict.get("prize_pool", "Mukofotlar"),
+                "winner_name": winner_name,
+                "username": username,
+                "group_link": t_dict.get("group_link")
+            }
+            
+            return True, f"Turnir muvaffaqiyatli yakunlandi! G'olib **{winner_name}**ga +{coins} Coins va {vip_days} Kunlik VIP berildi va kanalda e'lon qilindi.", t_link, details
         except Exception as e:
             import logging
             logging.error(f"Error in distribute_tournament_prizes: {e}")
-            return False, f"Xatolik: {e}", None
+            return False, f"Xatolik: {e}", None, None
 
 # Battle Pass DB Functions
 async def get_user_battle_pass(user_id: int):

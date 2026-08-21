@@ -1667,8 +1667,43 @@ async def admin_distribute_tournament_prizes_handler(request):
         if not tournament_id or not winner_user_id:
             return web.json_response({"error": "Turnir ID va G'olib Telegram ID kiritilishi shart!"}, status=400)
             
-        success, message, winner_link = await db.distribute_tournament_prizes(tournament_id, winner_user_id, coins, vip_days)
+        success, message, winner_link, details = await db.distribute_tournament_prizes(tournament_id, winner_user_id, coins, vip_days)
         if success:
+            from config import REQUIRED_CHANNEL
+            bot = request.app.get("bot")
+            if bot and details:
+                t_title = details.get("title", "DarkTown Turniri")
+                w_name = details.get("winner_name", "Mafiozi")
+                w_user = details.get("username", "")
+                w_tag = f"@{w_user}" if w_user else w_name
+                prize_info = details.get("prize_pool", "Sovrinlar")
+                
+                announce_text = (
+                    f"🏆 **DARK TOWN TURNIR G'OLIBI E'LON QILINDI!** 🏆\n\n"
+                    f"🎉 **{t_title}** rasman yakunlandi!\n\n"
+                    f"🥇 **G'olib**: {w_tag}\n"
+                    f"🎁 **Sovrin**: {prize_info} (+{coins} Dark Coins, {vip_days} Kunlik VIP)\n\n"
+                    f"Barcha ishtirokchilarga rahmat! Keyingi turnirlarda omad tilaymiz! 🔥"
+                )
+                
+                # Send PM to winner
+                try:
+                    await bot.send_message(
+                        winner_user_id,
+                        f"🎉 **TABRIKLAYMIZ!** Siz **{t_title}** turnirida **1-O'RINNI** egalladingiz! 🏆\n\n"
+                        f"Hisobingizga **+{coins} Dark Coins** va **{vip_days} Kunlik VIP Status** biriktirildi!",
+                        parse_mode="Markdown"
+                    )
+                except Exception:
+                    pass
+                    
+                # Post to Channel
+                if REQUIRED_CHANNEL:
+                    try:
+                        await bot.send_message(REQUIRED_CHANNEL, announce_text, parse_mode="Markdown")
+                    except Exception as ex:
+                        logging.warning(f"Error posting tournament win to channel: {ex}")
+                        
             return web.json_response({"success": True, "message": message, "winner_link": winner_link})
         else:
             return web.json_response({"error": message}, status=400)
