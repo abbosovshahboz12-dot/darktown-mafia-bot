@@ -26,8 +26,12 @@ if (tg) {
     }
 }
 
-// Helper for authenticated API requests
-async function apiFetch(url, options = {}) {
+// Global user state variables
+let userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : 12345678;
+let userFirstName = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.first_name : "Mafiozi";
+let userUsername = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.username : "";
+let isAdmin = false;
+window.isAdmin = false;
     options = options || {};
     options.headers = options.headers || {};
     if (tg && tg.initData) {
@@ -166,7 +170,10 @@ async function loadProfile() {
         userData = data;
         
         if (data.isAdmin) {
-            document.getElementById('nav-admin').style.display = 'inline-block';
+            isAdmin = true;
+            window.isAdmin = true;
+            const navAdmin = document.getElementById('nav-admin');
+            if (navAdmin) navAdmin.style.display = 'inline-block';
         }
         
         // Render profile details
@@ -2558,9 +2565,13 @@ async function loadTournaments() {
         const data = await response.json();
         
         if (data.tournaments && data.tournaments.length > 0) {
+            const userIsAdmin = Boolean(window.isAdmin || (typeof isAdmin !== 'undefined' && isAdmin));
             container.innerHTML = data.tournaments.map(t => {
-                const adminDeleteBtn = isAdmin ? `
+                const adminDeleteBtn = userIsAdmin ? `
                     <button class="btn btn-danger btn-sm" onclick="deleteTournament(${t.id})" style="margin-top:8px; width:100%; font-size:11px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#f87171;">🗑️ Turnirni O'chirish (Admin)</button>
+                ` : '';
+                const winnerBadge = t.winner_name ? `
+                    <div style="font-size:12px; color:#ffc439; font-weight:bold; margin-top:4px;">👑 G'olib: ${escapeHtml(t.winner_name)}</div>
                 ` : '';
                 return `
                 <div style="background:linear-gradient(135deg, rgba(79,172,254,0.1) 0%, rgba(0,242,254,0.1) 100%); border:1px solid rgba(0,242,254,0.3); border-radius:16px; padding:16px;">
@@ -2569,8 +2580,9 @@ async function loadTournaments() {
                         <span style="background:rgba(0,242,254,0.2); color:#00f2fe; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; text-transform:uppercase;">${t.status === 'active' ? 'Ochiq' : 'Yakunlangan'}</span>
                     </div>
                     <div style="font-size:12px; color:#cbd5e1; margin-bottom:8px;">🎁 Sovrin jamg'armasi: <strong style="color:#ffc439;">${escapeHtml(t.prize_pool)}</strong></div>
-                    <div style="font-size:11px; color:#94a3b8; margin-bottom:14px;">📅 Boshlanishi: ${t.start_time} | 👥 A'zolar: ${t.participants_count || 0} kishi</div>
-                    <button class="btn btn-primary btn-sm" onclick="joinTournament(${t.id})" style="width:100%;">Ro'yxatdan O'tish</button>
+                    <div style="font-size:11px; color:#94a3b8; margin-bottom:8px;">📅 Boshlanishi: ${t.start_time} | 👥 A'zolar: ${t.participants_count || 0} kishi</div>
+                    ${winnerBadge}
+                    ${t.status === 'active' ? `<button class="btn btn-primary btn-sm" onclick="joinTournament(${t.id})" style="width:100%; margin-top:8px;">Ro'yxatdan O'tish</button>` : ''}
                     ${adminDeleteBtn}
                 </div>
             `;
@@ -2580,6 +2592,7 @@ async function loadTournaments() {
         }
     } catch(e) {
         console.error("Tournaments error:", e);
+        container.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444; font-size:12px;">Turnirlarni yuklashda xatolik yuz berdi.</div>`;
     }
 }
 
