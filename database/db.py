@@ -205,6 +205,22 @@ async def init_db():
             await db.execute("ALTER TABLE users ADD COLUMN last_quest_reset TEXT")
         except Exception:
             pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN group_invites INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN streak_days INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN last_streak_date TEXT")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE tournaments ADD COLUMN group_link TEXT")
+        except Exception:
+            pass
             
         # VIP migrations
         try:
@@ -1281,7 +1297,21 @@ async def get_tournaments():
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
 
-async def join_tournament(tournament_id: int, user_id: int) -> tuple[bool, str]:
+async def create_tournament(title: str, prize_pool: str, start_time: str, group_link: str = None) -> tuple[bool, str]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute(
+                "INSERT INTO tournaments (title, prize_pool, status, start_time, group_link) VALUES (?, ?, 'active', ?, ?)",
+                (title, prize_pool, start_time, group_link or "https://t.me/DarkTownuz")
+            )
+            await db.commit()
+            return True, "Turnir muvaffaqiyatli yaratildi!"
+        except Exception as e:
+            import logging
+            logging.error(f"Error creating tournament: {e}")
+            return False, f"Turnir yaratishda xatolik: {e}"
+
+async def join_tournament(tournament_id: int, user_id: int) -> tuple[bool, str, str | None]:
     async with aiosqlite.connect(DB_PATH) as db:
         try:
             await db.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (user_id, f"User{user_id}", "Turnirchi"))
@@ -1291,9 +1321,17 @@ async def join_tournament(tournament_id: int, user_id: int) -> tuple[bool, str]:
                 (tournament_id, user_id, joined_at)
             )
             await db.commit()
-            return True, "Turnirga muvaffaqiyatli ro'yxatdan o'tdingiz!"
+            
+            async with db.execute("SELECT group_link FROM tournaments WHERE id = ?", (tournament_id,)) as cursor:
+                row = await cursor.fetchone()
+                glink = row[0] if (row and row[0]) else "https://t.me/DarkTownuz"
+                
+            return True, "Turnirga muvaffaqiyatli ro'yxatdan o'tdingiz!", glink
         except Exception:
-            return False, "Siz allaqachon ushbu turnirga ro'yxatdan o'tgansiz!"
+            async with db.execute("SELECT group_link FROM tournaments WHERE id = ?", (tournament_id,)) as cursor:
+                row = await cursor.fetchone()
+                glink = row[0] if (row and row[0]) else "https://t.me/DarkTownuz"
+            return False, "Siz allaqachon ushbu turnirga ro'yxatdan o'tgansiz!", glink
 
 # Battle Pass DB Functions
 async def get_user_battle_pass(user_id: int):

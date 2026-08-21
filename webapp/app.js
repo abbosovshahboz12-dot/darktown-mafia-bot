@@ -2568,11 +2568,23 @@ window.joinTournament = async function(tournamentId) {
             body: JSON.stringify({ user_id: userId, tournament_id: tournamentId })
         });
         const data = await response.json();
+        const groupLink = data.group_link || "https://t.me/DarkTownuz";
+        
         if (data.success) {
-            alert(data.message);
+            alert(`🎉 Turnirga muvaffaqiyatli ro'yxatdan o'tdingiz!\n\nTurnir bo'lib o'tadigan rasmiy guruhga qo'shiling:\n${groupLink}`);
+            if (tg && tg.openTelegramLink) {
+                tg.openTelegramLink(groupLink);
+            } else {
+                window.open(groupLink, '_blank');
+            }
             loadTournaments();
         } else {
-            alert(data.error || "Xatolik");
+            alert(`⚠️ ${data.error || "Xatolik"}\n\nTurnir guruhi: ${groupLink}`);
+            if (tg && tg.openTelegramLink) {
+                tg.openTelegramLink(groupLink);
+            } else {
+                window.open(groupLink, '_blank');
+            }
         }
     } catch(e) {
         alert("Xato: " + e.message);
@@ -2613,6 +2625,91 @@ async function checkChannelSubscription() {
     }
 }
 
+// Hamburger Menu & Admin Tournament Creator JS Logic
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(checkChannelSubscription, 1000);
+
+    safeAddListener('btn-hamburger', 'click', () => {
+        const modal = document.getElementById('modal-hamburger');
+        if (modal) modal.style.display = 'flex';
+    });
+    
+    safeAddListener('btn-close-hamburger', 'click', () => {
+        const modal = document.getElementById('modal-hamburger');
+        if (modal) modal.style.display = 'none';
+    });
+    
+    safeAddListener('hmenu-rules', 'click', () => {
+        const modal = document.getElementById('modal-hamburger');
+        if (modal) modal.style.display = 'none';
+        alert(t("rules_text") || "Qoidalar Telegram chatida /rules buyrug'i orqali ko'rinadi.");
+    });
+    
+    safeAddListener('hmenu-pass', 'click', () => {
+        const modal = document.getElementById('modal-hamburger');
+        if (modal) modal.style.display = 'none';
+        switchTab('pass');
+    });
+    
+    safeAddListener('hmenu-channel', 'click', () => {
+        if (tg && tg.openTelegramLink) {
+            tg.openTelegramLink('https://t.me/DarkTownuz');
+        } else {
+            window.open('https://t.me/DarkTownuz', '_blank');
+        }
+    });
+    
+    safeAddListener('hmenu-shop', 'click', () => {
+        const modal = document.getElementById('modal-hamburger');
+        if (modal) modal.style.display = 'none';
+        switchTab('shop');
+    });
+    
+    safeAddListener('btn-sound-toggle-menu', 'click', () => {
+        const btn = document.getElementById('btn-sound-toggle-menu');
+        if (btn) {
+            const isMuted = btn.innerText === 'OFF';
+            btn.innerText = isMuted ? 'ON' : 'OFF';
+            btn.style.background = isMuted ? '#00f2fe' : '#64748b';
+            alert(isMuted ? "🔊 Ovoz effektlari yoqildi" : "🔇 Ovoz effektlari o'chirildi");
+        }
+    });
+    
+    safeAddListener('admin-tourney-create-btn', 'click', async () => {
+        const title = document.getElementById('admin-tourney-title')?.value.trim();
+        const prize = document.getElementById('admin-tourney-prize')?.value.trim();
+        const time = document.getElementById('admin-tourney-time')?.value.trim();
+        const link = document.getElementById('admin-tourney-link')?.value.trim();
+        
+        if (!title || !prize || !time) {
+            alert("⚠️ Turnir nomi, mukofot va boshlanish vaqtini kiriting!");
+            return;
+        }
+        
+        try {
+            const response = await apiFetch('/api/admin/create-tournament', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    admin_id: userId,
+                    title: title,
+                    prize_pool: prize,
+                    start_time: time,
+                    group_link: link
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert("🏆 " + data.message);
+                document.getElementById('admin-tourney-title').value = '';
+                document.getElementById('admin-tourney-prize').value = '';
+                document.getElementById('admin-tourney-time').value = '';
+                document.getElementById('admin-tourney-link').value = '';
+            } else {
+                alert("⚠️ " + (data.error || "Xatolik"));
+            }
+        } catch(e) {
+            alert("Xato: " + e.message);
+        }
+    });
 });

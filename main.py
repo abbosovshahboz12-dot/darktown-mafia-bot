@@ -1626,6 +1626,31 @@ async def tournaments_list_handler(request):
         logging.error(f"Error in tournaments_list_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+async def admin_create_tournament_handler(request):
+    try:
+        data = await request.json()
+        admin_id = int(data.get("admin_id", 0))
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=admin_id, require_admin=True)
+        if not is_auth:
+            return err_resp
+            
+        title = data.get("title", "").strip()
+        prize_pool = data.get("prize_pool", "").strip()
+        start_time = data.get("start_time", "").strip()
+        group_link = data.get("group_link", "").strip()
+        
+        if not title or not prize_pool or not start_time:
+            return web.json_response({"error": "Turnir nomi, mukofot va boshlanish vaqti kiritilishi shart!"}, status=400)
+            
+        success, message = await db.create_tournament(title, prize_pool, start_time, group_link)
+        if success:
+            return web.json_response({"success": True, "message": message})
+        else:
+            return web.json_response({"error": message}, status=400)
+    except Exception as e:
+        logging.error(f"Error in admin_create_tournament_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 async def tournament_join_handler(request):
     try:
         data = await request.json()
@@ -1639,11 +1664,11 @@ async def tournament_join_handler(request):
         if not user_id or not tournament_id:
             return web.json_response({"error": "user_id va tournament_id kiritilishi shart"}, status=400)
             
-        success, message = await db.join_tournament(tournament_id, user_id)
+        success, message, group_link = await db.join_tournament(tournament_id, user_id)
         if success:
-            return web.json_response({"success": True, "message": message})
+            return web.json_response({"success": True, "message": message, "group_link": group_link})
         else:
-            return web.json_response({"error": message}, status=400)
+            return web.json_response({"error": message, "group_link": group_link}, status=400)
     except Exception as e:
         logging.error(f"Error in tournament_join_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
@@ -1675,6 +1700,7 @@ def setup_web_server():
     app.router.add_post("/api/admin/ban", admin_ban_handler)
     app.router.add_get("/api/admin/active-games", admin_active_games_handler)
     app.router.add_post("/api/admin/force-close", admin_force_close_handler)
+    app.router.add_post("/api/admin/create-tournament", admin_create_tournament_handler)
     app.router.add_get("/api/game/status", get_game_status_handler)
     app.router.add_get("/api/game/history", get_game_history_handler)
     app.router.add_get("/api/quests", get_quests_handler)
