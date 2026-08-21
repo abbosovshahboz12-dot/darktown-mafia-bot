@@ -2712,4 +2712,45 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Xato: " + e.message);
         }
     });
+
+    safeAddListener('admin-distribute-btn', 'click', async () => {
+        const tId = document.getElementById('admin-dist-tourney-id')?.value.trim();
+        const wId = document.getElementById('admin-dist-winner-id')?.value.trim();
+        const coins = document.getElementById('admin-dist-coins')?.value.trim();
+        const vip = document.getElementById('admin-dist-vip')?.value.trim();
+        
+        if (!tId || !wId) {
+            alert("⚠️ Turnir ID va G'olib Telegram ID kiritilishi shart!");
+            return;
+        }
+        
+        try {
+            const response = await apiFetch('/api/admin/distribute-tournament-prizes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    admin_id: userId,
+                    tournament_id: tId,
+                    winner_user_id: wId,
+                    coins: coins || 1000,
+                    vip_days: vip || 7
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert(data.message);
+                if (data.winner_link) {
+                    if (tg && tg.openTelegramLink) {
+                        tg.openTelegramLink(data.winner_link);
+                    } else {
+                        window.open(data.winner_link, '_blank');
+                    }
+                }
+            } else {
+                alert("⚠️ " + (data.error || "Xatolik"));
+            }
+        } catch(e) {
+            alert("Xato: " + e.message);
+        }
+    });
 });

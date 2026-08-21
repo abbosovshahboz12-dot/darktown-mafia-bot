@@ -1028,6 +1028,14 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
             # Award Clan points
             await db.add_clan_points(player.user_id, points=(25 if is_winner else 5), is_win=is_winner)
             
+            # Award Tournament Points
+            is_tourney = getattr(game, "is_tournament", False)
+            if is_tourney or await db.is_user_registered_for_tournament(player.user_id):
+                t_points = 100 if is_winner else 20
+                if player.role in ["Don", "Detective"]:
+                    t_points += 50
+                await db.add_tournament_points(player.user_id, t_points)
+            
             # Award Battle Pass XP
             await db.add_battle_pass_xp(player.user_id, xp_gain=(50 if is_winner else 15))
         except Exception as ex:

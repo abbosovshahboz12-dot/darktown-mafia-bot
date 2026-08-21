@@ -286,6 +286,40 @@ async def cmd_newgame(message: types.Message, bot: Bot):
     # Start lobby timer
     game.timer_task = asyncio.create_task(lobby_timer(bot, game))
 
+@router.message(Command("tourneygame", "tournamentgame"))
+async def cmd_tourneygame(message: types.Message, bot: Bot):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    name = message.from_user.full_name
+    username = message.from_user.username
+    
+    game = game_manager.get_game(chat_id)
+    if game:
+        await message.answer("⚠️ Bu guruhda allaqachon faol o'yin mavjud!")
+        return
+        
+    game = game_manager.create_game(chat_id)
+    game.is_tournament = True
+    lang = await db.get_group_language(chat_id)
+    
+    player = Player(user_id, name, username)
+    game.players[user_id] = player
+    await db.get_user(user_id, username, name)
+    
+    lobby_text = (
+        f"🏆 **RASMIY TURNIR O'YINI LOBISI YARATILDI!** 🏆\n\n"
+        f"Ushbu o'yinda faqat Mini App'da Turnirlar bo'limida ro'yxatdan o'tgan o'yinchilar qatnasha oladi.\n"
+        f"⏳ O'yin boshlanishiga **120 soniya** qoldi.\n\n"
+        f"👥 **O'yinchilar ro'yxati (1)**:\n1. {name}"
+    )
+    lobby_msg = await message.answer(
+        lobby_text,
+        reply_markup=get_lobby_keyboard(lang),
+        parse_mode="Markdown"
+    )
+    game.lobby_message_id = lobby_msg.message_id
+    game.timer_task = asyncio.create_task(lobby_timer(bot, game))
+
 @router.callback_query(F.data == "join_game")
 async def join_callback(cb: types.CallbackQuery, bot: Bot):
     chat_id = cb.message.chat.id
@@ -311,6 +345,24 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
     if other_game:
         await cb.answer("⚠️ Siz allaqachon boshqa guruhda o'yindasiz!", show_alert=True)
         return
+        
+    # Check tournament registration if tournament match
+    chat_title = cb.message.chat.title or ""
+    is_tourney = getattr(game, "is_tournament", False) or ("turnir" in chat_title.lower()) or ("tournament" in chat_title.lower())
+    if is_tourney:
+        is_registered = await db.is_user_registered_for_tournament(user_id)
+        if not is_registered:
+            kb = InlineKeyboardBuilder()
+            kb.add(types.InlineKeyboardButton(text="🏆 Turnirga Ro'yxatdan O'tish", url="https://t.me/darktownuz_bot/app"))
+            await cb.answer("⚠️ DIQQAT! Siz ushbu turnirga ro'yxatdan o'tmagansiz!", show_alert=True)
+            await cb.message.answer(
+                f"⚠️ **DIQQAT, {cb.from_user.full_name}!**\n\n"
+                f"Ushbu guruhdagi turnir o'yinlarida faqat **Mini App'da ro'yxatdan o'tgan** o'yinchilar ishtirok eta oladi!\n"
+                f"Turnirga ro'yxatdan o'tish uchun pastdagi tugmani bosing:",
+                reply_markup=kb.as_markup(),
+                parse_mode="Markdown"
+            )
+            return
         
     # Verify user has started private conversation with bot
     # We try to send a ping message
