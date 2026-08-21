@@ -1896,6 +1896,19 @@ async def main():
     # Delete webhook to ensure polling works
     await bot.delete_webhook(drop_pending_updates=True)
     
+    # Set Telegram Bot Menu Button (Mini App)
+    try:
+        app_url = WEBAPP_URL if WEBAPP_URL.startswith("https://") else "https://darktown-mafia-bot.onrender.com"
+        await bot.set_chat_menu_button(
+            menu_button=types.MenuButtonWebApp(
+                text="🎮 Mini App",
+                web_app=types.WebAppInfo(url=f"{app_url}?user_id=0")
+            )
+        )
+        logging.info("Telegram Bot Chat Menu Button set successfully.")
+    except Exception as e:
+        logging.warning(f"Could not set chat menu button: {e}")
+    
     # 3. Setup Web Server
     web_app = setup_web_server()
     web_app['bot'] = bot
