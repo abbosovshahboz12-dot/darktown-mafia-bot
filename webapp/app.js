@@ -186,6 +186,9 @@ async function loadProfile() {
         document.getElementById('xp-text').innerText = `${xp} / ${xpNeeded} XP`;
         document.getElementById('xp-fill').style.width = `${xpPercent}%`;
         
+        // Update 7-Day Streak UI
+        updateStreakGrid(data.user.streak_days || 0);
+        
         // Stats
         let totalPlayed = 0;
         let totalWon = 0;
@@ -2203,7 +2206,25 @@ safeAddListener('select-lang', 'change', async (e) => {
     }
 });
 
-safeAddListener('daily-claim-card', 'click', async () => {
+function updateStreakGrid(currentStreak) {
+    currentStreak = currentStreak || 0;
+    for (let day = 1; day <= 7; day++) {
+        const box = document.getElementById(`sday-${day}`);
+        if (!box) continue;
+        if (day <= currentStreak) {
+            box.style.background = 'rgba(0, 242, 254, 0.2)';
+            box.style.border = '1px solid #00f2fe';
+        } else if (day === currentStreak + 1) {
+            box.style.background = 'rgba(255, 196, 57, 0.25)';
+            box.style.border = '1px solid #ffc439';
+        } else {
+            box.style.background = 'rgba(255, 255, 255, 0.05)';
+            box.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+        }
+    }
+}
+
+async function handleClaimDailyStreak() {
     try {
         const response = await apiFetch('/api/daily-claim', {
             method: 'POST',
@@ -2212,15 +2233,26 @@ safeAddListener('daily-claim-card', 'click', async () => {
         });
         const data = await response.json();
         if (data.success) {
-            alert(`🎉 +${data.coins} Dark Coins!`);
+            let msg = `🎉 +${data.coins} Dark Coins!`;
+            if (data.streak_info && data.streak_info.streak_day) {
+                msg += ` (${data.streak_info.streak_day}-kunlik streak!)`;
+                updateStreakGrid(data.streak_info.streak_day);
+            }
+            if (data.streak_info && data.streak_info.is_vip_awarded) {
+                msg += `\n👑 TABRIKLAYMIZ! 3 kunlik VIP Status qo'lga kiritildi!`;
+            }
+            alert(msg);
             loadProfile();
         } else {
-            alert(`⚠️ ${data.error}`);
+            alert(`⚠️ ${data.error || 'Har 24 soatda faqat 1 marta olish mumkin!'}`);
         }
     } catch (err) {
         console.error(err);
     }
-});
+}
+
+safeAddListener('daily-claim-card', 'click', handleClaimDailyStreak);
+safeAddListener('btn-claim-streak', 'click', handleClaimDailyStreak);
 
 safeAddListener('btn-copy-ref', 'click', () => {
     const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;

@@ -48,7 +48,7 @@
                 <span class="logo-text">DARKTOWN</span>
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
-                <button id="btn-sound-toggle" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; transition: all 0.2s ease;">🔊</button>
+                <button id="btn-sound-toggle" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; transition: all 0.2s ease; font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif; font-size: 14px;">🔊</button>
                 <div class="balance-badge">
                     <span class="coin-icon">🪙</span>
                     <span id="user-coins">0</span>
@@ -81,8 +81,51 @@
                     </div>
                 </div>
 
+                <!-- 7-Day Daily Streak Card -->
+                <div class="streak-card" style="background:linear-gradient(135deg, rgba(255,196,57,0.1) 0%, rgba(157,78,221,0.1) 100%); border:1px solid rgba(255,196,57,0.3); border-radius:16px; padding:16px; margin-top:20px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div>
+                            <span style="font-size:14px; font-weight:bold; color:#ffc439;">🔥 7-Kunlik Bonus Streak</span>
+                            <div style="font-size:11px; color:#cbd5e1; margin-top:2px;" id="lbl-streak-subtitle">Har kuni o'yinga kiring va VIP statusga erishing!</div>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-claim-streak" style="padding:6px 12px; font-size:11px; height:auto; width:auto; background:#ffc439; color:#000; font-weight:bold; cursor:pointer;">Hozir Olish</button>
+                    </div>
+
+                    <!-- 7 Days Grid -->
+                    <div id="streak-days-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; text-align:center;">
+                        <div class="streak-day-box" id="sday-1" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:#94a3b8;">1-kun</div>
+                            <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">10 🪙</div>
+                        </div>
+                        <div class="streak-day-box" id="sday-2" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:#94a3b8;">2-kun</div>
+                            <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">20 🪙</div>
+                        </div>
+                        <div class="streak-day-box" id="sday-3" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:#94a3b8;">3-kun</div>
+                            <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">30 🪙</div>
+                        </div>
+                        <div class="streak-day-box" id="sday-4" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:#94a3b8;">4-kun</div>
+                            <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">50 🪙</div>
+                        </div>
+                        <div class="streak-day-box" id="sday-5" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:#94a3b8;">5-kun</div>
+                            <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">75 🪙</div>
+                        </div>
+                        <div class="streak-day-box" id="sday-6" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:#94a3b8;">6-kun</div>
+                            <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">100 🪙</div>
+                        </div>
+                        <div class="streak-day-box" id="sday-7" style="background:rgba(255,196,57,0.2); border:1px solid #ffc439; padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:#ffc439; font-weight:bold;">7-kun</div>
+                            <div style="font-size:10px; font-weight:bold; color:#00f2fe; margin-top:3px;">👑 VIP</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Daily Claim & Language settings -->
-                <div class="profile-actions-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:20px; margin-top:20px;">
+                <div class="profile-actions-grid" style="display:grid; grid-template-columns: 1fr; gap:12px; margin-bottom:20px;">
                     <div class="action-card" id="daily-claim-card" style="cursor:pointer; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:12px; text-align:center;">
                         <div style="font-size:24px;">🎁</div>
                         <div id="lbl-daily-claim" style="font-size:13px; font-weight:bold; margin-top:5px; color:#ffc439;">Kunlik Bonus</div>

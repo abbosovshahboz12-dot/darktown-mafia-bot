@@ -1238,11 +1238,12 @@ async def get_clan_leaderboard(limit: int = 10):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         query = """
-            SELECT c.*, COUNT(cm.user_id) as member_count, COALESCE(u.first_name, 'Lider') as leader_name 
+            SELECT c.clan_id, c.name, c.leader_id, c.logo_url, c.total_wins, c.total_points, c.created_at,
+                   COUNT(cm.user_id) as member_count, COALESCE(u.first_name, 'Lider') as leader_name 
             FROM clans c
             LEFT JOIN clan_members cm ON c.clan_id = cm.clan_id
             LEFT JOIN users u ON c.leader_id = u.user_id
-            GROUP BY c.clan_id
+            GROUP BY c.clan_id, c.name, c.leader_id, c.logo_url, c.total_wins, c.total_points, c.created_at, u.first_name
             ORDER BY c.total_points DESC, c.total_wins DESC
             LIMIT ?
         """

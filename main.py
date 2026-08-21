@@ -796,11 +796,16 @@ async def daily_claim_handler(request):
         if not user_id:
             return web.json_response({"error": "user_id kiritilishi shart"}, status=400)
             
-        success, coins_earned, err = await db.claim_daily_reward(user_id)
+        success, coins_earned, streak_info_or_err = await db.claim_daily_reward(user_id)
         if success:
-            return web.json_response({"success": True, "coins": coins_earned, "message": "Kunlik bonus olindi!"})
+            return web.json_response({
+                "success": True, 
+                "coins": coins_earned, 
+                "streak_info": streak_info_or_err if isinstance(streak_info_or_err, dict) else {},
+                "message": "Kunlik bonus olindi!"
+            })
         else:
-            return web.json_response({"success": False, "error": err})
+            return web.json_response({"success": False, "error": streak_info_or_err})
     except Exception as e:
         logging.error(f"Error in daily_claim_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
