@@ -228,9 +228,9 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
         async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             if row:
-                # Expire VIP if past expiry
-                is_vip = row['is_vip'] or 0
-                vip_expires_at = row['vip_expires_at']
+                rdict = dict(row)
+                is_vip = rdict.get('is_vip', 0) or 0
+                vip_expires_at = rdict.get('vip_expires_at')
                 if is_vip == 1 and vip_expires_at:
                     try:
                         from datetime import datetime
@@ -241,18 +241,16 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
                     except Exception:
                         pass
                         
-                # Update username/first_name if they changed
                 if username or first_name:
                     await db.execute(
                         "UPDATE users SET username = ?, first_name = ? WHERE user_id = ?",
-                        (username or row['username'], first_name or row['first_name'], user_id)
+                        (username or rdict.get('username'), first_name or rdict.get('first_name'), user_id)
                     )
                     await db.commit()
-                # Fetch updated
                 async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor2:
-                    return dict(await cursor2.fetchone())
+                    row2 = await cursor2.fetchone()
+                    return dict(row2) if row2 else {}
             
-            # Register new user
             await db.execute(
                 "INSERT INTO users (user_id, username, first_name, xp, level, coins) VALUES (?, ?, ?, 0, 1, 100)",
                 (user_id, username or f"User{user_id}", first_name or "Mafiozi")
@@ -260,7 +258,8 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
             await db.commit()
             
             async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor2:
-                return dict(await cursor2.fetchone())
+                row2 = await cursor2.fetchone()
+                return dict(row2) if row2 else {}
 
 async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
     # Sanitize inputs to prevent overflow/unreasonable values
@@ -491,17 +490,19 @@ async def get_chat_language(chat_id: int) -> str:
     else:
         return await get_user_language(chat_id)
 
+
+
 async def claim_daily_reward(user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT coins, last_daily_claim, streak_days FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             if not row:
                 return False, 0, "Foydalanuvchi topilmadi."
             
-            now = datetime.now()
-            last_claim_str = row['last_daily_claim']
             row_dict = dict(row)
+            now = datetime.now()
+            last_claim_str = row_dict.get('last_daily_claim')
             current_streak = row_dict.get('streak_days', 0) or 0
             
             if last_claim_str:
@@ -512,7 +513,7 @@ async def claim_daily_reward(user_id: int):
                         seconds_left = int(86400 - delta.total_seconds())
                         hours = seconds_left // 3600
                         minutes = (seconds_left % 3600) // 60
-                        return False, 0, f"keyingi_bonus_kutish_{hours}_{minutes}"
+                        return False, 0, f"Har 24 soatda 1 marta olish mumkin! ({hours} soat {minutes} daqiqa qoldi)"
                     elif delta.total_seconds() > 172800:
                         current_streak = 0
                 except Exception:
@@ -538,11 +539,13 @@ async def claim_daily_reward(user_id: int):
                 (bonus_coins, now.isoformat(), new_streak, user_id)
             )
             
+            is_vip_awarded = False
             if new_streak == 7:
                 await upgrade_to_vip(user_id, 3)
+                is_vip_awarded = True
                 
             await db.commit()
-            return True, bonus_coins, {"streak_day": new_streak, "is_vip_awarded": (new_streak == 7)}
+            return True, bonus_coins, {"streak_day": new_streak, "is_vip_awarded": is_vip_awarded}
 
 async def track_group_invite(bot, inviter_id: int, new_members_count: int = 1):
     async with aiosqlite.connect(DB_PATH) as db:
