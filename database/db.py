@@ -1395,6 +1395,18 @@ async def distribute_tournament_prizes(tournament_id: int, winner_user_id: int, 
             logging.error(f"Error in distribute_tournament_prizes: {e}")
             return False, f"Xatolik: {e}", None, None
 
+async def delete_tournament(tournament_id: int) -> tuple[bool, str]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute("DELETE FROM tournament_participants WHERE tournament_id = ?", (tournament_id,))
+            await db.execute("DELETE FROM tournaments WHERE id = ?", (tournament_id,))
+            await db.commit()
+            return True, "Turnir muvaffaqiyatli o'chirildi!"
+        except Exception as e:
+            import logging
+            logging.error(f"Error deleting tournament: {e}")
+            return False, f"O'chirishda xatolik: {e}"
+
 # Battle Pass DB Functions
 async def get_user_battle_pass(user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:

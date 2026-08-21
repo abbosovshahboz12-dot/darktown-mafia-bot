@@ -1711,6 +1711,27 @@ async def admin_distribute_tournament_prizes_handler(request):
         logging.error(f"Error in admin_distribute_tournament_prizes_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+async def admin_delete_tournament_handler(request):
+    try:
+        data = await request.json()
+        admin_id = int(data.get("admin_id", 0))
+        is_auth, auth_uid, err_resp = await authenticate_webapp_request(request, requested_user_id=admin_id, require_admin=True)
+        if not is_auth:
+            return err_resp
+            
+        tournament_id = int(data.get("tournament_id", 0))
+        if not tournament_id:
+            return web.json_response({"error": "Turnir ID kiritilishi shart!"}, status=400)
+            
+        success, message = await db.delete_tournament(tournament_id)
+        if success:
+            return web.json_response({"success": True, "message": message})
+        else:
+            return web.json_response({"error": message}, status=400)
+    except Exception as e:
+        logging.error(f"Error in admin_delete_tournament_handler: {e}")
+        return web.json_response({"error": "Ichki server xatosi"}, status=500)
+
 async def tournament_join_handler(request):
     try:
         data = await request.json()
@@ -1762,6 +1783,7 @@ def setup_web_server():
     app.router.add_post("/api/admin/force-close", admin_force_close_handler)
     app.router.add_post("/api/admin/create-tournament", admin_create_tournament_handler)
     app.router.add_post("/api/admin/distribute-tournament-prizes", admin_distribute_tournament_prizes_handler)
+    app.router.add_post("/api/admin/delete-tournament", admin_delete_tournament_handler)
     app.router.add_get("/api/game/status", get_game_status_handler)
     app.router.add_get("/api/game/history", get_game_history_handler)
     app.router.add_get("/api/quests", get_quests_handler)

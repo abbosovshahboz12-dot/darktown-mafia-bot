@@ -2532,6 +2532,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function safeOpenTelegramLink(url) {
+    if (!url) return;
+    try {
+        const cleanUrl = url.trim();
+        if (cleanUrl.startsWith("https://t.me/") && tg && tg.openTelegramLink) {
+            tg.openTelegramLink(cleanUrl);
+        } else if (tg && tg.openLink) {
+            tg.openLink(cleanUrl);
+        } else {
+            window.open(cleanUrl, '_blank');
+        }
+    } catch (e) {
+        console.warn("Failed to open tg link safely:", e);
+        window.open(url, '_blank');
+    }
+}
+
 // Tournaments JS Functions
 async function loadTournaments() {
     const container = document.getElementById('tournaments-container');
@@ -2541,17 +2558,23 @@ async function loadTournaments() {
         const data = await response.json();
         
         if (data.tournaments && data.tournaments.length > 0) {
-            container.innerHTML = data.tournaments.map(t => `
+            container.innerHTML = data.tournaments.map(t => {
+                const adminDeleteBtn = isAdmin ? `
+                    <button class="btn btn-danger btn-sm" onclick="deleteTournament(${t.id})" style="margin-top:8px; width:100%; font-size:11px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#f87171;">🗑️ Turnirni O'chirish (Admin)</button>
+                ` : '';
+                return `
                 <div style="background:linear-gradient(135deg, rgba(79,172,254,0.1) 0%, rgba(0,242,254,0.1) 100%); border:1px solid rgba(0,242,254,0.3); border-radius:16px; padding:16px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <h3 style="color:#00f2fe; margin:0; font-size:16px;">🏆 ${escapeHtml(t.title)}</h3>
-                        <span style="background:rgba(0,242,254,0.2); color:#00f2fe; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; text-transform:uppercase;">${t.status === 'active' ? 'Ochiq' : 'Tez kunda'}</span>
+                        <h3 style="color:#00f2fe; margin:0; font-size:16px;">🏆 ID:${t.id} - ${escapeHtml(t.title)}</h3>
+                        <span style="background:rgba(0,242,254,0.2); color:#00f2fe; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; text-transform:uppercase;">${t.status === 'active' ? 'Ochiq' : 'Yakunlangan'}</span>
                     </div>
                     <div style="font-size:12px; color:#cbd5e1; margin-bottom:8px;">🎁 Sovrin jamg'armasi: <strong style="color:#ffc439;">${escapeHtml(t.prize_pool)}</strong></div>
                     <div style="font-size:11px; color:#94a3b8; margin-bottom:14px;">📅 Boshlanishi: ${t.start_time} | 👥 A'zolar: ${t.participants_count || 0} kishi</div>
                     <button class="btn btn-primary btn-sm" onclick="joinTournament(${t.id})" style="width:100%;">Ro'yxatdan O'tish</button>
+                    ${adminDeleteBtn}
                 </div>
-            `).join('');
+            `;
+            }).join('');
         } else {
             container.innerHTML = `<div style="padding:20px; text-align:center; color:#94a3b8; font-size:12px;">Hozircha faol turnirlar yo'q.</div>`;
         }
@@ -2559,6 +2582,26 @@ async function loadTournaments() {
         console.error("Tournaments error:", e);
     }
 }
+
+window.deleteTournament = async function(tournamentId) {
+    if (!confirm(`Haqiqatan ham #${tournamentId} turnirni o'chirmoqchimisiz?`)) return;
+    try {
+        const response = await apiFetch('/api/admin/delete-tournament', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: userId, tournament_id: tournamentId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            loadTournaments();
+        } else {
+            alert("⚠️ " + (data.error || "Xatolik"));
+        }
+    } catch(e) {
+        alert("Xato: " + e.message);
+    }
+};
 
 window.joinTournament = async function(tournamentId) {
     try {
@@ -2572,19 +2615,11 @@ window.joinTournament = async function(tournamentId) {
         
         if (data.success) {
             alert(`🎉 Turnirga muvaffaqiyatli ro'yxatdan o'tdingiz!\n\nTurnir bo'lib o'tadigan rasmiy guruhga qo'shiling:\n${groupLink}`);
-            if (tg && tg.openTelegramLink) {
-                tg.openTelegramLink(groupLink);
-            } else {
-                window.open(groupLink, '_blank');
-            }
+            safeOpenTelegramLink(groupLink);
             loadTournaments();
         } else {
             alert(`⚠️ ${data.error || "Xatolik"}\n\nTurnir guruhi: ${groupLink}`);
-            if (tg && tg.openTelegramLink) {
-                tg.openTelegramLink(groupLink);
-            } else {
-                window.open(groupLink, '_blank');
-            }
+            safeOpenTelegramLink(groupLink);
         }
     } catch(e) {
         alert("Xato: " + e.message);
@@ -2652,11 +2687,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     safeAddListener('hmenu-channel', 'click', () => {
-        if (tg && tg.openTelegramLink) {
-            tg.openTelegramLink('https://t.me/DarkTownuz');
-        } else {
-            window.open('https://t.me/DarkTownuz', '_blank');
-        }
+        safeOpenTelegramLink('https://t.me/DarkTownuz');
     });
     
     safeAddListener('hmenu-shop', 'click', () => {
@@ -2740,11 +2771,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 alert(data.message);
                 if (data.winner_link) {
-                    if (tg && tg.openTelegramLink) {
-                        tg.openTelegramLink(data.winner_link);
-                    } else {
-                        window.open(data.winner_link, '_blank');
-                    }
+                    safeOpenTelegramLink(data.winner_link);
                 }
             } else {
                 alert("⚠️ " + (data.error || "Xatolik"));
