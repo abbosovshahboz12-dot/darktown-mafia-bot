@@ -110,12 +110,14 @@ async function autoJoinParty(partyId) {
 }
 
 // Tab navigation
+let currentActiveTab = 'profile';
 const navItems = document.querySelectorAll('.nav-item');
 const tabContents = document.querySelectorAll('.tab-content');
 
 navItems.forEach(item => {
     item.addEventListener('click', () => {
         const tabName = item.getAttribute('data-tab');
+        currentActiveTab = tabName;
         
         // Update nav items
         navItems.forEach(nav => nav.classList.remove('active'));
@@ -123,7 +125,8 @@ navItems.forEach(item => {
         
         // Update tabs
         tabContents.forEach(content => content.classList.remove('active'));
-        document.getElementById(`tab-${tabName}`).classList.add('active');
+        const targetTab = document.getElementById(`tab-${tabName}`);
+        if (targetTab) targetTab.classList.add('active');
         
         // Actions on tab click
         if (tabName === 'leaderboard') {
@@ -535,10 +538,9 @@ function updateCalculator(playerCount) {
 loadProfile();
 loadActiveGame();
 
-// Poll active game status every 4 seconds
-setInterval(loadActiveGame, 4000);
+// Poll active game status every 6 seconds to optimize server performance
+setInterval(loadActiveGame, 6000);
 
-// Active Game Arena Actions
 // Active Game Arena Actions
 async function loadActiveGame() {
     try {
@@ -575,12 +577,15 @@ async function loadActiveGame() {
         const gameView = document.getElementById('match-active-game-view');
         
         if (!data.inGame) {
-            lobbyView.style.display = 'block';
-            roomLobbyView.style.display = 'none';
-            gameView.style.display = 'none';
-            document.querySelector('.app-nav').style.display = 'flex';
-            loadPartyStatus();
-            loadPublicRoomsList();
+            if (lobbyView) lobbyView.style.display = 'block';
+            if (roomLobbyView) roomLobbyView.style.display = 'none';
+            if (gameView) gameView.style.display = 'none';
+            const nav = document.querySelector('.app-nav');
+            if (nav) nav.style.display = 'flex';
+            if (currentActiveTab === 'match') {
+                loadPartyStatus();
+                loadPublicRoomsList();
+            }
             return;
         }
         
