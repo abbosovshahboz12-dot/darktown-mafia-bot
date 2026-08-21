@@ -30,7 +30,7 @@ TEXTS = {
             "ℹ️ **Darktown Mafia Bot - Nimalar qila oladi?**\n\n"
             "Bu bot guruhlarda asinxron **Mafiya** o'yinlarini tashkil qilish va o'ynash uchun yaratilgan. Barcha o'yin boshqaruvi Telegram chatida va maxsus **Mini App** interfeysida amalga oshiriladi.\n\n"
             "**Asosiy imkoniyatlar**:\n"
-            "1. 🎭 **8 ta Noyob Rollar**: Mafiya, Don, Komissar, Shifokor, Tansoqchi, Kutizanka, Telba (Maniac) va Tinch aholi.\n"
+            "1. 🎭 **11 ta Noyob Rollar**: Mafiya, Don, Advokat, Komissar, Serjant, Shifokor, Tansoqchi, Jodugar, Mazxaraboz (Jester), Telba (Maniac) va Tinch aholi.\n"
             "2. 📱 **Telegram Mini App**: Shaxsiy profil, o'yin statistikasi, do'kon (boosterlar va qalqonlar sotib olish), global yetakchilar reytingi va jonli o'yin maydoni!\n"
             "3. 🔫 **Komissar Qobiliyati**: Komissar tunda nafaqat tekshira oladi, balki gumondorni otib ham tashlay oladi!\n"
             "4. 💀 **Oxirgi So'z (Vasiyatnoma)**: Tunda o'ldirilgan o'yinchi shaxsiy chatida botga o'z vasiyatini yozadi va bot uni tongda guruhga e'lon qiladi.\n"

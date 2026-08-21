@@ -675,8 +675,8 @@ async def post_game_action_handler(request):
                 return web.json_response({"error": "Ketma-ket bir kishini himoya qila olmaysiz!"}, status=400)
             game.night_actions["bodyguard"] = target_id
         elif action_type == "courtesan":
-            if player.role != "Courtesan":
-                return web.json_response({"error": "Siz Kutizanka emassiz!"}, status=400)
+            if player.role not in ["Witch", "Courtesan"]:
+                return web.json_response({"error": "Siz Jodugar emassiz!"}, status=400)
             game.night_actions["courtesan"] = target_id
         elif action_type == "maniac":
             if player.role != "Maniac":

@@ -36,6 +36,17 @@ async function apiFetch(url, options = {}) {
     return fetch(url, options);
 }
 
+// Utility function to safely escape HTML strings
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Apply Telegram theme colors if desired
 if (tg && tg.backgroundColor) {
     document.documentElement.style.setProperty('--bg-color', tg.backgroundColor);
@@ -486,7 +497,8 @@ function updateCalculator(playerCount) {
         "Detective": "Komissar (Detective)",
         "Doctor": "Shifokor",
         "Bodyguard": "Tansoqchi",
-        "Courtesan": "Kutizanka",
+        "Witch": "Jodugar",
+        "Courtesan": "Jodugar",
         "Maniac": "Telba (Maniac)"
     };
     

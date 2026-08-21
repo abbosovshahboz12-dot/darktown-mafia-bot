@@ -447,7 +447,7 @@ async def process_night(bot: Bot, game: Game):
             if target_player:
                 target_player.is_blocked = True
                 try:
-                    await bot.send_message(target_player.user_id, "🌸 Sizni Kutizanka jalb qildi, bugungi tungi harakatlaringiz bekor bo'ldi!")
+                    await bot.send_message(target_player.user_id, "🧹 Sizni Jodugar afsunladi, bugungi tungi harakatlaringiz bekor bo'ldi!")
                 except Exception:
                     pass
                 
