@@ -32,6 +32,8 @@ let userFirstName = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.ini
 let userUsername = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.username : "";
 let isAdmin = false;
 window.isAdmin = false;
+
+async function apiFetch(url, options) {
     options = options || {};
     options.headers = options.headers || {};
     if (tg && tg.initData) {
@@ -60,9 +62,9 @@ if (tg && tg.backgroundColor) {
 
 // Determine current user ID
 // Try from Telegram initData first, then fallback to URL parameter (for browser testing)
-let userId = 123456789; // Mock test ID
-let userFirstName = "Mehmon";
-let userUsername = "guest";
+userId = 123456789; // Mock test ID
+userFirstName = "Mehmon";
+userUsername = "guest";
 
 if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     userId = tg.initDataUnsafe.user.id;
