@@ -625,6 +625,12 @@ async def add_referral(invitee_id: int, inviter_id: int) -> bool:
                 
             return False
 
+async def get_referral_count(user_id: int) -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT COUNT(*) FROM users WHERE referred_by = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
 # Room and Party Tizimi funksiyalari
 async def create_room(room_id: str, owner_id: int, is_private: int, pin_code: str, day_limit: int, night_limit: int) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:

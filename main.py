@@ -5,7 +5,7 @@ import sys
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from datetime import datetime
-from config import BOT_TOKEN, PORT, ADMIN_ID, WEBAPP_URL
+from config import BOT_TOKEN, PORT, ADMIN_ID, WEBAPP_URL, FEATURE_WEBAPP
 from database import db
 
 # Import handlers
@@ -1896,16 +1896,22 @@ async def main():
     # Delete webhook to ensure polling works
     await bot.delete_webhook(drop_pending_updates=True)
     
-    # Set Telegram Bot Menu Button (Mini App)
+    # Set Telegram Bot Menu Button (Mini App or Commands based on FEATURE_WEBAPP)
     try:
-        app_url = WEBAPP_URL if WEBAPP_URL.startswith("https://") else "https://darktown-mafia-bot.onrender.com"
-        await bot.set_chat_menu_button(
-            menu_button=types.MenuButtonWebApp(
-                text="🎮 Mini App",
-                web_app=types.WebAppInfo(url=f"{app_url}?user_id=0")
+        if FEATURE_WEBAPP:
+            app_url = WEBAPP_URL if WEBAPP_URL.startswith("https://") else "https://darktown-mafia-bot.onrender.com"
+            await bot.set_chat_menu_button(
+                menu_button=types.MenuButtonWebApp(
+                    text="🎮 Mini App",
+                    web_app=types.WebAppInfo(url=f"{app_url}?user_id=0")
+                )
             )
-        )
-        logging.info("Telegram Bot Chat Menu Button set successfully.")
+            logging.info("Telegram Bot Chat Menu Button set to Mini App.")
+        else:
+            await bot.set_chat_menu_button(
+                menu_button=types.MenuButtonCommands()
+            )
+            logging.info("Telegram Bot Chat Menu Button set to standard Commands.")
     except Exception as e:
         logging.warning(f"Could not set chat menu button: {e}")
     

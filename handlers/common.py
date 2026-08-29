@@ -3,7 +3,10 @@ from aiogram import Router, F, types
 from aiogram.filters import CommandStart, Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database import db
-from config import WEBAPP_URL, ADMIN_ID
+from config import (
+    WEBAPP_URL, ADMIN_ID,
+    FEATURE_WEBAPP, FEATURE_SHOP, FEATURE_REFERRAL, FEATURE_LEADERBOARD
+)
 from locales import get_text
 
 router = Router()
@@ -16,19 +19,43 @@ def escape_markdown(text: str) -> str:
         text = text.replace(char, f"\\{char}")
     return text
 
-def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot") -> types.InlineKeyboardMarkup:
+def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot", lang: str = "uz") -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    # WebApp URL must contain user_id to load their profile
-    url = f"{WEBAPP_URL}?user_id={user_id}"
+    
+    # 1. Agar WebApp yoqilgan bo'lsa (Phase 3)
+    if FEATURE_WEBAPP:
+        url = f"{WEBAPP_URL}?user_id={user_id}"
+        kb.add(types.InlineKeyboardButton(
+            text="🎮 Darktown Mini App", 
+            web_app=types.WebAppInfo(url=url)
+        ))
+    
+    # 2. Asosiy MVP tugmalari
+    if FEATURE_SHOP:
+        shop_btn = "🛒 Do'kon" if lang == "uz" else "🛒 Магазин" if lang == "ru" else "🛒 Shop" if lang == "en" else "🛒 Дүкен"
+        kb.add(types.InlineKeyboardButton(text=shop_btn, callback_data="menu_shop"))
+        
+    if FEATURE_REFERRAL:
+        ref_btn = "🎁 Do'stlarni taklif qilish" if lang == "uz" else "🎁 Пригласить друзей" if lang == "ru" else "🎁 Invite Friends" if lang == "en" else "🎁 Достарды шақыру"
+        kb.add(types.InlineKeyboardButton(text=ref_btn, callback_data="menu_ref"))
+        
+    profile_btn = "👤 Profil" if lang == "uz" else "👤 Профиль" if lang == "ru" else "👤 Profile" if lang == "en" else "👤 Профиль"
+    kb.add(types.InlineKeyboardButton(text=profile_btn, callback_data="menu_profile"))
+    
+    if FEATURE_LEADERBOARD:
+        top_btn = "🏆 Reyting" if lang == "uz" else "🏆 Топ игроков" if lang == "ru" else "🏆 Leaderboard" if lang == "en" else "🏆 Рейтинг"
+        kb.add(types.InlineKeyboardButton(text=top_btn, callback_data="menu_top"))
+        
+    boost_btn = "🎭 Rol Busterlari" if lang == "uz" else "🎭 Бустеры Ролей" if lang == "ru" else "🎭 Role Boosters" if lang == "en" else "🎭 Бустерлер"
+    kb.add(types.InlineKeyboardButton(text=boost_btn, callback_data="menu_boosters"))
+    
+    add_group_btn = "🌐 Guruhga qo'shish" if lang == "uz" else "🌐 Добавить в группу" if lang == "ru" else "🌐 Add to Group" if lang == "en" else "🌐 Топқа қосу"
     kb.add(types.InlineKeyboardButton(
-        text="🎮 Darktown Mini App", 
-        web_app=types.WebAppInfo(url=url)
-    ))
-    kb.add(types.InlineKeyboardButton(
-        text="🌐 Guruhga qo'shish",
+        text=add_group_btn,
         url=f"https://t.me/{bot_username}?startgroup=true"
     ))
-    kb.adjust(1)
+    
+    kb.adjust(2, 2, 1, 1)
     return kb.as_markup()
 
 @router.message(CommandStart())
@@ -115,7 +142,7 @@ async def cmd_start(message: types.Message):
         shield=shield_status
     )
     
-    await message.answer(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user), parse_mode="Markdown")
+    await message.answer(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
 
 @router.message(Command("profile", "profil"))
 async def cmd_profile(message: types.Message):
@@ -157,7 +184,376 @@ async def cmd_profile(message: types.Message):
     elif lang == "kz":
         stats_text = f"\n\n🎮 Ойындар: **{total_played}**\n🏆 Жеңістер: **{total_won}** ({win_rate:.1f}%)"
         
-    await message.answer(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user), parse_mode="Markdown")
+    await message.answer(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
+
+SHOP_ITEMS = {
+    "shield": {"name_uz": "🛡️ XP Qalqoni", "name_ru": "🛡️ Щит опыта", "name_en": "🛡️ XP Shield", "name_kz": "🛡️ Қалқан", "cost": 150, "desc_uz": "Tunda o'ldirilganda XP va tangalarni himoyalaydi", "desc_ru": "Защищает от потери XP при ночном убийстве", "desc_en": "Protects XP and coins on night death", "desc_kz": "Түнде өлтірілгенде XP қорғайды"},
+    "booster_mafia": {"name_uz": "🔴 Mafiya Busteri", "name_ru": "🔴 Бустер Мафии", "name_en": "🔴 Mafia Booster", "name_kz": "🔴 Мафия бустері", "cost": 250, "desc_uz": "Mafiya bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Мафией в 2 раза", "desc_en": "2x chance to get Mafia role", "desc_kz": "Мафия болу мүмкіндігін 2 есе арттырады"},
+    "booster_detective": {"name_uz": "🔵 Komissar Busteri", "name_ru": "🔵 Бустер Комиссара", "name_en": "🔵 Detective Booster", "name_kz": "🔵 Комиссар бустері", "cost": 250, "desc_uz": "Komissar bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Комиссаром в 2 раза", "desc_en": "2x chance to get Detective role", "desc_kz": "Комиссар болу мүмкіндігін 2 есе арттырады"},
+    "booster_doctor": {"name_uz": "🟡 Shifokor Busteri", "name_ru": "🟡 Бустер Доктора", "name_en": "🟡 Doctor Booster", "name_kz": "🟡 Дәрігер бустері", "cost": 200, "desc_uz": "Shifokor bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Доктором в 2 раза", "desc_en": "2x chance to get Doctor role", "desc_kz": "Дәрігер болу мүмкіндігін 2 есе арттырады"},
+    "booster_maniac": {"name_uz": "🦹 Telba (Maniac) Busteri", "name_ru": "🦹 Бустер Маньяка", "name_en": "🦹 Maniac Booster", "name_kz": "🦹 Маньяк бустері", "cost": 300, "desc_uz": "Telba bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Маньяком в 2 раза", "desc_en": "2x chance to get Maniac role", "desc_kz": "Маньяк болу мүмкіндігін 2 есе арттырады"}
+}
+
+def get_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    for key, item in SHOP_ITEMS.items():
+        name = item.get(f"name_{lang}", item["name_uz"])
+        cost = item["cost"]
+        kb.add(types.InlineKeyboardButton(text=f"{name} — {cost} 🪙", callback_data=f"buy_shop_{key}"))
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    kb.adjust(1)
+    return kb.as_markup()
+
+@router.message(Command("shop", "dokon", "market"))
+async def cmd_shop(message: types.Message):
+    user_id = message.from_user.id
+    user = await db.get_user(user_id, message.from_user.username, message.from_user.full_name)
+    lang = user.get('language', 'uz')
+    
+    if not FEATURE_SHOP:
+        await message.answer("⚠️ Do'kon hozirda texnik ta'mirda.")
+        return
+        
+    coins = user.get('coins', 0)
+    
+    title = f"🛒 **Darktown Do'koni**\n💰 Sizning balansingiz: **{coins} Dark Coins**\n\nQuyidagi buyumlardan birini sotib olishingiz mumkin:\n"
+    if lang == "ru":
+        title = f"🛒 **Магазин Darktown**\n💰 Ваш баланс: **{coins} Dark Coins**\n\nВыберите предмет для покупки:\n"
+    elif lang == "en":
+        title = f"🛒 **Darktown Shop**\n💰 Your balance: **{coins} Dark Coins**\n\nChoose an item to purchase:\n"
+    elif lang == "kz":
+        title = f"🛒 **Darktown Дүкені**\n💰 Сіздің балансыңыз: **{coins} Dark Coins**\n\nСатып алу үшін таңдаңыз:\n"
+        
+    for item in SHOP_ITEMS.values():
+        name = item.get(f"name_{lang}", item["name_uz"])
+        desc = item.get(f"desc_{lang}", item["desc_uz"])
+        title += f"\n• **{name}** ({item['cost']} 🪙)\n  _{desc}_\n"
+        
+    await message.answer(title, reply_markup=get_shop_keyboard(lang), parse_mode="Markdown")
+
+@router.callback_query(F.data.startswith("buy_shop_"))
+async def cb_buy_shop(cb: types.CallbackQuery):
+    if not FEATURE_SHOP:
+        await cb.answer("⚠️ Do'kon hozirda mavjud emas.", show_alert=True)
+        return
+        
+    user_id = cb.from_user.id
+    lang = await db.get_user_language(user_id)
+    item_key = cb.data.replace("buy_shop_", "")
+    
+    if item_key not in SHOP_ITEMS:
+        await cb.answer("⚠️ Buyum topilmadi!", show_alert=True)
+        return
+        
+    item = SHOP_ITEMS[item_key]
+    cost = item["cost"]
+    
+    success, msg = await db.buy_item(user_id, item_key, cost)
+    if success:
+        user = await db.get_user(user_id)
+        name = item.get(f"name_{lang}", item["name_uz"])
+        alert_msg = f"🎉 {name} muvaffaqiyatli xarid qilindi!\nQoldiq: {user['coins']} 🪙" if lang == "uz" else f"🎉 {name} успешно куплен!\nБаланс: {user['coins']} 🪙" if lang == "ru" else f"🎉 {name} purchased successfully!\nBalance: {user['coins']} 🪙" if lang == "en" else f"🎉 {name} сәтті сатып алынды!\nҚалдық: {user['coins']} 🪙"
+        await cb.answer(alert_msg, show_alert=True)
+        
+        # Update shop view
+        title = f"🛒 **Darktown Do'koni**\n💰 Sizning balansingiz: **{user['coins']} Dark Coins**\n\nQuyidagi buyumlardan birini sotib olishingiz mumkin:\n"
+        if lang == "ru":
+            title = f"🛒 **Магазин Darktown**\n💰 Ваш баланс: **{user['coins']} Dark Coins**\n\nВыберите предмет для покупки:\n"
+        elif lang == "en":
+            title = f"🛒 **Darktown Shop**\n💰 Your balance: **{user['coins']} Dark Coins**\n\nChoose an item to purchase:\n"
+        elif lang == "kz":
+            title = f"🛒 **Darktown Дүкені**\n💰 Сіздің балансыңыз: **{user['coins']} Dark Coins**\n\nСатып алу үшін таңдаңыз:\n"
+            
+        for it in SHOP_ITEMS.values():
+            name_str = it.get(f"name_{lang}", it["name_uz"])
+            desc_str = it.get(f"desc_{lang}", it["desc_uz"])
+            title += f"\n• **{name_str}** ({it['cost']} 🪙)\n  _{desc_str}_\n"
+            
+        try:
+            await cb.message.edit_text(title, reply_markup=get_shop_keyboard(lang), parse_mode="Markdown")
+        except Exception:
+            pass
+    else:
+        err_msg = "⚠️ Tangalaringiz yetarli emas!" if lang == "uz" else "⚠️ Недостаточно монет!" if lang == "ru" else "⚠️ Not enough coins!" if lang == "en" else "⚠️ Монеталар жеткіліксіз!"
+        await cb.answer(err_msg, show_alert=True)
+
+@router.message(Command("ref", "referral", "taklif"))
+async def cmd_referral(message: types.Message):
+    user_id = message.from_user.id
+    user = await db.get_user(user_id, message.from_user.username, message.from_user.full_name)
+    lang = user.get('language', 'uz')
+    bot_user = (await message.bot.get_me()).username
+    ref_count = await db.get_referral_count(user_id)
+    earned_coins = ref_count * 50
+    ref_link = f"https://t.me/{bot_user}?start=ref_{user_id}"
+    
+    share_url = f"https://t.me/share/url?url={ref_link}&text=Darktown%20Mafiya%20o%27yiniga%20qo%27shiling%20va%20+50%20tanga%20bonus%20oling!"
+    
+    kb = InlineKeyboardBuilder()
+    share_text = "📤 Do'stlarga ulashish" if lang == "uz" else "📤 Поделиться с друзьями" if lang == "ru" else "📤 Share with Friends" if lang == "en" else "📤 Достармен бөлісу"
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    kb.add(types.InlineKeyboardButton(text=share_text, url=share_url))
+    kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    kb.adjust(1)
+    
+    text = (
+        f"🎁 **Do'stlarni taklif qilish (Referral dasturi)**\n\n"
+        f"Do'stlaringizni Darktown Mafiya o'yiniga taklif qiling va har bir do'stingiz uchun **+50 Dark Coins** bonusga ega bo'ling! Taklif qilingan do'stingiz ham **+50 tanga** oladi.\n\n"
+        f"👥 Siz taklif qilgan do'stlar: **{ref_count} ta**\n"
+        f"💰 Ishlangan tangalar: **{earned_coins} ta**\n\n"
+        f"🔗 **Sizning maxsus taklif havolangiz**:\n`{ref_link}`"
+    )
+    if lang == "ru":
+        text = (
+            f"🎁 **Приглашение друзей (Реферальная программа)**\n\n"
+            f"Приглашайте друзей в Darktown Mafia и получайте **+50 Dark Coins** за каждого приглашенного друга! Ваш друг также получит **+50 монет**.\n\n"
+            f"👥 Приглашено друзей: **{ref_count}**\n"
+            f"💰 Заработано монет: **{earned_coins}**\n\n"
+            f"🔗 **Ваша реферальная ссылка**:\n`{ref_link}`"
+        )
+    elif lang == "en":
+        text = (
+            f"🎁 **Invite Friends (Referral Program)**\n\n"
+            f"Invite friends to Darktown Mafia and get **+50 Dark Coins** for each friend! Your friend also gets **+50 coins**.\n\n"
+            f"👥 Friends invited: **{ref_count}**\n"
+            f"💰 Coins earned: **{earned_coins}**\n\n"
+            f"🔗 **Your referral link**:\n`{ref_link}`"
+        )
+    elif lang == "kz":
+        text = (
+            f"🎁 **Достарды шақыру (Реферальды бағдарлама)**\n\n"
+            f"Достарыңызды Darktown Mafia ойынына шақырып, әр дос үшін **+50 Dark Coins** алыңыз! Сіздің досыңыз да **+50 монета** алады.\n\n"
+            f"👥 Шақырылған достар: **{ref_count}**\n"
+            f"💰 Табылған монеталар: **{earned_coins}**\n\n"
+            f"🔗 **Сіздің сілтемеңіз**:\n`{ref_link}`"
+        )
+        
+    await message.answer(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+
+@router.callback_query(F.data == "menu_shop")
+async def cb_menu_shop(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    user = await db.get_user(user_id)
+    lang = user.get('language', 'uz')
+    coins = user.get('coins', 0)
+    
+    title = f"🛒 **Darktown Do'koni**\n💰 Sizning balansingiz: **{coins} Dark Coins**\n\nQuyidagi buyumlardan birini sotib olishingiz mumkin:\n"
+    if lang == "ru":
+        title = f"🛒 **Магазин Darktown**\n💰 Ваш баланс: **{coins} Dark Coins**\n\nВыберите предмет для покупки:\n"
+    elif lang == "en":
+        title = f"🛒 **Darktown Shop**\n💰 Your balance: **{coins} Dark Coins**\n\nChoose an item to purchase:\n"
+    elif lang == "kz":
+        title = f"🛒 **Darktown Дүкені**\n💰 Сіздің балансыңыз: **{coins} Dark Coins**\n\nСатып алу үшін таңдаңыз:\n"
+        
+    for item in SHOP_ITEMS.values():
+        name = item.get(f"name_{lang}", item["name_uz"])
+        desc = item.get(f"desc_{lang}", item["desc_uz"])
+        title += f"\n• **{name}** ({item['cost']} 🪙)\n  _{desc}_\n"
+        
+    await cb.message.edit_text(title, reply_markup=get_shop_keyboard(lang), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "menu_ref")
+async def cb_menu_ref(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    user = await db.get_user(user_id)
+    lang = user.get('language', 'uz')
+    bot_user = (await cb.bot.get_me()).username
+    ref_count = await db.get_referral_count(user_id)
+    earned_coins = ref_count * 50
+    ref_link = f"https://t.me/{bot_user}?start=ref_{user_id}"
+    
+    share_url = f"https://t.me/share/url?url={ref_link}&text=Darktown%20Mafiya%20o%27yiniga%20qo%27shiling%20va%20+50%20tanga%20bonus%20oling!"
+    
+    kb = InlineKeyboardBuilder()
+    share_text = "📤 Do'stlarga ulashish" if lang == "uz" else "📤 Поделиться с друзьями" if lang == "ru" else "📤 Share with Friends" if lang == "en" else "📤 Достармен бөлісу"
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    kb.add(types.InlineKeyboardButton(text=share_text, url=share_url))
+    kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    kb.adjust(1)
+    
+    text = (
+        f"🎁 **Do'stlarni taklif qilish (Referral dasturi)**\n\n"
+        f"Do'stlaringizni Darktown Mafiya o'yiniga taklif qiling va har bir do'stingiz uchun **+50 Dark Coins** bonusga ega bo'ling! Taklif qilingan do'stingiz ham **+50 tanga** oladi.\n\n"
+        f"👥 Siz taklif qilgan do'stlar: **{ref_count} ta**\n"
+        f"💰 Ishlangan tangalar: **{earned_coins} ta**\n\n"
+        f"🔗 **Sizning maxsaviy taklif havolangiz**:\n`{ref_link}`"
+    )
+    if lang == "ru":
+        text = (
+            f"🎁 **Приглашение друзей (Реферальная программа)**\n\n"
+            f"Приглашайте друзей в Darktown Mafia и получайте **+50 Dark Coins** за каждого приглашенного друга! Ваш друг также получит **+50 монет**.\n\n"
+            f"👥 Приглашено друзей: **{ref_count}**\n"
+            f"💰 Заработано монет: **{earned_coins}**\n\n"
+            f"🔗 **Ваша реферальная ссылка**:\n`{ref_link}`"
+        )
+    elif lang == "en":
+        text = (
+            f"🎁 **Invite Friends (Referral Program)**\n\n"
+            f"Invite friends to Darktown Mafia and get **+50 Dark Coins** for each friend! Your friend also gets **+50 coins**.\n\n"
+            f"👥 Friends invited: **{ref_count}**\n"
+            f"💰 Coins earned: **{earned_coins}**\n\n"
+            f"🔗 **Your referral link**:\n`{ref_link}`"
+        )
+    elif lang == "kz":
+        text = (
+            f"🎁 **Достарды шақыру (Реферальды бағдарлама)**\n\n"
+            f"Достарыңызды Darktown Mafia ойынына шақырып, әр дос үшін **+50 Dark Coins** алыңыз! Сіздің досыңыз да **+50 монета** алады.\n\n"
+            f"👥 Шақырылған достар: **{ref_count}**\n"
+            f"💰 Табылған монеталар: **{earned_coins}**\n\n"
+            f"🔗 **Сіздің сілтемеңіз**:\n`{ref_link}`"
+        )
+        
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "menu_profile")
+async def cb_menu_profile(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    user = await db.get_user(user_id, cb.from_user.username, cb.from_user.full_name)
+    lang = user.get('language', 'uz')
+    bot_user = (await cb.bot.get_me()).username
+    
+    stats = await db.get_user_stats(user_id)
+    total_played = sum(s['games_played'] for s in stats)
+    total_won = sum(s['games_won'] for s in stats)
+    win_rate = (total_won / total_played * 100) if total_played > 0 else 0
+    
+    shield_status = "🛡️ Active" if user['shield_active'] else "❌ Inactive"
+    if lang == "uz":
+        shield_status = "🛡️ Faol" if user['shield_active'] else "❌ Faol emas"
+    elif lang == "ru":
+        shield_status = "🛡️ Активен" if user['shield_active'] else "❌ Неактивен"
+    elif lang == "kz":
+        shield_status = "🛡️ Белсенді" if user['shield_active'] else "❌ Белсенді емес"
+        
+    profile_text = get_text(
+        lang, "profile_text",
+        level=user['level'],
+        xp=user['xp'],
+        coins=user['coins'],
+        shield=shield_status
+    )
+    
+    stats_text = ""
+    if lang == "uz":
+        stats_text = f"\n\n🎮 O'yinlar: **{total_played} ta**\n🏆 G'alabalar: **{total_won} ta** ({win_rate:.1f}%)"
+    elif lang == "ru":
+        stats_text = f"\n\n🎮 Игры: **{total_played}**\n🏆 Победы: **{total_won}** ({win_rate:.1f}%)"
+    elif lang == "en":
+        stats_text = f"\n\n🎮 Games: **{total_played}**\n🏆 Wins: **{total_won}** ({win_rate:.1f}%)"
+    elif lang == "kz":
+        stats_text = f"\n\n🎮 Ойындар: **{total_played}**\n🏆 Жеңістер: **{total_won}** ({win_rate:.1f}%)"
+        
+    await cb.message.edit_text(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "menu_top")
+async def cb_menu_top(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    lang = await db.get_user_language(user_id)
+    leaders = await db.get_leaderboard(10)
+    
+    text = get_text(lang, "leaderboard_title")
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    
+    for i, u in enumerate(leaders):
+        first_name = escape_markdown(u['first_name'])
+        username_part = ""
+        if u['username']:
+            username_esc = escape_markdown(u['username'])
+            username_part = f" (@{username_esc})"
+        text += f"{medals[i]} **{first_name}**{username_part} — Level {u['level']} ({u['xp']} XP)\n"
+        
+    if not leaders:
+        text += "Hozircha o'yinchilar yo'q."
+        
+    kb = InlineKeyboardBuilder()
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "menu_boosters")
+async def cb_menu_boosters(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    lang = await db.get_user_language(user_id)
+    inventory = await db.get_inventory(user_id)
+    bot_user = (await cb.bot.get_me()).username
+    
+    boosters = {k: v for k, v in inventory.items() if k.startswith("booster_") and v > 0}
+    
+    if not boosters:
+        no_boosters_text = "⚠️ Sizda faol rol boosterlari yo'q.\nUlarni Do'kondan sotib olishingiz mumkin!"
+        if lang == "ru":
+            no_boosters_text = "⚠️ У вас нет активных бустеров ролей.\nВы можете купить их в Магазине!"
+        elif lang == "en":
+            no_boosters_text = "⚠️ You have no active role boosters.\nYou can buy them in the Shop!"
+        elif lang == "kz":
+            no_boosters_text = "⚠️ Сізде белсенді рөлдік бустерлер жоқ.\nОларды Дүкеннен сатып алуға болады!"
+            
+        kb = InlineKeyboardBuilder()
+        if FEATURE_SHOP:
+            shop_btn = "🛒 Do'konga o'tish" if lang == "uz" else "🛒 В магазин" if lang == "ru" else "🛒 Go to Shop" if lang == "en" else "🛒 Дүкенге өту"
+            kb.add(types.InlineKeyboardButton(text=shop_btn, callback_data="menu_shop"))
+        back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+        kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+        kb.adjust(1)
+        
+        await cb.message.edit_text(no_boosters_text, reply_markup=kb.as_markup())
+        await cb.answer()
+        return
+        
+    kb = InlineKeyboardBuilder()
+    for item_key, qty in boosters.items():
+        role_name = item_key.replace("booster_", "").capitalize()
+        kb.add(types.InlineKeyboardButton(
+            text=f"🎭 {role_name} ({qty} dona)" if lang == "uz" else f"🎭 {role_name} ({qty} шт)" if lang == "ru" else f"🎭 {role_name} ({qty} pcs)" if lang == "en" else f"🎭 {role_name} ({qty} дана)", 
+            callback_data=f"activate_{item_key}"
+        ))
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    kb.adjust(1)
+    
+    boost_title = "🎭 **Rol Boosterini Faollashtirish**\n\nKeyingi o'yinda qaysi rolni olish ehtimolini oshirmoqchisiz? Tanlang:\n_(O'yin boshlanganda 1 ta booster sarflanadi)_"
+    if lang == "ru":
+        boost_title = "🎭 **Активация Бустера Роли**\n\nКакую роль вы хотите получить с большей вероятностью в следующей игре? Выберите:\n_(1 бустер будет потрачен при старте игры)_"
+    elif lang == "en":
+        boost_title = "🎭 **Activate Role Booster**\n\nWhich role do you want to have a higher chance of getting in the next game? Choose:\n_(1 booster will be consumed when the game starts)_"
+    elif lang == "kz":
+        boost_title = "🎭 **Рөлдік Бустерді Белсендіру**\n\nКелесі ойында қай рөлді алу ықтималдығын арттырғыңыз келеді? Таңдаңыз:\n_(Ойын басталғанда 1 бустер жұмсалады)_"
+        
+    await cb.message.edit_text(boost_title, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "menu_back")
+async def cb_menu_back(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    user = await db.get_user(user_id, cb.from_user.username, cb.from_user.full_name)
+    lang = user.get('language', 'uz')
+    bot_user = (await cb.bot.get_me()).username
+    welcome_text = get_text(lang, "start_private", name=cb.from_user.full_name)
+    
+    shield_status = "🛡️ Active" if user['shield_active'] else "❌ Inactive"
+    if lang == "uz":
+        shield_status = "🛡️ Faol" if user['shield_active'] else "❌ Faol emas"
+    elif lang == "ru":
+        shield_status = "🛡️ Активен" if user['shield_active'] else "❌ Неактивен"
+    elif lang == "kz":
+        shield_status = "🛡️ Белсенді" if user['shield_active'] else "❌ Белсенді емес"
+        
+    status_text = "\n\n" + get_text(
+        lang, "profile_text",
+        level=user['level'],
+        xp=user['xp'],
+        coins=user['coins'],
+        shield=shield_status
+    )
+    
+    await cb.message.edit_text(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
+    await cb.answer()
 
 @router.message(Command("leaderboard"))
 async def cmd_leaderboard(message: types.Message):
@@ -208,7 +604,7 @@ async def cmd_boost(message: types.Message):
             
         await message.answer(
             no_boosters_text,
-            reply_markup=get_start_keyboard(user_id, bot_user)
+            reply_markup=get_start_keyboard(user_id, bot_user, lang)
         )
         return
         
@@ -467,7 +863,7 @@ async def cb_check_channel_sub(cb: types.CallbackQuery):
                 user = await db.get_user(cb.from_user.id, cb.from_user.username, cb.from_user.full_name)
                 lang = user.get('language', 'uz')
                 welcome_text = get_text(lang, "start_private", name=cb.from_user.full_name)
-                await cb.message.answer(welcome_text, reply_markup=get_start_keyboard(cb.from_user.id, bot_user), parse_mode="Markdown")
+                await cb.message.answer(welcome_text, reply_markup=get_start_keyboard(cb.from_user.id, bot_user, lang), parse_mode="Markdown")
             else:
                 await cb.answer(f"⚠️ Siz hali {REQUIRED_CHANNEL} kanaliga obuna bo'lmadingiz!", show_alert=True)
         except Exception:

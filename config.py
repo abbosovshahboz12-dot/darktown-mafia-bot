@@ -12,5 +12,19 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", os.path.join(os.path.dirname(__file__
 ADMIN_ID = int(os.getenv("ADMIN_ID", 0))
 REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@DarkTownuz")
 
+# ==========================================
+# 🚀 FEATURE FLAGS (MVP / KELAJAKDAGI BOSQICHLAR)
+# ==========================================
+# 1-bosqichda (MVP) faqat asosiy bot, yengil do'kon va referral ishlaydi.
+# Kengayish davrida quyidagilarni True qilib bitta-bitta yoqish mumkin:
+FEATURE_WEBAPP = os.getenv("FEATURE_WEBAPP", "False").lower() in ("true", "1", "yes")
+FEATURE_SHOP = os.getenv("FEATURE_SHOP", "True").lower() in ("true", "1", "yes")
+FEATURE_REFERRAL = os.getenv("FEATURE_REFERRAL", "True").lower() in ("true", "1", "yes")
+FEATURE_LEADERBOARD = os.getenv("FEATURE_LEADERBOARD", "True").lower() in ("true", "1", "yes")
+FEATURE_CLANS = os.getenv("FEATURE_CLANS", "False").lower() in ("true", "1", "yes")
+FEATURE_BATTLEPASS = os.getenv("FEATURE_BATTLEPASS", "False").lower() in ("true", "1", "yes")
+FEATURE_CASINO = os.getenv("FEATURE_CASINO", "False").lower() in ("true", "1", "yes")
+
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN topilmadi! .env faylini tekshiring.")
+
