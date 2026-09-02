@@ -239,6 +239,10 @@ async def init_db():
             await db.execute("ALTER TABLE users ADD COLUMN custom_bg TEXT")
         except Exception:
             pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN channel_bonus_claimed INTEGER DEFAULT 0")
+        except Exception:
+            pass
             
         await db.commit()
 
@@ -630,6 +634,25 @@ async def get_referral_count(user_id: int) -> int:
         async with db.execute("SELECT COUNT(*) FROM users WHERE referred_by = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             return row[0] if row else 0
+
+async def is_channel_bonus_claimed(user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT channel_bonus_claimed FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return bool(row[0]) if row and row[0] else False
+
+async def claim_channel_bonus(user_id: int, bonus_coins: int = 100) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT channel_bonus_claimed FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            if row and row[0] == 1:
+                return False
+        await db.execute(
+            "UPDATE users SET coins = coins + ?, channel_bonus_claimed = 1 WHERE user_id = ?",
+            (bonus_coins, user_id)
+        )
+        await db.commit()
+        return True
 
 # Room and Party Tizimi funksiyalari
 async def create_room(room_id: str, owner_id: int, is_private: int, pin_code: str, day_limit: int, night_limit: int) -> bool:

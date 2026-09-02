@@ -19,7 +19,7 @@ def escape_markdown(text: str) -> str:
         text = text.replace(char, f"\\{char}")
     return text
 
-def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot", lang: str = "uz") -> types.InlineKeyboardMarkup:
+def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot", lang: str = "uz", bonus_claimed: bool = False) -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     
     # 1. Agar WebApp yoqilgan bo'lsa (Phase 3)
@@ -49,13 +49,22 @@ def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot", lang:
     boost_btn = "🎭 Rol Busterlari" if lang == "uz" else "🎭 Бустеры Ролей" if lang == "ru" else "🎭 Role Boosters" if lang == "en" else "🎭 Бустерлер"
     kb.add(types.InlineKeyboardButton(text=boost_btn, callback_data="menu_boosters"))
     
+    # Kanalga a'zo bo'lib bonus olish tugmasi (agar hali olmagan bo'lsa)
+    from config import REQUIRED_CHANNEL
+    if not bonus_claimed:
+        bonus_btn = "🎁 +100 Tanga olish" if lang == "uz" else "🎁 Получить +100 монет" if lang == "ru" else "🎁 Claim +100 Coins" if lang == "en" else "🎁 +100 монета алу"
+        kb.add(types.InlineKeyboardButton(text=bonus_btn, callback_data="claim_channel_bonus"))
+    elif REQUIRED_CHANNEL:
+        chan_btn = "📢 Rasmiy Kanal" if lang == "uz" else "📢 Наш Канал" if lang == "ru" else "📢 Official Channel" if lang == "en" else "📢 Ресми Арна"
+        kb.add(types.InlineKeyboardButton(text=chan_btn, url=f"https://t.me/{REQUIRED_CHANNEL.replace('@', '')}"))
+    
     add_group_btn = "🌐 Guruhga qo'shish" if lang == "uz" else "🌐 Добавить в группу" if lang == "ru" else "🌐 Add to Group" if lang == "en" else "🌐 Топқа қосу"
     kb.add(types.InlineKeyboardButton(
         text=add_group_btn,
         url=f"https://t.me/{bot_username}?startgroup=true"
     ))
     
-    kb.adjust(2, 2, 1, 1)
+    kb.adjust(2, 2, 1, 1, 1)
     return kb.as_markup()
 
 @router.message(CommandStart())
@@ -88,26 +97,7 @@ async def cmd_start(message: types.Message):
     # Save/Get user from DB
     user = await db.get_user(user_id, username, first_name)
     lang = user.get('language', 'uz')
-    
-    # Check channel subscription (@DarkTownuz)
-    from config import REQUIRED_CHANNEL
-    if REQUIRED_CHANNEL:
-        try:
-            member = await message.bot.get_chat_member(REQUIRED_CHANNEL, user_id)
-            if member.status not in ["creator", "administrator", "member"]:
-                kb = InlineKeyboardBuilder()
-                kb.add(types.InlineKeyboardButton(text="📢 Kanalga obuna bo'lish", url=f"https://t.me/{REQUIRED_CHANNEL.replace('@', '')}"))
-                kb.add(types.InlineKeyboardButton(text="✅ Obunani tekshirish", callback_data="check_channel_sub"))
-                kb.adjust(1)
-                await message.answer(
-                    f"⚠️ **DIQQAT!** Bot va o'yinlardan foydalanish uchun rasmiy **{REQUIRED_CHANNEL}** kanalimizga obuna bo'lishingiz shart!\n\n"
-                    f"Kanalga obuna bo'ling va pastdagi 'Obunani tekshirish' tugmasini bosing:",
-                    reply_markup=kb.as_markup(),
-                    parse_mode="Markdown"
-                )
-                return
-        except Exception as e:
-            logging.warning(f"Error checking channel sub: {e}")
+    bonus_claimed = bool(user.get('channel_bonus_claimed', 0))
     
     # Notify referral rewards if referred successfully
     if referred:
@@ -142,7 +132,17 @@ async def cmd_start(message: types.Message):
         shield=shield_status
     )
     
-    await message.answer(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
+    if not bonus_claimed:
+        bonus_hint = "\n\n🎁 **Maxsus Sovg'a**: Rasmiy kanalimizga a'zo bo'ling va **+100 Dark Coins** bonusga ega bo'ling!"
+        if lang == "ru":
+            bonus_hint = "\n\n🎁 **Бонус**: Подпишитесь на наш канал и получите **+100 Dark Coins**!"
+        elif lang == "en":
+            bonus_hint = "\n\n🎁 **Bonus**: Subscribe to our channel to claim **+100 Dark Coins**!"
+        elif lang == "kz":
+            bonus_hint = "\n\n🎁 **Бонус**: Ресми арнамызға жазылып, **+100 Dark Coins** алыңыз!"
+        status_text += bonus_hint
+        
+    await message.answer(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang, bonus_claimed), parse_mode="Markdown")
 
 @router.message(Command("profile", "profil"))
 async def cmd_profile(message: types.Message):
@@ -446,7 +446,8 @@ async def cb_menu_profile(cb: types.CallbackQuery):
     elif lang == "kz":
         stats_text = f"\n\n🎮 Ойындар: **{total_played}**\n🏆 Жеңістер: **{total_won}** ({win_rate:.1f}%)"
         
-    await cb.message.edit_text(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
+    bonus_claimed = bool(user.get('channel_bonus_claimed', 0))
+    await cb.message.edit_text(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user, lang, bonus_claimed), parse_mode="Markdown")
     await cb.answer()
 
 @router.callback_query(F.data == "menu_top")
@@ -535,6 +536,7 @@ async def cb_menu_back(cb: types.CallbackQuery):
     lang = user.get('language', 'uz')
     bot_user = (await cb.bot.get_me()).username
     welcome_text = get_text(lang, "start_private", name=cb.from_user.full_name)
+    bonus_claimed = bool(user.get('channel_bonus_claimed', 0))
     
     shield_status = "🛡️ Active" if user['shield_active'] else "❌ Inactive"
     if lang == "uz":
@@ -552,7 +554,17 @@ async def cb_menu_back(cb: types.CallbackQuery):
         shield=shield_status
     )
     
-    await cb.message.edit_text(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
+    if not bonus_claimed:
+        bonus_hint = "\n\n🎁 **Maxsus Sovg'a**: Rasmiy kanalimizga a'zo bo'ling va **+100 Dark Coins** bonusga ega bo'ling!"
+        if lang == "ru":
+            bonus_hint = "\n\n🎁 **Бонус**: Подпишитесь на наш канал и получите **+100 Dark Coins**!"
+        elif lang == "en":
+            bonus_hint = "\n\n🎁 **Bonus**: Subscribe to our channel to claim **+100 Dark Coins**!"
+        elif lang == "kz":
+            bonus_hint = "\n\n🎁 **Бонус**: Ресми арнамызға жазылып, **+100 Dark Coins** алыңыз!"
+        status_text += bonus_hint
+        
+    await cb.message.edit_text(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang, bonus_claimed), parse_mode="Markdown")
     await cb.answer()
 
 @router.message(Command("leaderboard"))
@@ -847,24 +859,122 @@ async def successful_payment_handler(message: types.Message):
             
         await message.answer(success_msg, parse_mode="Markdown")
 
-@router.callback_query(F.data == "check_channel_sub")
-async def cb_check_channel_sub(cb: types.CallbackQuery):
+@router.callback_query(F.data == "claim_channel_bonus")
+async def cb_claim_channel_bonus(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    user = await db.get_user(user_id)
+    lang = user.get('language', 'uz')
+    bot_user = (await cb.bot.get_me()).username
     from config import REQUIRED_CHANNEL
+    
+    if await db.is_channel_bonus_claimed(user_id):
+        already_msg = "⚠️ Siz allaqachon kanal obunasi uchun bonusni olgansiz!" if lang == "uz" else "⚠️ Вы уже получили бонус за подписку на канал!" if lang == "ru" else "⚠️ You have already claimed the channel bonus!" if lang == "en" else "⚠️ Сіз арнаға жазылу бонусын алғансыз!"
+        await cb.answer(already_msg, show_alert=True)
+        return
+        
+    is_member = False
     if REQUIRED_CHANNEL:
         try:
-            member = await cb.bot.get_chat_member(REQUIRED_CHANNEL, cb.from_user.id)
+            member = await cb.bot.get_chat_member(REQUIRED_CHANNEL, user_id)
             if member.status in ["creator", "administrator", "member"]:
-                await cb.answer("✅ Rahmat! Obuna tasdiqlandi.", show_alert=True)
-                try:
-                    await cb.message.delete()
-                except Exception:
-                    pass
-                bot_user = (await cb.bot.get_me()).username
-                user = await db.get_user(cb.from_user.id, cb.from_user.username, cb.from_user.full_name)
-                lang = user.get('language', 'uz')
-                welcome_text = get_text(lang, "start_private", name=cb.from_user.full_name)
-                await cb.message.answer(welcome_text, reply_markup=get_start_keyboard(cb.from_user.id, bot_user, lang), parse_mode="Markdown")
-            else:
-                await cb.answer(f"⚠️ Siz hali {REQUIRED_CHANNEL} kanaliga obuna bo'lmadingiz!", show_alert=True)
-        except Exception:
-            await cb.answer("✅ Obuna tasdiqlandi.")
+                is_member = True
+        except Exception as e:
+            logging.warning(f"Error checking channel sub: {e}")
+            
+    if is_member:
+        await db.claim_channel_bonus(user_id, 100)
+        success_msg = "🎉 Tabriklaymiz! Rasmiy kanalimizga a'zo bo'lganingiz uchun +100 Dark Coins qo'shildi!" if lang == "uz" else "🎉 Поздравляем! Вам начислено +100 Dark Coins за подписку на канал!" if lang == "ru" else "🎉 Congratulations! +100 Dark Coins added for subscribing to our channel!" if lang == "en" else "🎉 Құттықтаймыз! Арнаға жазылғаныңыз үшін +100 Dark Coins қосылды!"
+        await cb.answer(success_msg, show_alert=True)
+        
+        # Refresh start menu
+        user = await db.get_user(user_id)
+        welcome_text = get_text(lang, "start_private", name=cb.from_user.full_name)
+        shield_status = "🛡️ Faol" if user['shield_active'] else "❌ Faol emas"
+        status_text = "\n\n" + get_text(
+            lang, "profile_text",
+            level=user['level'],
+            xp=user['xp'],
+            coins=user['coins'],
+            shield=shield_status
+        )
+        await cb.message.edit_text(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang, bonus_claimed=True), parse_mode="Markdown")
+    else:
+        # Show prompt to subscribe
+        title = (
+            f"🎁 **+100 Dark Coins Sovg'asi!**\n\n"
+            f"1. Rasmiy **{REQUIRED_CHANNEL}** kanalimizga a'zo bo'ling;\n"
+            f"2. Pastdagi **'✅ Obunani tekshirish'** tugmasini bosing va **+100 tanga**ga ega bo'ling!"
+        )
+        if lang == "ru":
+            title = (
+                f"🎁 **Бонус +100 Dark Coins!**\n\n"
+                f"1. Подпишитесь на наш официальный канал **{REQUIRED_CHANNEL}**;\n"
+                f"2. Нажмите кнопку **'✅ Проверить подписку'** ниже и получите **+100 монет**!"
+            )
+        elif lang == "en":
+            title = (
+                f"🎁 **+100 Dark Coins Bonus!**\n\n"
+                f"1. Subscribe to our official channel **{REQUIRED_CHANNEL}**;\n"
+                f"2. Click the **'✅ Verify Subscription'** button below to claim **+100 coins**!"
+            )
+        elif lang == "kz":
+            title = (
+                f"🎁 **+100 Dark Coins Бонусы!**\n\n"
+                f"1. Ресми **{REQUIRED_CHANNEL}** арнамызға жазылыңыз;\n"
+                f"2. Төмендегі **'✅ Жазылуды тексеру'** батырмасын басып, **+100 монета** алыңыз!"
+            )
+            
+        kb = InlineKeyboardBuilder()
+        sub_text = "📢 Kanalga a'zo bo'lish" if lang == "uz" else "📢 Подписаться на канал" if lang == "ru" else "📢 Subscribe to Channel" if lang == "en" else "📢 Арнаға жазылу"
+        verify_text = "✅ Obunani tekshirish (+100 🪙)" if lang == "uz" else "✅ Проверить (+100 🪙)" if lang == "ru" else "✅ Verify (+100 🪙)" if lang == "en" else "✅ Тексеру (+100 🪙)"
+        back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+        
+        kb.add(types.InlineKeyboardButton(text=sub_text, url=f"https://t.me/{REQUIRED_CHANNEL.replace('@', '')}"))
+        kb.add(types.InlineKeyboardButton(text=verify_text, callback_data="verify_channel_bonus"))
+        kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+        kb.adjust(1)
+        
+        await cb.message.edit_text(title, reply_markup=kb.as_markup(), parse_mode="Markdown")
+        await cb.answer()
+
+@router.callback_query(F.data.in_({"verify_channel_bonus", "check_channel_sub"}))
+async def cb_verify_channel_bonus(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    user = await db.get_user(user_id)
+    lang = user.get('language', 'uz')
+    bot_user = (await cb.bot.get_me()).username
+    from config import REQUIRED_CHANNEL
+    
+    if await db.is_channel_bonus_claimed(user_id):
+        already_msg = "⚠️ Siz allaqachon kanal obunasi uchun bonusni olgansiz!" if lang == "uz" else "⚠️ Вы уже получили бонус за подписку на канал!" if lang == "ru" else "⚠️ You have already claimed the channel bonus!" if lang == "en" else "⚠️ Сіз арнаға жазылу бонусын алғансыз!"
+        await cb.answer(already_msg, show_alert=True)
+        return
+        
+    is_member = False
+    if REQUIRED_CHANNEL:
+        try:
+            member = await cb.bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+            if member.status in ["creator", "administrator", "member"]:
+                is_member = True
+        except Exception as e:
+            logging.warning(f"Error checking channel sub: {e}")
+            
+    if is_member:
+        await db.claim_channel_bonus(user_id, 100)
+        success_msg = "🎉 Tabriklaymiz! Rasmiy kanalimizga a'zo bo'lganingiz uchun +100 Dark Coins qo'shildi!" if lang == "uz" else "🎉 Поздравляем! Вам начислено +100 Dark Coins за подписку на канал!" if lang == "ru" else "🎉 Congratulations! +100 Dark Coins added for subscribing to our channel!" if lang == "en" else "🎉 Құттықтаймыз! Арнаға жазылғаныңыз үшін +100 Dark Coins қосылды!"
+        await cb.answer(success_msg, show_alert=True)
+        
+        user = await db.get_user(user_id)
+        welcome_text = get_text(lang, "start_private", name=cb.from_user.full_name)
+        shield_status = "🛡️ Faol" if user['shield_active'] else "❌ Faol emas"
+        status_text = "\n\n" + get_text(
+            lang, "profile_text",
+            level=user['level'],
+            xp=user['xp'],
+            coins=user['coins'],
+            shield=shield_status
+        )
+        await cb.message.edit_text(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang, bonus_claimed=True), parse_mode="Markdown")
+    else:
+        not_sub_msg = f"⚠️ Siz hali {REQUIRED_CHANNEL} kanaliga obuna bo'lmadingiz. Avval kanalga a'zo bo'ling!" if lang == "uz" else f"⚠️ Вы еще не подписались на канал {REQUIRED_CHANNEL}!" if lang == "ru" else f"⚠️ You haven't subscribed to {REQUIRED_CHANNEL} yet!" if lang == "en" else f"⚠️ Сіз әлі {REQUIRED_CHANNEL} арнасына жазылмадыңыз!"
+        await cb.answer(not_sub_msg, show_alert=True)
