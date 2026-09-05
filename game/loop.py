@@ -41,27 +41,22 @@ def get_role_details(role: str) -> str:
     return details.get(role, "")
 
 def distribute_roles(players_count: int) -> List[str]:
-    if players_count < 5:
-        return ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"]
-    elif players_count == 5:
+    if players_count <= 5:
         return ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"]
     elif players_count == 6:
-        return ["Mafia", "Don", "Doctor", "Detective", "Civilian", "Civilian"]
-    elif players_count == 7:
-        return ["Mafia", "Don", "Doctor", "Detective", "Jester", "Civilian", "Civilian"]
-    elif players_count == 8:
-        return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Jester", "Civilian"]
-    elif players_count == 9:
-        return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Bodyguard", "Witch", "Jester", "Civilian"]
-    elif players_count == 10:
-        return ["Mafia", "Mafia", "Don", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Jester", "Civilian"]
-    elif 11 <= players_count <= 13:
-        base = ["Mafia", "Mafia", "Don", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Jester", "Maniac"]
+        return ["Don", "Mafia", "Doctor", "Detective", "Civilian", "Civilian"]
+    elif players_count in [7, 8]:
+        base = ["Don", "Mafia", "Doctor", "Detective"]
         while len(base) < players_count:
             base.append("Civilian")
         return base
-    else: # 14+ players
-        base = ["Mafia", "Mafia", "Mafia", "Don", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Jester", "Maniac"]
+    elif players_count in [9, 10]:
+        base = ["Don", "Mafia", "Mafia", "Doctor", "Detective"]
+        while len(base) < players_count:
+            base.append("Civilian")
+        return base
+    else: # 11+ players
+        base = ["Don", "Mafia", "Mafia", "Doctor", "Detective", "Bodyguard"]
         while len(base) < players_count:
             base.append("Civilian")
         return base
@@ -389,25 +384,19 @@ def all_active_roles_acted(game: Game) -> bool:
     mafia_count = len([p for p in alive_players if p.role in ["Mafia", "Don"]])
     doctor_alive = any(p.role == "Doctor" for p in alive_players)
     detective_alive = any(p.role == "Detective" for p in alive_players)
+    don_alive = any(p.role == "Don" for p in alive_players)
     guard_alive = any(p.role == "Bodyguard" for p in alive_players)
-    courtesan_alive = any(p.role == "Witch" for p in alive_players)
-    maniac_alive = any(p.role == "Maniac" for p in alive_players)
 
     # Check if they have chosen
     if len(game.night_actions["mafia"]) < mafia_count:
         return False
-    if detective_alive and not game.night_actions["detective_check"] and not game.night_actions["detective_shoot"]:
+    if don_alive and not game.night_actions.get("don"):
         return False
-    if don_alive := any(p.role == "Don" for p in alive_players):
-        if not game.night_actions["don"]:
-            return False
-    if doctor_alive and not game.night_actions["doctor"]:
+    if detective_alive and not game.night_actions.get("detective_check") and not game.night_actions.get("detective_shoot"):
         return False
-    if guard_alive and not game.night_actions["bodyguard"]:
+    if doctor_alive and not game.night_actions.get("doctor"):
         return False
-    if courtesan_alive and not game.night_actions["courtesan"]:
-        return False
-    if maniac_alive and not game.night_actions["maniac"] and not (game.event and game.event["key"] == "curfew"):
+    if guard_alive and not game.night_actions.get("bodyguard"):
         return False
         
     return True
