@@ -976,20 +976,7 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
         "Jester": "🃏 Mazxaraboz (Jester)"
     }
     
-    win_text = f"🎉 **O'yin yakunlandi!**\n\nG'olib tomon: **{faction_emojis.get(winning_faction, winning_faction)}**\n\n"
-    
-    win_text += "📋 **O'yinchilar rollari**:\n"
-    for p in game.players.values():
-        status = "🟢 Tirik" if p.is_alive else "💀 O'lik"
-        role_emoji = ROLE_EMOJIS.get(p.role, "")
-        win_text += f"- {p.name_escaped}: {role_emoji} {p.role} ({status})\n"
-        
-    await bot.send_message(game.chat_id, win_text, parse_mode="Markdown")
-    
-    # Calculate XP and Coins
-    # Yarmarka event bonus
-    event_coins = 30 if (game.event and game.event["key"] == "fair") else 0
-    
+    event_coins = 0
     rewards_text = "💰 **Mukofotlar (XP & Tangalar)**:\n"
     
     for player in game.players.values():
@@ -1016,9 +1003,6 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
         # Add event bonus
         coins += event_coins
         
-        # Check shield if user lost
-        # If user has active shield, and they lost, they don't lose anything (actually we don't deduct XP on loss anyway, but shield saves them from losing streaks or could double rewards, let's say shield doubles coins for winner, or shields losses)
-        # Actually, let's implement shield: if they lost, they get +30 XP bonus (saving them from loss disappointment)
         user_db = await db.get_user(player.user_id)
         if not is_winner and user_db.get("shield_active", 0) == 1:
             xp += 30
@@ -1030,12 +1014,15 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
         # Save to DB
         leveled_up, new_level = await db.add_xp_and_coins(player.user_id, xp, coins)
         if leveled_up:
-            await bot.send_message(player.user_id, f"🎉 **Tabriklaymiz!** Siz {new_level}-darajaga (Level) ko'tarildingiz!")
+            try:
+                await bot.send_message(player.user_id, f"🎉 **Tabriklaymiz!** Siz {new_level}-darajaga (Level) ko'tarildingiz!")
+            except Exception:
+                pass
             
         # Update Role stats
         await db.update_stats(player.user_id, player.role.lower(), is_winner)
 
-        # Save Game History & Update Achievements/Quests (Phase 2)
+        # Save Game History & Update Achievements/Quests
         try:
             win_val = 1 if is_winner else 0
             await db.save_game_history(player.user_id, str(game.chat_id), player.role, win_val, winning_faction)
@@ -1045,10 +1032,8 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
                 if player.role not in ["Mafia", "Don", "Maniac"]:
                     await db.increment_daily_mafia_killed(player.user_id)
             
-            # Award Clan points
             await db.add_clan_points(player.user_id, points=(25 if is_winner else 5), is_win=is_winner)
             
-            # Award Tournament Points
             is_tourney = getattr(game, "is_tournament", False)
             if is_tourney or await db.is_user_registered_for_tournament(player.user_id):
                 t_points = 100 if is_winner else 20
@@ -1056,12 +1041,28 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
                     t_points += 50
                 await db.add_tournament_points(player.user_id, t_points)
             
-            # Award Battle Pass XP
             await db.add_battle_pass_xp(player.user_id, xp_gain=(50 if is_winner else 15))
         except Exception as ex:
             logging.error(f"Error saving game history/achievements: {ex}")
         
-    await bot.send_message(game.chat_id, rewards_text, parse_mode="Markdown")
+    recap_kb = InlineKeyboardBuilder()
+    recap_kb.add(types.InlineKeyboardButton(text="🔄 Yana o'ynash (/newgame)", callback_data="replay_newgame"))
+    recap_kb.adjust(1)
+    
+    final_text = (
+        f"🎉 **O'yin yakunlandi!**\n\n"
+        f"🏆 G'olib tomon: **{faction_emojis.get(winning_faction, winning_faction)}**\n\n"
+        f"🎭 **Barcha o'yinchilarning rollari**:\n"
+    )
+    for p in game.players.values():
+        status = "🟢 Tirik" if p.is_alive else "💀 Halok bo'lgan"
+        role_emoji = ROLE_EMOJIS.get(p.role, "")
+        final_text += f"- **{p.name_escaped}**: {role_emoji} {p.role} ({status})\n"
+        
+    final_text += f"\n{rewards_text}\n"
+    final_text += "🔥 Keyingi o'yinni boshlash uchun pastdagi tugmani bosing!"
+    
+    await bot.send_message(game.chat_id, final_text, reply_markup=recap_kb.as_markup(), parse_mode="Markdown")
     
     # Reset room in DB back to lobby and schedule 5-minute auto-close timer
     room_id = getattr(game, 'room_id', None)

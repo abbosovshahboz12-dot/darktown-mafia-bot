@@ -25,14 +25,16 @@ async def on_new_chat_members(message: types.Message, bot: Bot):
 
 def get_lobby_keyboard(lang: str) -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.add(types.InlineKeyboardButton(
-        text="📥 Join Game" if lang == "en" else "📥 Присоединиться" if lang == "ru" else "📥 Ойынға қосылу" if lang == "kz" else "📥 O'yinga qo'shilish", 
-        callback_data="join_game"
-    ))
-    kb.add(types.InlineKeyboardButton(
-        text="🚀 Start Game" if lang == "en" else "🚀 Начать игру" if lang == "ru" else "🚀 Ойынды бастау" if lang == "kz" else "🚀 O'yinni boshlash", 
-        callback_data="lobby_start"
-    ))
+    join_btn = "📥 Join Game" if lang == "en" else "📥 Присоединиться" if lang == "ru" else "📥 Ойынға қосылу" if lang == "kz" else "📥 O'yinga qo'shilish"
+    start_btn = "🚀 Start Game" if lang == "en" else "🚀 Начать игру" if lang == "ru" else "🚀 Ойынды бастау" if lang == "kz" else "🚀 O'yinni boshlash"
+    share_btn = "📢 Invite Friends" if lang == "en" else "📢 Пригласить друзей" if lang == "ru" else "📢 Достарды шақыру" if lang == "kz" else "📢 Do'stlarni chaqirish"
+    
+    share_text = "🔥 Biz Darktown Mafiya o'yinini boshlayapmiz! Tezroq kiring va qo'shiling!" if lang == "uz" else "🔥 Мы начинаем игру в Мафию Darktown! Заходите скорее!" if lang == "ru" else "🔥 We are starting a Darktown Mafia game! Join now!" if lang == "en" else "🔥 Біз Darktown Мафия ойынын бастап жатырмыз! Қосылыңыздар!"
+    share_url = f"https://t.me/share/url?url=https://t.me/darktownuz_bot&text={share_text}"
+
+    kb.add(types.InlineKeyboardButton(text=join_btn, callback_data="join_game"))
+    kb.add(types.InlineKeyboardButton(text=start_btn, callback_data="lobby_start"))
+    kb.add(types.InlineKeyboardButton(text=share_btn, url=share_url))
     kb.adjust(1)
     return kb.as_markup()
 
@@ -471,6 +473,66 @@ async def lobby_start_callback(cb: types.CallbackQuery, bot: Bot):
         
     await cb.answer("O'yin boshlanmoqda...")
     await start_game_loop(bot, game)
+
+@router.callback_query(F.data == "replay_newgame")
+async def cb_replay_newgame(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    name = cb.from_user.full_name
+    username = cb.from_user.username
+    lang = await db.get_group_language(chat_id)
+    
+    existing = game_manager.get_game(chat_id)
+    if existing and existing.phase != "ended":
+        await cb.answer("⚠️ Ushbu guruhda allaqachon faol o'yin mavjud!", show_alert=True)
+        return
+        
+    game = game_manager.create_game(chat_id)
+    player = Player(user_id, name, username)
+    game.players[user_id] = player
+    await db.get_user(user_id, username, name)
+    
+    if lang == "ru":
+        lobby_text = (
+            f"🎮 **Игра Мафия Darktown**\n\n"
+            f"Создана новая игра! Игроки собираются. До начала осталось **120 секунд**!\n\n"
+            f"👥 **Список игроков (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
+        )
+    elif lang == "en":
+        lobby_text = (
+            f"🎮 **Darktown Mafia Game**\n\n"
+            f"New game created! Players are gathering. **120 seconds** remaining!\n\n"
+            f"👥 **Player List (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
+        )
+    elif lang == "kz":
+        lobby_text = (
+            f"🎮 **Darktown Мафия Ойыны**\n\n"
+            f"Жаңа ойын құрылды! Ойыншылар жиналуда. Ойынның басталуына **120 секунд** қалды!\n\n"
+            f"👥 **Ойыншылар тізімі (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
+        )
+    else:
+        lobby_text = (
+            f"🎮 **Darktown Mafiya O'yini**\n\n"
+            f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda. Kirish tugashiga **120 soniya** qoldi!\n\n"
+            f"👥 **O'yinchilar ro'yxati (1)**:\n"
+            f"1. {name}\n\n"
+            f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
+        )
+        
+    lobby_msg = await cb.message.answer(
+        lobby_text,
+        reply_markup=get_lobby_keyboard(lang),
+        parse_mode="Markdown"
+    )
+    game.lobby_message_id = lobby_msg.message_id
+    game.timer_task = asyncio.create_task(lobby_timer(bot, game))
+    await cb.answer("Yangi o'yin yaratildi!")
 
 @router.message(Command("leave"))
 async def cmd_leave(message: types.Message):
