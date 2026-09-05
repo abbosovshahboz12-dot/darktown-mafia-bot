@@ -74,15 +74,27 @@ async def assign_roles(game: Game, bot: Bot):
     # Shuffle roles pool
     random.shuffle(roles_pool)
     
-    # Assign based on boosters first
+    # Non-civilian active roles
+    active_roles = [r for r in roles_pool if r != "Civilian"]
     assigned_players = set()
+    
+    # Assign based on boosters first
     for player in players:
-        if player.role_booster and player.role_booster in roles_pool:
-            player.role = player.role_booster
-            roles_pool.remove(player.role_booster)
-            assigned_players.add(player.user_id)
-            # Remove booster card from database since they used it
-            await db.use_item(player.user_id, f"booster_{player.role_booster.lower()}")
+        booster = getattr(player, "role_booster", None)
+        if booster:
+            if booster in ["Active", "Faol", "ActiveRole", "active"] and active_roles:
+                chosen = active_roles.pop(0)
+                roles_pool.remove(chosen)
+                player.role = chosen
+                assigned_players.add(player.user_id)
+                await db.use_item(player.user_id, "booster_active")
+            elif booster in roles_pool:
+                player.role = booster
+                roles_pool.remove(booster)
+                if booster in active_roles:
+                    active_roles.remove(booster)
+                assigned_players.add(player.user_id)
+                await db.use_item(player.user_id, f"booster_{booster.lower()}")
             
     # Assign remaining
     for player in players:
@@ -163,27 +175,46 @@ async def send_game_gif(bot: Bot, chat_id: int, event_type: str):
                 await bot.send_photo(chat_id, url)
             except Exception as e:
                 logging.warning(f"Could not send game GIF ({event_type}): {e}")
-                await bot.send_animation(chat_id, url)
-        except Exception as e:
-            logging.warning(f"Could not send game GIF ({event_type}): {e}")
 
 async def start_game_loop(bot: Bot, game: Game):
-    # Assign roles
-    await assign_roles(game, bot)
-    log_game_event(game, "🎭 O'yin boshlandi. Rollar taqsimlandi.")
-    await send_game_gif(bot, game.chat_id, "start")
-    await bot.send_message(
-        game.chat_id,
-        "🎭 **Rollar taqsimlandi!** Har bir o'yinchiga o'z roli shaxsiy chatda yuborildi.\n\n"
-        "🌙 **Qorong'u tushmoqda... Tun boshlandi!**\n"
-        "Barcha o'yinchilar shaxsiy chatda bot yuborgan xabarlarga qarab harakat qilsin."
-    )
-    await night_phase(bot, game)
+    try:
+        # Cancel any active lobby timer
+        if game.timer_task and not game.timer_task.done():
+            game.timer_task.cancel()
+            game.timer_task = None
+            
+        game.phase = "starting"
+        
+        # Assign roles
+        await assign_roles(game, bot)
+        log_game_event(game, "🎭 O'yin boshlandi. Rollar taqsimlandi.")
+        
+        try:
+            await send_game_gif(bot, game.chat_id, "start")
+        except Exception as e:
+            logging.warning(f"Could not send start GIF: {e}")
+            
+        await bot.send_message(
+            game.chat_id,
+            "🎭 **Rollar taqsimlandi!** Har bir o'yinchiga o'z roli shaxsiy chatda yuborildi.\n\n"
+            "🌙 **Qorong'u tushmoqda... Tun boshlandi!**\n"
+            "Barcha o'yinchilar shaxsiy chatda bot yuborgan xabarlarga qarab harakat qilsin."
+        )
+        await night_phase(bot, game)
+    except Exception as e:
+        logging.error(f"CRITICAL ERROR in start_game_loop: {e}", exc_info=True)
+        try:
+            await bot.send_message(game.chat_id, f"⚠️ O'yinni boshlashda xatolik yuz berdi. Iltimos, qaytadan `/newgame` yozing.")
+        except Exception:
+            pass
 
 async def night_phase(bot: Bot, game: Game):
     game.phase = "night"
     log_game_event(game, "🌙 Tun boshlandi. Rollar tungi harakatda.")
-    await send_game_gif(bot, game.chat_id, "night")
+    try:
+        await send_game_gif(bot, game.chat_id, "night")
+    except Exception as e:
+        logging.warning(f"Could not send night GIF: {e}")
     
     # Send group night announcement
     msg = await bot.send_message(

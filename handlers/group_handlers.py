@@ -347,8 +347,7 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
         return
         
     # Check tournament registration if tournament match
-    chat_title = cb.message.chat.title or ""
-    is_tourney = getattr(game, "is_tournament", False) or ("turnir" in chat_title.lower()) or ("tournament" in chat_title.lower())
+    is_tourney = getattr(game, "is_tournament", False)
     if is_tourney:
         is_registered = await db.is_user_registered_for_tournament(user_id)
         if not is_registered:
@@ -442,11 +441,8 @@ async def lobby_start_callback(cb: types.CallbackQuery, bot: Bot):
         await cb.answer("⚠️ O'yin allaqachon boshlangan!", show_alert=True)
         return
         
-    # Only allow the creator (first player) or admin to start
-    # Creators is players[0]
-    creator_id = list(game.players.keys())[0]
-    if user_id != creator_id:
-        # Check if user is group admin
+    creator_id = list(game.players.keys())[0] if game.players else 0
+    if creator_id and user_id != creator_id:
         try:
             member = await bot.get_chat_member(chat_id, user_id)
             if member.status not in ["creator", "administrator"]:
@@ -459,7 +455,14 @@ async def lobby_start_callback(cb: types.CallbackQuery, bot: Bot):
     if len(game.players) < 5:
         await cb.answer("⚠️ O'yinni boshlash uchun kamida 5 ta o'yinchi bo'lishi kerak!", show_alert=True)
         return
+
+    # Cancel lobby timer task
+    if game.timer_task and not game.timer_task.done():
+        game.timer_task.cancel()
+        game.timer_task = None
         
+    game.phase = "starting"
+    
     # Remove lobby keyboard and start game
     try:
         await cb.message.edit_reply_markup(reply_markup=None)
@@ -659,9 +662,8 @@ async def cmd_start_game(message: types.Message, bot: Bot):
         await message.answer("⚠️ O'yin allaqachon boshlangan!")
         return
         
-    # Check if they are the creator (first player) or admin
-    creator_id = list(game.players.keys())[0]
-    if user_id != creator_id:
+    creator_id = list(game.players.keys())[0] if game.players else 0
+    if creator_id and user_id != creator_id:
         try:
             member = await bot.get_chat_member(chat_id, user_id)
             if member.status not in ["creator", "administrator"]:
@@ -675,6 +677,11 @@ async def cmd_start_game(message: types.Message, bot: Bot):
         await message.answer("⚠️ O'yinni boshlash uchun kamida 5 ta o'yinchi bo'lishi kerak!")
         return
         
+    if game.timer_task and not game.timer_task.done():
+        game.timer_task.cancel()
+        game.timer_task = None
+        
+    game.phase = "starting"
     await message.answer("O'yin boshlanmoqda...")
     await start_game_loop(bot, game)
 

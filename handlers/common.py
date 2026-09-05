@@ -187,11 +187,28 @@ async def cmd_profile(message: types.Message):
     await message.answer(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
 
 SHOP_ITEMS = {
-    "shield": {"name_uz": "🛡️ XP Qalqoni", "name_ru": "🛡️ Щит опыта", "name_en": "🛡️ XP Shield", "name_kz": "🛡️ Қалқан", "cost": 150, "desc_uz": "Tunda o'ldirilganda XP va tangalarni himoyalaydi", "desc_ru": "Защищает от потери XP при ночном убийстве", "desc_en": "Protects XP and coins on night death", "desc_kz": "Түнде өлтірілгенде XP қорғайды"},
-    "booster_mafia": {"name_uz": "🔴 Mafiya Busteri", "name_ru": "🔴 Бустер Мафии", "name_en": "🔴 Mafia Booster", "name_kz": "🔴 Мафия бустері", "cost": 250, "desc_uz": "Mafiya bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Мафией в 2 раза", "desc_en": "2x chance to get Mafia role", "desc_kz": "Мафия болу мүмкіндігін 2 есе арттырады"},
-    "booster_detective": {"name_uz": "🔵 Komissar Busteri", "name_ru": "🔵 Бустер Комиссара", "name_en": "🔵 Detective Booster", "name_kz": "🔵 Комиссар бустері", "cost": 250, "desc_uz": "Komissar bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Комиссаром в 2 раза", "desc_en": "2x chance to get Detective role", "desc_kz": "Комиссар болу мүмкіндігін 2 есе арттырады"},
-    "booster_doctor": {"name_uz": "🟡 Shifokor Busteri", "name_ru": "🟡 Бустер Доктора", "name_en": "🟡 Doctor Booster", "name_kz": "🟡 Дәрігер бустері", "cost": 200, "desc_uz": "Shifokor bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Доктором в 2 раза", "desc_en": "2x chance to get Doctor role", "desc_kz": "Дәрігер болу мүмкіндігін 2 есе арттырады"},
-    "booster_maniac": {"name_uz": "🦹 Telba (Maniac) Busteri", "name_ru": "🦹 Бустер Маньяка", "name_en": "🦹 Maniac Booster", "name_kz": "🦹 Маньяк бустері", "cost": 300, "desc_uz": "Telba bo'lish ehtimolini 2x oshiradi", "desc_ru": "Увеличивает шанс стать Маньяком в 2 раза", "desc_en": "2x chance to get Maniac role", "desc_kz": "Маньяк болу мүмкіндігін 2 есе арттырады"}
+    "booster_active": {
+        "name_uz": "🎭 Faol Rol Busteri",
+        "name_ru": "🎭 Бустер Активной Роли",
+        "name_en": "🎭 Active Role Booster",
+        "name_kz": "🎭 Белсенді рөл бустері",
+        "cost": 200,
+        "desc_uz": "Tinch aholi bo'lib qolmaslik va qiziqarli faol rol (Mafiya, Komissar, Shifokor) olish kafolati!",
+        "desc_ru": "Гарантия получения активной роли (Мафия, Комиссар, Доктор) вместо мирного жителя!",
+        "desc_en": "Guarantees getting an active role (Mafia, Detective, Doctor) instead of Civilian!",
+        "desc_kz": "Бейбіт тұрғын емес, белсенді рөл алу кепілдігі!"
+    },
+    "shield": {
+        "name_uz": "🛡️ XP Qalqoni",
+        "name_ru": "🛡️ Щит опыта",
+        "name_en": "🛡️ XP Shield",
+        "name_kz": "🛡️ Қалқан",
+        "cost": 150,
+        "desc_uz": "Tunda o'ldirilganda XP va tangalarni himoyalaydi",
+        "desc_ru": "Защищает от потери XP при ночном убийстве",
+        "desc_en": "Protects XP and coins on night death",
+        "desc_kz": "Түнде өлтірілгенде XP қорғайды"
+    }
 }
 
 def get_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
@@ -509,11 +526,12 @@ async def cb_menu_boosters(cb: types.CallbackQuery):
         
     kb = InlineKeyboardBuilder()
     for item_key, qty in boosters.items():
-        role_name = item_key.replace("booster_", "").capitalize()
-        kb.add(types.InlineKeyboardButton(
-            text=f"🎭 {role_name} ({qty} dona)" if lang == "uz" else f"🎭 {role_name} ({qty} шт)" if lang == "ru" else f"🎭 {role_name} ({qty} pcs)" if lang == "en" else f"🎭 {role_name} ({qty} дана)", 
-            callback_data=f"activate_{item_key}"
-        ))
+        if item_key == "booster_active":
+            btn_title = f"🎭 Faol Rol ({qty} dona)" if lang == "uz" else f"🎭 Активная роль ({qty} шт)" if lang == "ru" else f"🎭 Active Role ({qty} pcs)" if lang == "en" else f"🎭 Белсенді рөл ({qty} дана)"
+        else:
+            r_name = item_key.replace("booster_", "").capitalize()
+            btn_title = f"🎭 {r_name} ({qty} dona)" if lang == "uz" else f"🎭 {r_name} ({qty} шт)" if lang == "ru" else f"🎭 {r_name} ({qty} pcs)" if lang == "en" else f"🎭 {r_name} ({qty} дана)"
+        kb.add(types.InlineKeyboardButton(text=btn_title, callback_data=f"activate_{item_key}"))
     back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
     kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
     kb.adjust(1)
@@ -622,11 +640,12 @@ async def cmd_boost(message: types.Message):
         
     kb = InlineKeyboardBuilder()
     for item_key, qty in boosters.items():
-        role_name = item_key.replace("booster_", "").capitalize()
-        kb.add(types.InlineKeyboardButton(
-            text=f"🎭 {role_name} ({qty} dona)" if lang == "uz" else f"🎭 {role_name} ({qty} шт)" if lang == "ru" else f"🎭 {role_name} ({qty} pcs)" if lang == "en" else f"🎭 {role_name} ({qty} дана)", 
-            callback_data=f"activate_{item_key}"
-        ))
+        if item_key == "booster_active":
+            btn_title = f"🎭 Faol Rol ({qty} dona)" if lang == "uz" else f"🎭 Активная роль ({qty} шт)" if lang == "ru" else f"🎭 Active Role ({qty} pcs)" if lang == "en" else f"🎭 Белсенді рөл ({qty} дана)"
+        else:
+            r_name = item_key.replace("booster_", "").capitalize()
+            btn_title = f"🎭 {r_name} ({qty} dona)" if lang == "uz" else f"🎭 {r_name} ({qty} шт)" if lang == "ru" else f"🎭 {r_name} ({qty} pcs)" if lang == "en" else f"🎭 {r_name} ({qty} дана)"
+        kb.add(types.InlineKeyboardButton(text=btn_title, callback_data=f"activate_{item_key}"))
     kb.adjust(1)
     
     boost_title = "🎭 **Rol Boosterini Faollashtirish**\n\nKeyingi o'yinda qaysi rolni olish ehtimolini oshirmoqchisiz? Tanlang:\n_(O'yin boshlanganda 1 ta booster sarflanadi)_"
@@ -648,7 +667,13 @@ async def cb_activate_booster(cb: types.CallbackQuery):
     user_id = cb.from_user.id
     lang = await db.get_user_language(user_id)
     item_key = cb.data.replace("activate_", "")
-    role_name = item_key.replace("booster_", "").capitalize()
+    
+    if item_key == "booster_active":
+        role_name = "Active"
+        display_name = "Faol Rol (Mafiya/Komissar/Shifokor)" if lang == "uz" else "Активная роль (Мафия/Комиссар/Доктор)" if lang == "ru" else "Active Role (Mafia/Detective/Doctor)" if lang == "en" else "Белсенді рөл"
+    else:
+        role_name = item_key.replace("booster_", "").capitalize()
+        display_name = role_name
     
     from game.manager import game_manager
     game = game_manager.get_game_by_player(user_id)
@@ -677,16 +702,16 @@ async def cb_activate_booster(cb: types.CallbackQuery):
     player = game.players.get(user_id)
     if player:
         player.role_booster = role_name
-        success_text = f"🎭 Siz keyingi o'yin uchun **{role_name}** boosterini faollashtirdingiz! O'yin boshlanganda u sarflanadi."
+        success_text = f"🎭 Siz keyingi o'yin uchun **{display_name}** boosterini faollashtirdingiz! O'yin boshlanganda u sarflanadi."
         alert_text = "Booster faollashtirildi!"
         if lang == "ru":
-            success_text = f"🎭 Вы активировали бустер **{role_name}** на следующую игру! Он будет потрачен при старте."
+            success_text = f"🎭 Вы активировали бустер **{display_name}** на следующую игру! Он будет потрачен при старте."
             alert_text = "Бустер активирован!"
         elif lang == "en":
-            success_text = f"🎭 You activated the **{role_name}** booster for the next game! It will be consumed on start."
+            success_text = f"🎭 You activated the **{display_name}** booster for the next game! It will be consumed on start."
             alert_text = "Booster activated!"
         elif lang == "kz":
-            success_text = f"🎭 Келесі ойын үшін **{role_name}** бустерін белсендірдіңіз! Ол ойын басталғанда жұмсалады."
+            success_text = f"🎭 Келесі ойын үшін **{display_name}** бустерін белсендірдіңіз! Ол ойын басталғанда жұмсалады."
             alert_text = "Бустер белсендірілді!"
             
         await cb.message.edit_text(success_text)
