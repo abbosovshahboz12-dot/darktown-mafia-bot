@@ -894,14 +894,37 @@ def get_admin_panel_keyboard() -> types.InlineKeyboardMarkup:
     kb.add(types.InlineKeyboardButton(text="📊 Batafsil Statistika", callback_data="admin_stats"))
     kb.add(types.InlineKeyboardButton(text="📥 O'yinchilar Ro'yxati (Excel)", callback_data="admin_export_excel"))
     kb.add(types.InlineKeyboardButton(text="🎮 Faol O'yinlar", callback_data="admin_active_games"))
+    kb.add(types.InlineKeyboardButton(text="📖 Buyruqlar Qo'llanmasi", callback_data="admin_guide"))
     kb.add(types.InlineKeyboardButton(text="💰 O'zimga +1000 🪙", callback_data="admin_self_coins"))
     kb.add(types.InlineKeyboardButton(text="⚡ O'zimga +500 XP", callback_data="admin_self_xp"))
     kb.add(types.InlineKeyboardButton(text="📢 Xabar Tarqatish", callback_data="admin_broadcast_help"))
     kb.add(types.InlineKeyboardButton(text="🚫 Ban / Unban", callback_data="admin_ban_help"))
     kb.add(types.InlineKeyboardButton(text="🔍 Foydalanuvchi Tekshirish", callback_data="admin_user_help"))
     kb.add(types.InlineKeyboardButton(text="◀️ Bosh Menyu", callback_data="menu_back"))
-    kb.adjust(2, 1, 2, 2, 1, 1)
+    kb.adjust(2, 2, 2, 2, 1, 1)
     return kb.as_markup()
+
+ADMIN_GUIDE_TEXT = (
+    "👑 **DarkTown — Admin Buyruqlari Qo'llanmasi**\n\n"
+    "Quyidagi barcha buyruqlar faqat Bot Admini uchun ishlaydi:\n\n"
+    "• `/admin` — Admin panelini ochish (barcha tugmalar bilan)\n"
+    "• `/export` yoki `/excel` — Barcha o'yinchilarni Excel (.csv) formatida yuklab olish\n"
+    "• `/adminhelp` — Ushbu buyruqlar spravkasini ochish\n"
+    "• `/user <user_id>` — Foydalanuvchi ma'lumotlarini tekshirish\n"
+    "  _Misol:_ `/user 12345678`\n\n"
+    "• `/givecoins <user_id> <miqdor>` — Foydalanuvchiga tanga berish\n"
+    "  _Misol:_ `/givecoins 12345678 1000`\n\n"
+    "• `/givexp <user_id> <miqdor>` — Foydalanuvchiga XP berish\n"
+    "  _Misol:_ `/givexp 12345678 500`\n\n"
+    "• `/ban <user_id>` — Foydalanuvchini botda bloklash\n"
+    "  _Misol:_ `/ban 12345678`\n\n"
+    "• `/unban <user_id>` — Foydalanuvchini blokdan chiqarish\n"
+    "  _Misol:_ `/unban 12345678`\n\n"
+    "• `/broadcast <xabar>` — Barcha o'yinchilarga xabar tarqatish\n"
+    "  _Misol:_ `/broadcast Bugun soat 20:00 da o'yin!`\n\n"
+    "• `/activegames` — Guruhlardagi hozirgi faol jonli o'yinlar ro'yxati\n\n"
+    "💡 _Eslatma: Telegram qidiruvida `/` belgisini yozsangiz, barcha admin buyruqlari avtomatik chiqadi._"
+)
 
 @router.callback_query(F.data == "admin_panel")
 async def cb_admin_panel(cb: types.CallbackQuery):
@@ -1076,6 +1099,45 @@ async def cb_admin_user_help(cb: types.CallbackQuery):
     )
     await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
     await cb.answer()
+
+@router.callback_query(F.data == "admin_guide")
+async def cb_admin_guide(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="📥 Qo'llanma Fayli (Yuklab Olish)", callback_data="admin_download_guide"))
+    kb.add(types.InlineKeyboardButton(text="◀️ Admin Panelga qaytish", callback_data="admin_panel"))
+    kb.adjust(1)
+    
+    await cb.message.edit_text(ADMIN_GUIDE_TEXT, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "admin_download_guide")
+async def cb_admin_download_guide(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    guide_bytes = ADMIN_GUIDE_TEXT.encode('utf-8')
+    input_file = BufferedInputFile(guide_bytes, filename="DarkTown_Admin_Qollanma.txt")
+    await cb.bot.send_document(
+        chat_id=cb.from_user.id,
+        document=input_file,
+        caption="📖 **DarkTown Admin Buyruqlari va Qo'llanmasi** (Matnli hujjat).",
+        parse_mode="Markdown"
+    )
+    await cb.answer("✅ Qo'llanma fayli yuborildi!", show_alert=True)
+
+@router.message(Command("adminhelp", "adminguide"))
+async def cmd_adminhelp(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
+        return
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="👑 Admin Panel", callback_data="admin_panel"))
+    kb.add(types.InlineKeyboardButton(text="📥 Qo'llanma Fayli", callback_data="admin_download_guide"))
+    kb.adjust(2)
+    await message.answer(ADMIN_GUIDE_TEXT, reply_markup=kb.as_markup(), parse_mode="Markdown")
 
 @router.message(Command("admin"))
 async def cmd_admin(message: types.Message):

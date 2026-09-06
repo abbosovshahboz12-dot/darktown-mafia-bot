@@ -1898,6 +1898,36 @@ async def main():
     
     # Set Telegram Bot Menu Button (Mini App or Commands based on FEATURE_WEBAPP)
     try:
+        from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
+        
+        default_commands = [
+            BotCommand(command="start", description="🚀 Botni ishga tushirish / Bosh menyu"),
+            BotCommand(command="profile", description="👤 Shaxsiy profil va statistika"),
+            BotCommand(command="shop", description="🛒 Tangalar do'koni"),
+            BotCommand(command="top", description="🏆 Reyting jadvali"),
+            BotCommand(command="help", description="ℹ️ Yordam va o'yin qoidalari"),
+            BotCommand(command="rules", description="📖 Mafiya o'yini qoidalari"),
+            BotCommand(command="lang", description="🌐 Tilni o'zgartirish"),
+        ]
+        await bot.set_my_commands(default_commands, scope=BotCommandScopeDefault())
+        
+        if ADMIN_ID:
+            admin_commands = [
+                BotCommand(command="admin", description="👑 Admin Boshqaruv Paneli"),
+                BotCommand(command="export", description="📥 O'yinchilar Ro'yxati (Excel CSV)"),
+                BotCommand(command="adminhelp", description="📖 Admin buyruqlari spravkasi"),
+                BotCommand(command="user", description="🔍 O'yinchi ma'lumotlarini ko'rish"),
+                BotCommand(command="broadcast", description="📢 Barcha foydalanuvchilarga xabar"),
+                BotCommand(command="givecoins", description="💰 Foydalanuvchiga tanga berish"),
+                BotCommand(command="givexp", description="⚡ Foydalanuvchiga XP berish"),
+                BotCommand(command="ban", description="🚫 Foydalanuvchini bloklash"),
+                BotCommand(command="unban", description="✅ Blokdan chiqarish"),
+                BotCommand(command="activegames", description="🎮 Faol o'yinlar ro'yxati"),
+                BotCommand(command="start", description="🚀 Bosh menyu"),
+            ]
+            await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=ADMIN_ID))
+            logging.info(f"Custom Admin commands registered for ADMIN_ID: {ADMIN_ID}")
+
         if FEATURE_WEBAPP:
             app_url = WEBAPP_URL if WEBAPP_URL.startswith("https://") else "https://darktown-mafia-bot.onrender.com"
             await bot.set_chat_menu_button(
@@ -1913,7 +1943,7 @@ async def main():
             )
             logging.info("Telegram Bot Chat Menu Button set to standard Commands.")
     except Exception as e:
-        logging.warning(f"Could not set chat menu button: {e}")
+        logging.warning(f"Could not set chat menu button or commands: {e}")
     
     # 3. Setup Web Server
     web_app = setup_web_server()
