@@ -67,9 +67,18 @@ class Game:
         # Last words states
         self.waiting_last_words: Dict[int, bool] = {}
         self.last_words: Dict[int, str] = {}
+        
+        # MVP tracking points
+        self.mvp_points: Dict[int, int] = {}
+        self.night_message_id: Optional[int] = None
+        self.day_message_id: Optional[int] = None
+
+    def add_mvp_points(self, user_id: int, points: int):
+        self.mvp_points[user_id] = self.mvp_points.get(user_id, 0) + points
 
     def get_alive_players(self) -> List[Player]:
         return [p for p in self.players.values() if p.is_alive]
 
     def get_players_by_role(self, role: str, alive_only: bool = True) -> List[Player]:
         return [p for p in self.players.values() if p.role == role and (not alive_only or p.is_alive)]
+

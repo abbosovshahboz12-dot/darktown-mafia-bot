@@ -4,7 +4,7 @@ from aiogram import Router, F, Bot, types
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from game.manager import game_manager
-from game.loop import start_game_loop
+from game.loop import start_game_loop, process_voting
 from game.models import Player, Game
 from database import db
 from locales import get_text
@@ -709,6 +709,13 @@ async def vote_callback(cb: types.CallbackQuery, bot: Bot):
     except Exception as e:
         # Ignore "message is not modified" errors
         logging.warning(f"Error updating live voting: {e}")
+
+    # If all alive players have voted -> immediately proceed to count votes!
+    if len(game.votes) >= len(alive):
+        if game.timer_task and not game.timer_task.done():
+            game.timer_task.cancel()
+            game.timer_task = None
+        await process_voting(bot, game)
 
 @router.message(Command("start", "startgame"))
 async def cmd_start_game(message: types.Message, bot: Bot):

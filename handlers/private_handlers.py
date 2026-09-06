@@ -1,6 +1,7 @@
 import logging
 from aiogram import Router, F, Bot, types
 from game.manager import game_manager
+from game.loop import check_and_advance_night_if_ready
 
 router = Router()
 
@@ -26,9 +27,6 @@ async def register_night_choice(cb: types.CallbackQuery, action_type: str, targe
         await cb.answer("⚠️ Ushbu o'yinchi tirik emas yoki topilmadi!", show_alert=True)
         return
 
-    # Check if they are blocked (in case the block was already applied, but courtesan blocks are usually evaluated at night end)
-    # Actually, we let them make choices. We evaluate block during night processing.
-    
     # Process choice
     if action_type == "mafia":
         if player.role not in ["Mafia", "Don"]:
@@ -88,6 +86,9 @@ async def register_night_choice(cb: types.CallbackQuery, action_type: str, targe
         await cb.message.edit_text(f"🦹 Siz **{target_player.name}**ni o'ldirishni tanladingiz. Tanlov qabul qilindi!")
         
     await cb.answer("Tanlov qabul qilindi!")
+    
+    # Check if all living active roles have acted -> fast forward night!
+    await check_and_advance_night_if_ready(cb.bot, game)
 
 # Setup callbacks mapping
 @router.callback_query(F.data.startswith("mafia_"))
@@ -158,6 +159,7 @@ async def cb_detshoot(cb: types.CallbackQuery):
                 game.night_actions["detective_shoot"] = target_id
                 await cb.message.edit_text(f"🔫 Siz **{target_player.name}**ni otib o'ldirishni tanladingiz. Tanlov qabul qilindi!")
                 await cb.answer("Tanlov qabul qilindi!")
+                await check_and_advance_night_if_ready(cb.bot, game)
 
 @router.callback_query(F.data.startswith("det_"))
 async def cb_det(cb: types.CallbackQuery):

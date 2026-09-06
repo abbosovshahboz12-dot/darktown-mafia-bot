@@ -42,21 +42,23 @@ def get_role_details(role: str) -> str:
 
 def distribute_roles(players_count: int) -> List[str]:
     if players_count <= 5:
-        return ["Mafia", "Doctor", "Detective", "Civilian", "Civilian"]
+        return ["Don", "Doctor", "Detective", "Civilian", "Civilian"]
     elif players_count == 6:
-        return ["Don", "Mafia", "Doctor", "Detective", "Civilian", "Civilian"]
-    elif players_count in [7, 8]:
-        base = ["Don", "Mafia", "Doctor", "Detective"]
-        while len(base) < players_count:
-            base.append("Civilian")
-        return base
-    elif players_count in [9, 10]:
-        base = ["Don", "Mafia", "Mafia", "Doctor", "Detective"]
-        while len(base) < players_count:
-            base.append("Civilian")
-        return base
-    else: # 11+ players
-        base = ["Don", "Mafia", "Mafia", "Doctor", "Detective", "Bodyguard"]
+        return ["Don", "Doctor", "Detective", "Civilian", "Civilian", "Civilian"]
+    elif players_count == 7:
+        return ["Don", "Mafia", "Doctor", "Detective", "Civilian", "Civilian", "Civilian"]
+    elif players_count == 8:
+        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Civilian", "Civilian", "Civilian"]
+    elif players_count == 9:
+        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Maniac", "Civilian", "Civilian", "Civilian"]
+    elif players_count == 10:
+        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Witch", "Maniac", "Civilian", "Civilian", "Civilian"]
+    elif players_count == 11:
+        return ["Don", "Mafia", "Mafia", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Civilian", "Civilian"]
+    elif players_count == 12:
+        return ["Don", "Mafia", "Mafia", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Jester", "Civilian"]
+    else: # 13+ players
+        base = ["Don", "Mafia", "Mafia", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Jester", "Bodyguard"]
         while len(base) < players_count:
             base.append("Civilian")
         return base
@@ -189,11 +191,20 @@ async def start_game_loop(bot: Bot, game: Game):
         except Exception as e:
             logging.warning(f"Could not send start GIF: {e}")
             
+        from collections import Counter
+        role_counts = Counter([p.role for p in game.players.values()])
+        roles_summary_list = []
+        for role_name, count in role_counts.items():
+            emoji = ROLE_EMOJIS.get(role_name, "👤")
+            roles_summary_list.append(f"{emoji} {role_name}: **{count}** ta")
+        roles_summary_text = " | ".join(roles_summary_list)
+
         await bot.send_message(
             game.chat_id,
-            "🎭 **Rollar taqsimlandi!** Har bir o'yinchiga o'z roli shaxsiy chatda yuborildi.\n\n"
-            "🌙 **Qorong'u tushmoqda... Tun boshlandi!**\n"
-            "Barcha o'yinchilar shaxsiy chatda bot yuborgan xabarlarga qarab harakat qilsin."
+            f"🎭 **Rollar taqsimlandi!** Har bir o'yinchiga o'z roli shaxsiy chatda yuborildi.\n\n"
+            f"📋 **Ushbu o'yindagi rollar tarkibi**:\n{roles_summary_text}\n\n"
+            f"🌙 **Qorong'u tushmoqda... Tun boshlandi!**\n"
+            f"Barcha faol rollar shaxsiy chatda bot yuborgan xabarlarga qarab harakat qilsin."
         )
         await night_phase(bot, game)
     except Exception as e:
@@ -381,25 +392,55 @@ async def night_timer(bot: Bot, game: Game, seconds: int):
 
 def all_active_roles_acted(game: Game) -> bool:
     alive_players = game.get_alive_players()
+    
+    # 1. Mafia & Don vote check
     mafia_count = len([p for p in alive_players if p.role in ["Mafia", "Don"]])
-    doctor_alive = any(p.role == "Doctor" for p in alive_players)
-    detective_alive = any(p.role == "Detective" for p in alive_players)
-    don_alive = any(p.role == "Don" for p in alive_players)
-    guard_alive = any(p.role == "Bodyguard" for p in alive_players)
-
-    # Check if they have chosen
-    if len(game.night_actions["mafia"]) < mafia_count:
+    if mafia_count > 0 and len(game.night_actions["mafia"]) < mafia_count:
         return False
-    if don_alive and not game.night_actions.get("don"):
+        
+    # 2. Don check
+    if any(p.role == "Don" for p in alive_players) and game.night_actions.get("don") is None:
         return False
-    if detective_alive and not game.night_actions.get("detective_check") and not game.night_actions.get("detective_shoot"):
+        
+    # 3. Detective / Sergeant check or shoot (if not Fog event)
+    is_fog = bool(game.event and game.event.get("key") == "fog")
+    dets = [p for p in alive_players if p.role == "Detective"]
+    if not dets:
+        dets = [p for p in alive_players if p.role == "Sergeant"]
+    if dets and not is_fog:
+        if not game.night_actions.get("detective_check") and not game.night_actions.get("detective_shoot"):
+            return False
+            
+    # 4. Doctor check
+    if any(p.role == "Doctor" for p in alive_players) and not game.night_actions.get("doctor"):
         return False
-    if doctor_alive and not game.night_actions.get("doctor"):
+        
+    # 5. Bodyguard check
+    if any(p.role == "Bodyguard" for p in alive_players) and not game.night_actions.get("bodyguard"):
         return False
-    if guard_alive and not game.night_actions.get("bodyguard"):
+        
+    # 6. Witch check
+    if any(p.role == "Witch" for p in alive_players) and not game.night_actions.get("courtesan"):
+        return False
+        
+    # 7. Lawyer check
+    if any(p.role == "Lawyer" for p in alive_players) and not game.night_actions.get("lawyer"):
+        return False
+        
+    # 8. Maniac check (if not Curfew event)
+    is_curfew = bool(game.event and game.event.get("key") == "curfew")
+    if any(p.role == "Maniac" for p in alive_players) and not is_curfew and not game.night_actions.get("maniac"):
         return False
         
     return True
+
+async def check_and_advance_night_if_ready(bot: Bot, game: Game):
+    if game.phase == "night" and all_active_roles_acted(game):
+        if game.timer_task and not game.timer_task.done():
+            game.timer_task.cancel()
+            game.timer_task = None
+        await process_night(bot, game)
+
 
 async def process_night(bot: Bot, game: Game):
     if game.timer_task:
@@ -533,6 +574,8 @@ async def process_night(bot: Bot, game: Game):
                     if checked_player.role == "Maniac":
                         side = "Telba (Maniac)"
                     show_role = checked_player.role
+                    if checked_player.role in ["Mafia", "Don", "Lawyer", "Maniac"]:
+                        game.add_mvp_points(active_det.user_id, 20)
                 try:
                     await bot.send_message(
                         active_det.user_id,
@@ -545,7 +588,9 @@ async def process_night(bot: Bot, game: Game):
             shoot_player = game.players.get(detective_shoot)
             if shoot_player:
                 if shoot_player.is_healed:
-                    pass # Saved by doctor
+                    docs = game.get_players_by_role("Doctor")
+                    if docs and docs[0].is_alive:
+                        game.add_mvp_points(docs[0].user_id, 35)
                 elif shoot_player.is_guarded and any(b.is_alive for b in game.get_players_by_role("Bodyguard")):
                     # Bodyguard dies instead
                     bodyguards = game.get_players_by_role("Bodyguard")
@@ -553,9 +598,14 @@ async def process_night(bot: Bot, game: Game):
                     if alive_guards:
                         bg = alive_guards[0]
                         bg.is_alive = False
+                        game.add_mvp_points(bg.user_id, 30)
                         victims.append((bg, "Tansoqchi Komissar o'qidan o'zini fido qildi."))
                 else:
                     shoot_player.is_alive = False
+                    if shoot_player.role in ["Mafia", "Don", "Lawyer", "Maniac"]:
+                        game.add_mvp_points(active_det.user_id, 30)
+                    else:
+                        game.add_mvp_points(active_det.user_id, -10)
                     victims.append((shoot_player, f"Tunda Komissar to'pponchasidan otib o'ldirildi. Rol: **{shoot_player.role}**"))
 
     # 5. Process Don Check
@@ -565,7 +615,9 @@ async def process_night(bot: Bot, game: Game):
         if dons and dons[0].is_alive and not dons[0].is_blocked:
             checked_player = game.players.get(don_check)
             if checked_player:
-                is_det = checked_player.role == "Detective"
+                is_det = checked_player.role in ["Detective", "Sergeant"]
+                if is_det:
+                    game.add_mvp_points(dons[0].user_id, 25)
                 result_text = "Komissar (Detective)!" if is_det else "Komissar emas."
                 try:
                     await bot.send_message(
@@ -594,7 +646,9 @@ async def process_night(bot: Bot, game: Game):
         victim = game.players.get(mafia_kill_target)
         if victim:
             if victim.is_healed:
-                pass # Saved by doctor
+                docs = game.get_players_by_role("Doctor")
+                if docs and docs[0].is_alive:
+                    game.add_mvp_points(docs[0].user_id, 35)
             elif victim.is_guarded and any(b.is_alive for b in game.get_players_by_role("Bodyguard")):
                 # Saved by bodyguard, but bodyguard dies instead!
                 bodyguards = game.get_players_by_role("Bodyguard")
@@ -602,9 +656,13 @@ async def process_night(bot: Bot, game: Game):
                 if alive_guards:
                     bg = alive_guards[0]
                     bg.is_alive = False
+                    game.add_mvp_points(bg.user_id, 30)
                     victims.append((bg, "Tansoqchi o'z jonini fido qilib, o'yinchi himoyasida halok bo'ldi."))
             else:
                 victim.is_alive = False
+                for m in mafia_members:
+                    if m.is_alive and not m.is_blocked:
+                        game.add_mvp_points(m.user_id, 10)
                 victims.append((victim, f"Shafqatsiz mafiya tomonidan o'ldirildi. Rol: **{victim.role}**"))
                 
     # Process Maniac Homicide
@@ -612,16 +670,22 @@ async def process_night(bot: Bot, game: Game):
         victim = game.players.get(maniac_kill_target)
         if victim and victim.is_alive: # If not already killed by Mafia
             if victim.is_healed:
-                pass
+                docs = game.get_players_by_role("Doctor")
+                if docs and docs[0].is_alive:
+                    game.add_mvp_points(docs[0].user_id, 35)
             elif victim.is_guarded and any(b.is_alive for b in game.get_players_by_role("Bodyguard")):
                 bodyguards = game.get_players_by_role("Bodyguard")
                 alive_guards = [b for b in bodyguards if b.is_alive]
                 if alive_guards:
                     bg = alive_guards[0]
                     bg.is_alive = False
+                    game.add_mvp_points(bg.user_id, 30)
                     victims.append((bg, "Tansoqchi Telbaga (Maniac) qarshi kurashib halok bo'ldi."))
             else:
                 victim.is_alive = False
+                maniacs = game.get_players_by_role("Maniac")
+                if maniacs and maniacs[0].is_alive:
+                    game.add_mvp_points(maniacs[0].user_id, 20)
                 victims.append((victim, f"Maniakning qo'lida jon berdi. Rol: **{victim.role}**"))
 
     # Mute all night victims
@@ -928,6 +992,7 @@ async def process_voting(bot: Bot, game: Game):
             role_emoji = ROLE_EMOJIS.get(hanged_player.role, "")
             
             if hanged_player.role == "Jester":
+                game.add_mvp_points(hanged_player.user_id, 100)
                 result_text += (
                     f"\n⚖️ Ko'pchilikning qarori bilan **{hanged_player.name_escaped}** dorga osildi!\n\n"
                     f"🃏 **DORGA OSILGAN SHAXS — MAZXARABOZ (JESTER)!**\n"
@@ -938,6 +1003,10 @@ async def process_voting(bot: Bot, game: Game):
                 await end_game(bot, game, "Jester")
                 return
             else:
+                if hanged_player.role in ["Mafia", "Don", "Lawyer", "Maniac"]:
+                    for voter_id, target_id in game.votes.items():
+                        if target_id == hanged_id:
+                            game.add_mvp_points(voter_id, 15)
                 result_text += (
                     f"\n⚖️ Ko'pchilikning qarori bilan **{hanged_player.name_escaped}** dorga osildi!\n"
                     f"Uning roli: {role_emoji} **{hanged_player.role}**"
@@ -979,18 +1048,27 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
     event_coins = 0
     rewards_text = "💰 **Mukofotlar (XP & Tangalar)**:\n"
     
+    # Calculate MVP (Most Valuable Player)
+    mvp_user_id = None
+    if hasattr(game, "mvp_points") and game.mvp_points:
+        best_id = max(game.mvp_points, key=game.mvp_points.get)
+        if game.mvp_points[best_id] > 0:
+            mvp_user_id = best_id
+    
     for player in game.players.values():
         is_winner = False
-        if winning_faction == "Mafia" and player.role in ["Mafia", "Don"]:
+        if winning_faction == "Mafia" and player.role in ["Mafia", "Don", "Lawyer"]:
             is_winner = True
-        elif winning_faction == "Civilian" and player.role not in ["Mafia", "Don", "Maniac"]:
+        elif winning_faction == "Civilian" and player.role not in ["Mafia", "Don", "Lawyer", "Maniac", "Jester"]:
             is_winner = True
         elif winning_faction == "Maniac" and player.role == "Maniac":
+            is_winner = True
+        elif winning_faction == "Jester" and player.role == "Jester":
             is_winner = True
             
         # Standard reward
         if is_winner:
-            if player.role == "Maniac":
+            if player.role in ["Maniac", "Jester"]:
                 xp = 200
                 coins = 100
             else:
@@ -1003,13 +1081,25 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
         # Add event bonus
         coins += event_coins
         
+        # Add MVP bonus
+        is_mvp = (player.user_id == mvp_user_id)
+        if is_mvp:
+            xp += 50
+            coins += 25
+            
         user_db = await db.get_user(player.user_id)
         if not is_winner and user_db.get("shield_active", 0) == 1:
             xp += 30
             await db.set_shield(player.user_id, False) # Consume shield
-            rewards_text += f"- {player.name_escaped}: +{xp} XP (🛡️ Qalqon ishlatildi), +{coins} tanga\n"
+            if is_mvp:
+                rewards_text += f"- 🌟 **{player.name_escaped}** (👑 MVP): +{xp} XP (🛡️ Qalqon + MVP), +{coins} tanga\n"
+            else:
+                rewards_text += f"- {player.name_escaped}: +{xp} XP (🛡️ Qalqon ishlatildi), +{coins} tanga\n"
         else:
-            rewards_text += f"- {player.name_escaped}: +{xp} XP, +{coins} tanga\n"
+            if is_mvp:
+                rewards_text += f"- 🌟 **{player.name_escaped}** (👑 MVP): +{xp} XP (+50 MVP), +{coins} tanga (+25 MVP)\n"
+            else:
+                rewards_text += f"- {player.name_escaped}: +{xp} XP, +{coins} tanga\n"
             
         # Save to DB
         leveled_up, new_level = await db.add_xp_and_coins(player.user_id, xp, coins)
@@ -1049,9 +1139,16 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
     recap_kb.add(types.InlineKeyboardButton(text="🔄 Yana o'ynash (/newgame)", callback_data="replay_newgame"))
     recap_kb.adjust(1)
     
+    mvp_banner = ""
+    if mvp_user_id and mvp_user_id in game.players:
+        mvp_p = game.players[mvp_user_id]
+        role_emoji = ROLE_EMOJIS.get(mvp_p.role, "")
+        mvp_banner = f"👑 **O'YIN QAHRAMONI (MVP):** {mvp_p.name_escaped} ({role_emoji} {mvp_p.role}) — +50 XP va +25 Tanga!\n\n"
+
     final_text = (
         f"🎉 **O'yin yakunlandi!**\n\n"
         f"🏆 G'olib tomon: **{faction_emojis.get(winning_faction, winning_faction)}**\n\n"
+        f"{mvp_banner}"
         f"🎭 **Barcha o'yinchilarning rollari**:\n"
     )
     for p in game.players.values():
