@@ -630,12 +630,7 @@ async def cb_menu_profile(cb: types.CallbackQuery):
     await cb.message.edit_text(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user, lang, bonus_claimed), parse_mode="Markdown")
     await cb.answer()
 
-@router.callback_query(F.data == "menu_top")
-async def cb_menu_top(cb: types.CallbackQuery):
-    user_id = cb.from_user.id
-    lang = await db.get_user_language(user_id)
-    leaders = await db.get_leaderboard(10)
-    
+def get_players_leaderboard_text(leaders: list, lang: str) -> str:
     text = get_text(lang, "leaderboard_title")
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
     
@@ -649,13 +644,89 @@ async def cb_menu_top(cb: types.CallbackQuery):
         
     if not leaders:
         text += "Hozircha o'yinchilar yo'q."
+    return text
+
+def get_groups_leaderboard_text(groups: list, lang: str) -> str:
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    text = "🌐 **DarkTown — Eng Faol Top 10 Guruhlar**:\n\n"
+    if lang == "ru":
+        text = "🌐 **DarkTown — Топ-10 активных групп**:\n\n"
+    elif lang == "en":
+        text = "🌐 **DarkTown — Top 10 Active Groups**:\n\n"
+    elif lang == "kz":
+        text = "🌐 **DarkTown — Үздік 10 белсенді топтар**:\n\n"
         
+    for i, g in enumerate(groups):
+        medal = medals[i] if i < len(medals) else f"{i+1}."
+        title = escape_markdown(g.get('title') or f"Guruh {g['chat_id']}")
+        uname = f" (@{escape_markdown(g['username'])})" if g.get('username') else ""
+        games = g.get('total_games', 0)
+        players = g.get('total_players', 0)
+        text += f"{medal} **{title}**{uname}\n   🎮 O'yinlar: **{games} ta** | 👥 Ishtirokchilar: **{players} ta**\n\n"
+        
+    if not groups:
+        text += "Hozircha guruhlar statistikasi mavjud emas."
+    return text
+
+@router.callback_query(F.data.in_({"menu_top", "menu_top_players"}))
+async def cb_menu_top(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    lang = await db.get_user_language(user_id)
+    leaders = await db.get_leaderboard(10)
+    text = get_players_leaderboard_text(leaders, lang)
+    
     kb = InlineKeyboardBuilder()
+    groups_tab_btn = "🌐 Top Guruhlar" if lang == "uz" else "🌐 Топ Групп" if lang == "ru" else "🌐 Top Groups" if lang == "en" else "🌐 Үздік Топтар"
     back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    kb.add(types.InlineKeyboardButton(text=groups_tab_btn, callback_data="menu_top_groups"))
     kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    kb.adjust(1)
     
     await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
     await cb.answer()
+
+@router.callback_query(F.data == "menu_top_groups")
+async def cb_menu_top_groups(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    lang = await db.get_user_language(user_id)
+    groups = await db.get_top_groups(10)
+    text = get_groups_leaderboard_text(groups, lang)
+    
+    kb = InlineKeyboardBuilder()
+    players_tab_btn = "👤 O'yinchilar Reytingi" if lang == "uz" else "👤 Топ Игроков" if lang == "ru" else "👤 Top Players" if lang == "en" else "👤 Үздік Ойыншылар"
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    kb.add(types.InlineKeyboardButton(text=players_tab_btn, callback_data="menu_top_players"))
+    kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    kb.adjust(1)
+    
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.message(Command("top", "leaderboard", "reyting"))
+async def cmd_top(message: types.Message):
+    user_id = message.from_user.id
+    lang = await db.get_user_language(user_id)
+    leaders = await db.get_leaderboard(10)
+    text = get_players_leaderboard_text(leaders, lang)
+    
+    kb = InlineKeyboardBuilder()
+    groups_tab_btn = "🌐 Top Guruhlar" if lang == "uz" else "🌐 Топ Групп" if lang == "ru" else "🌐 Top Groups" if lang == "en" else "🌐 Үздік Топтар"
+    kb.add(types.InlineKeyboardButton(text=groups_tab_btn, callback_data="menu_top_groups"))
+    kb.adjust(1)
+    await message.answer(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+
+@router.message(Command("topgroups", "topguruhlar"))
+async def cmd_topgroups_pm(message: types.Message):
+    user_id = message.from_user.id
+    lang = await db.get_user_language(user_id)
+    groups = await db.get_top_groups(10)
+    text = get_groups_leaderboard_text(groups, lang)
+    
+    kb = InlineKeyboardBuilder()
+    players_tab_btn = "👤 O'yinchilar Reytingi" if lang == "uz" else "👤 Топ Игроков" if lang == "ru" else "👤 Top Players" if lang == "en" else "👤 Үздік Ойыншылар"
+    kb.add(types.InlineKeyboardButton(text=players_tab_btn, callback_data="menu_top_players"))
+    kb.adjust(1)
+    await message.answer(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
 
 @router.callback_query(F.data == "menu_boosters")
 async def cb_menu_boosters(cb: types.CallbackQuery):

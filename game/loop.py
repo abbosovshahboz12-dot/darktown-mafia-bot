@@ -182,6 +182,23 @@ async def start_game_loop(bot: Bot, game: Game):
             
         game.phase = "starting"
         
+        # Load group settings for custom timers & rules
+        if game.chat_id < 0:
+            try:
+                g_settings = await db.get_group_settings(game.chat_id)
+                game.day_time = int(g_settings.get("day_time", 60))
+                game.night_time = int(g_settings.get("night_time", 45))
+                game.voting_time = int(g_settings.get("voting_time", 45))
+                game.mute_night = bool(g_settings.get("mute_night", 1))
+                game.secret_voting = bool(g_settings.get("secret_voting", 0))
+                
+                chat_info = await bot.get_chat(game.chat_id)
+                g_title = chat_info.title or ""
+                g_uname = chat_info.username or ""
+                await db.update_group_setting(game.chat_id, "title", g_title, title=g_title, username=g_uname)
+            except Exception as ex:
+                logging.warning(f"Error loading group settings for chat {game.chat_id}: {ex}")
+
         # Assign roles
         await assign_roles(game, bot)
         log_game_event(game, "🎭 O'yin boshlandi. Rollar taqsimlandi.")
@@ -230,8 +247,9 @@ async def night_phase(bot: Bot, game: Game):
     )
     game.night_message_id = msg.message_id
     
-    # Mute group chat
-    await try_mute_chat(bot, game.chat_id, True)
+    # Mute group chat if enabled
+    if getattr(game, "mute_night", True):
+        await try_mute_chat(bot, game.chat_id, True)
     
     # Reset statuses
     for p in game.players.values():
@@ -353,7 +371,6 @@ async def night_phase(bot: Bot, game: Game):
                         "Bugun tunda nima qilmoqchisiz?",
                         reply_markup=kb.as_markup()
                     )
-
             elif player.role == "Maniac":
                 # Kill target (not self)
                 if game.event and game.event["key"] == "curfew":
@@ -364,8 +381,9 @@ async def night_phase(bot: Bot, game: Game):
         except Exception as e:
             logging.error(f"Error sending night action keyboard to user {player.user_id}: {e}")
 
-    # Set timer for night actions (60 seconds)
-    game.timer_task = asyncio.create_task(night_timer(bot, game, 60))
+    # Set timer for night actions
+    night_sec = getattr(game, "night_time", 45)
+    game.timer_task = asyncio.create_task(night_timer(bot, game, night_sec))
 
 async def night_timer(bot: Bot, game: Game, seconds: int):
     # Wait for actions or timeout
@@ -803,14 +821,15 @@ async def day_phase(bot: Bot, game: Game):
     game.phase = "day"
     await try_mute_chat(bot, game.chat_id, False)
     await send_game_gif(bot, game.chat_id, "day")
+    day_sec = getattr(game, "day_time", 60)
     msg = await bot.send_message(
         game.chat_id,
         "💬 **Shahar uyg'ondi! Kun boshlandi. Munozara maydoni ochiq.**\n"
         "Shubha ostidagilarni aniqlang, munozara qiling va gumondorlarni o'rtaga chiqaring.\n"
-        "⏳ Ovoz berish bosqichi boshlanishiga **60 soniya** qoldi."
+        f"⏳ Ovoz berish bosqichi boshlanishiga **{day_sec} soniya** qoldi."
     )
     game.day_message_id = msg.message_id
-    game.timer_task = asyncio.create_task(discussion_timer(bot, game, 60))
+    game.timer_task = asyncio.create_task(discussion_timer(bot, game, day_sec))
 
 async def discussion_timer(bot: Bot, game: Game, seconds: int):
     for sec in range(seconds, 0, -1):
@@ -842,15 +861,16 @@ async def start_voting_phase(bot: Bot, game: Game):
     kb.add(types.InlineKeyboardButton(text="⏩ Hech kimga", callback_data="vote_skip"))
     kb.adjust(2)
     
+    voting_sec = getattr(game, "voting_time", 45)
     vote_msg = await bot.send_message(
         game.chat_id,
         "🗳️ **Ovoz berish boshlandi!**\n"
         "Kimni dorda osmoqchisiz? Quyidagi tugmalardan birini tanlang.\n"
-        "Ovoz berish 45 soniya davom etadi.",
+        f"Ovoz berish {voting_sec} soniya davom etadi.",
         reply_markup=kb.as_markup()
     )
     game.vote_message_id = vote_msg.message_id
-    game.timer_task = asyncio.create_task(voting_timer(bot, game, 45))
+    game.timer_task = asyncio.create_task(voting_timer(bot, game, voting_sec))
 
 async def voting_timer(bot: Bot, game: Game, seconds: int):
     # Wait for all alive players to vote or timer timeout
@@ -1134,6 +1154,19 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
             await db.add_battle_pass_xp(player.user_id, xp_gain=(50 if is_winner else 15))
         except Exception as ex:
             logging.error(f"Error saving game history/achievements: {ex}")
+
+    # Record group statistics for leaderboard
+    if game.chat_id < 0:
+        try:
+            chat_info = await bot.get_chat(game.chat_id)
+            await db.record_group_game(
+                chat_id=game.chat_id,
+                title=chat_info.title or "",
+                username=chat_info.username or "",
+                players_count=len(game.players)
+            )
+        except Exception as ex:
+            logging.warning(f"Could not update group stats for chat {game.chat_id}: {ex}")
         
     recap_kb = InlineKeyboardBuilder()
     recap_kb.add(types.InlineKeyboardButton(text="🔄 Yana o'ynash (/newgame)", callback_data="replay_newgame"))

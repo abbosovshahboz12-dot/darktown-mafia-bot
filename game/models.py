@@ -73,6 +73,13 @@ class Game:
         self.night_message_id: Optional[int] = None
         self.day_message_id: Optional[int] = None
 
+        # Group specific settings
+        self.day_time: int = 60
+        self.night_time: int = 45
+        self.voting_time: int = 45
+        self.mute_night: bool = True
+        self.secret_voting: bool = False
+
     def add_mvp_points(self, user_id: int, points: int):
         self.mvp_points[user_id] = self.mvp_points.get(user_id, 0) + points
 

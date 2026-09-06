@@ -251,6 +251,24 @@ async def init_db():
             await db.execute("ALTER TABLE users ADD COLUMN last_active TEXT")
         except Exception:
             pass
+
+        # Group settings migrations
+        for col_name, col_type in [
+            ("title", "TEXT"),
+            ("username", "TEXT"),
+            ("total_games", "INTEGER DEFAULT 0"),
+            ("total_players", "INTEGER DEFAULT 0"),
+            ("day_time", "INTEGER DEFAULT 60"),
+            ("night_time", "INTEGER DEFAULT 45"),
+            ("voting_time", "INTEGER DEFAULT 45"),
+            ("mute_night", "INTEGER DEFAULT 1"),
+            ("secret_voting", "INTEGER DEFAULT 0"),
+            ("updated_at", "TEXT"),
+        ]:
+            try:
+                await db.execute(f"ALTER TABLE group_settings ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass
             
         await db.commit()
 
@@ -500,29 +518,100 @@ async def get_user_language(user_id: int) -> str:
             row = await cursor.fetchone()
             return row['language'] if row and row['language'] else 'uz'
 
-async def set_group_language(chat_id: int, lang: str):
+async def get_group_settings(chat_id: int) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM group_settings WHERE chat_id = ?", (chat_id,)) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                r = dict(row)
+                return {
+                    "chat_id": chat_id,
+                    "title": r.get("title") or "",
+                    "username": r.get("username") or "",
+                    "language": r.get("language") or "uz",
+                    "total_games": r.get("total_games") or 0,
+                    "total_players": r.get("total_players") or 0,
+                    "day_time": r.get("day_time") or 60,
+                    "night_time": r.get("night_time") or 45,
+                    "voting_time": r.get("voting_time") or 45,
+                    "mute_night": 1 if r.get("mute_night") is None else r.get("mute_night"),
+                    "secret_voting": r.get("secret_voting") or 0
+                }
+            return {
+                "chat_id": chat_id,
+                "title": "",
+                "username": "",
+                "language": "uz",
+                "total_games": 0,
+                "total_players": 0,
+                "day_time": 60,
+                "night_time": 45,
+                "voting_time": 45,
+                "mute_night": 1,
+                "secret_voting": 0
+            }
+
+async def update_group_setting(chat_id: int, key: str, value: Any, title: str = "", username: str = ""):
+    allowed_keys = {"language", "day_time", "night_time", "voting_time", "mute_night", "secret_voting", "title", "username"}
+    if key not in allowed_keys:
+        return
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "INSERT INTO group_settings (chat_id, language) VALUES (?, ?) "
-            "ON CONFLICT(chat_id) DO UPDATE SET language = excluded.language",
-            (chat_id, lang)
+            f"""
+            INSERT INTO group_settings (chat_id, {key}, title, username, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(chat_id) DO UPDATE SET 
+                {key} = excluded.{key},
+                title = CASE WHEN excluded.title != '' THEN excluded.title ELSE group_settings.title END,
+                username = CASE WHEN excluded.username != '' THEN excluded.username ELSE group_settings.username END,
+                updated_at = excluded.updated_at
+            """,
+            (chat_id, value, title or "", username or "", now_str)
         )
         await db.commit()
 
-async def get_group_language(chat_id: int) -> str:
+async def record_group_game(chat_id: int, title: str = "", username: str = "", players_count: int = 0):
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            INSERT INTO group_settings (chat_id, title, username, total_games, total_players, updated_at)
+            VALUES (?, ?, ?, 1, ?, ?)
+            ON CONFLICT(chat_id) DO UPDATE SET
+                title = CASE WHEN excluded.title != '' THEN excluded.title ELSE group_settings.title END,
+                username = CASE WHEN excluded.username != '' THEN excluded.username ELSE group_settings.username END,
+                total_games = group_settings.total_games + 1,
+                total_players = group_settings.total_players + excluded.total_players,
+                updated_at = excluded.updated_at
+            """,
+            (chat_id, title or "", username or "", players_count, now_str)
+        )
+        await db.commit()
+
+async def get_top_groups(limit: int = 10) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT language FROM group_settings WHERE chat_id = ?", (chat_id,)) as cursor:
-            row = await cursor.fetchone()
-            return row['language'] if row and row['language'] else 'uz'
+        async with db.execute(
+            "SELECT * FROM group_settings WHERE total_games > 0 ORDER BY total_games DESC, total_players DESC LIMIT ?",
+            (limit,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+async def set_group_language(chat_id: int, lang: str):
+    await update_group_setting(chat_id, "language", lang)
+
+async def get_group_language(chat_id: int) -> str:
+    settings = await get_group_settings(chat_id)
+    return settings.get("language", "uz")
 
 async def get_chat_language(chat_id: int) -> str:
     if chat_id < 0:
         return await get_group_language(chat_id)
     else:
         return await get_user_language(chat_id)
-
-
 
 async def claim_daily_reward(user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:

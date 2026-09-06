@@ -925,6 +925,262 @@ async def cmd_groupboard(message: types.Message):
         else:
             text += f"{medal} **{escaped_name}**{username_str}: **{played}** tadan **{won}** ta g'alaba\n"
             
+async def is_user_group_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
+    if ADMIN_ID and user_id == ADMIN_ID:
+        return True
+    try:
+        member = await bot.get_chat_member(chat_id, user_id)
+        return member.status in ["creator", "administrator"]
+    except Exception:
+        return False
+
+def get_group_settings_text(chat_title: str, s: dict) -> str:
+    mute_str = "Yoqilgan 🟢" if s.get("mute_night") else "O'chirilgan 🔴"
+    secret_str = "Yoqilgan 🟢" if s.get("secret_voting") else "O'chirilgan 🔴"
+    lang_names = {"uz": "🇺🇿 O'zbekcha", "ru": "🇷🇺 Русский", "en": "🇺🇸 English", "kz": "🇰🇿 Қазақша"}
+    cur_lang = lang_names.get(s.get("language", "uz"), "🇺🇿 O'zbekcha")
+    
+    clean_title = chat_title
+    for char in ['_', '*', '[', '`']:
+        clean_title = clean_title.replace(char, f"\\{char}")
+        
+    text = (
+        f"⚙️ **Guruh Sozlamalari**: *{clean_title}*\n\n"
+        f"⏱ **Faza Vaqtlari:**\n"
+        f"• Kunduzgi munozara: **{s.get('day_time', 60)}s**\n"
+        f"• Tungi harakatlar: **{s.get('night_time', 45)}s**\n"
+        f"• Ovoz berish: **{s.get('voting_time', 45)}s**\n\n"
+        f"🌐 **Guruh tili**: {cur_lang}\n"
+        f"🔇 **Tungi Jimjitlik (Mute)**: {mute_str}\n"
+        f"🕵️ **Yashirin Ovoz Berish**: {secret_str}\n\n"
+        f"📊 **Jami o'tkazilgan o'yinlar**: **{s.get('total_games', 0)} ta**\n\n"
+        f"O'zgartirmoqchi bo'lgan parametrni tanlang:"
+    )
+    return text
+
+def get_group_settings_main_kb() -> types.InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="⏱ Faza Vaqtlarini O'zgartirish", callback_data="gset_time_menu"))
+    kb.add(types.InlineKeyboardButton(text="🌐 Guruh Tilini Tanlash", callback_data="gset_lang_menu"))
+    kb.add(types.InlineKeyboardButton(text="🔇 Tungi Mute (Yoqish/O'chirish)", callback_data="gset_toggle_mute"))
+    kb.add(types.InlineKeyboardButton(text="🕵️ Yashirin Ovoz (Yoqish/O'chirish)", callback_data="gset_toggle_secret"))
+    kb.add(types.InlineKeyboardButton(text="❌ Yopish", callback_data="gset_close"))
+    kb.adjust(1)
+    return kb.as_markup()
+
+def get_group_settings_time_kb(s: dict) -> types.InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    dt = s.get('day_time', 60)
+    nt = s.get('night_time', 45)
+    vt = s.get('voting_time', 45)
+    
+    # Day times
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if dt==30 else ''}Kun: 30s", callback_data="gset_set_day_30"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if dt==45 else ''}Kun: 45s", callback_data="gset_set_day_45"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if dt==60 else ''}Kun: 60s", callback_data="gset_set_day_60"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if dt==90 else ''}Kun: 90s", callback_data="gset_set_day_90"))
+    
+    # Night times
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if nt==30 else ''}Tun: 30s", callback_data="gset_set_night_30"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if nt==45 else ''}Tun: 45s", callback_data="gset_set_night_45"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if nt==60 else ''}Tun: 60s", callback_data="gset_set_night_60"))
+    
+    # Vote times
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if vt==30 else ''}Ovoz: 30s", callback_data="gset_set_vote_30"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if vt==45 else ''}Ovoz: 45s", callback_data="gset_set_vote_45"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if vt==60 else ''}Ovoz: 60s", callback_data="gset_set_vote_60"))
+    
+    kb.add(types.InlineKeyboardButton(text="◀️ Orqaga", callback_data="gset_menu"))
+    kb.adjust(4, 3, 3, 1)
+    return kb.as_markup()
+
+def get_group_settings_lang_kb(s: dict) -> types.InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    cur = s.get('language', 'uz')
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if cur=='uz' else ''}🇺🇿 O'zbekcha", callback_data="gset_set_lang_uz"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if cur=='ru' else ''}🇷🇺 Русский", callback_data="gset_set_lang_ru"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if cur=='en' else ''}🇺🇸 English", callback_data="gset_set_lang_en"))
+    kb.add(types.InlineKeyboardButton(text=f"{'✅ ' if cur=='kz' else ''}🇰🇿 Қазақша", callback_data="gset_set_lang_kz"))
+    kb.add(types.InlineKeyboardButton(text="◀️ Orqaga", callback_data="gset_menu"))
+    kb.adjust(2, 2, 1)
+    return kb.as_markup()
+
+@router.message(Command("settings", "sozlamalar"))
+async def cmd_group_settings(message: types.Message, bot: Bot):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    
+    is_admin = await is_user_group_admin(bot, chat_id, user_id)
+    if not is_admin:
+        await message.answer("⚠️ Guruh sozlamalarini faqat guruh administratorlari o'zgartirishi mumkin!")
+        return
+        
+    s = await db.get_group_settings(chat_id)
+    text = get_group_settings_text(message.chat.title or "Guruh", s)
+    await message.answer(text, reply_markup=get_group_settings_main_kb(), parse_mode="Markdown")
+
+@router.callback_query(F.data == "gset_menu")
+async def cb_gset_menu(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    s = await db.get_group_settings(chat_id)
+    text = get_group_settings_text(cb.message.chat.title or "Guruh", s)
+    await cb.message.edit_text(text, reply_markup=get_group_settings_main_kb(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "gset_time_menu")
+async def cb_gset_time_menu(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    s = await db.get_group_settings(chat_id)
+    text = (
+        f"⏱ **Faza Vaqtlarini Sozlash**\n\n"
+        f"Quyidagi tugmalar orqali har bir faza qancha soniya davom etishini tanlang:\n\n"
+        f"• **Kun**: Kunduzgi munozara vaqti\n"
+        f"• **Tun**: Tungi harakatlar vaqti\n"
+        f"• **Ovoz**: Kimni osishga ovoz berish vaqti"
+    )
+    await cb.message.edit_text(text, reply_markup=get_group_settings_time_kb(s), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data.startswith("gset_set_day_"))
+async def cb_gset_set_day(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    sec = int(cb.data.replace("gset_set_day_", ""))
+    await db.update_group_setting(chat_id, "day_time", sec, title=cb.message.chat.title or "")
+    s = await db.get_group_settings(chat_id)
+    await cb.message.edit_reply_markup(reply_markup=get_group_settings_time_kb(s))
+    await cb.answer(f"✅ Kunduzgi munozara {sec} soniyaga o'rnatildi!")
+
+@router.callback_query(F.data.startswith("gset_set_night_"))
+async def cb_gset_set_night(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    sec = int(cb.data.replace("gset_set_night_", ""))
+    await db.update_group_setting(chat_id, "night_time", sec, title=cb.message.chat.title or "")
+    s = await db.get_group_settings(chat_id)
+    await cb.message.edit_reply_markup(reply_markup=get_group_settings_time_kb(s))
+    await cb.answer(f"✅ Tungi faza {sec} soniyaga o'rnatildi!")
+
+@router.callback_query(F.data.startswith("gset_set_vote_"))
+async def cb_gset_set_vote(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    sec = int(cb.data.replace("gset_set_vote_", ""))
+    await db.update_group_setting(chat_id, "voting_time", sec, title=cb.message.chat.title or "")
+    s = await db.get_group_settings(chat_id)
+    await cb.message.edit_reply_markup(reply_markup=get_group_settings_time_kb(s))
+    await cb.answer(f"✅ Ovoz berish {sec} soniyaga o'rnatildi!")
+
+@router.callback_query(F.data == "gset_lang_menu")
+async def cb_gset_lang_menu(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    s = await db.get_group_settings(chat_id)
+    text = "🌐 **Guruh Tilini Tanlang**:\n\nBot ushbu guruhda o'yin xabarlarini qaysi tilda yuborishini tanlang:"
+    await cb.message.edit_text(text, reply_markup=get_group_settings_lang_kb(s), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data.startswith("gset_set_lang_"))
+async def cb_gset_set_lang(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    lang = cb.data.replace("gset_set_lang_", "")
+    await db.update_group_setting(chat_id, "language", lang, title=cb.message.chat.title or "")
+    s = await db.get_group_settings(chat_id)
+    await cb.message.edit_reply_markup(reply_markup=get_group_settings_lang_kb(s))
+    await cb.answer("✅ Guruh tili muvaffaqiyatli o'zgartirildi!")
+
+@router.callback_query(F.data == "gset_toggle_mute")
+async def cb_gset_toggle_mute(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    s = await db.get_group_settings(chat_id)
+    new_val = 0 if s.get("mute_night") else 1
+    await db.update_group_setting(chat_id, "mute_night", new_val, title=cb.message.chat.title or "")
+    s = await db.get_group_settings(chat_id)
+    text = get_group_settings_text(cb.message.chat.title or "Guruh", s)
+    await cb.message.edit_text(text, reply_markup=get_group_settings_main_kb(), parse_mode="Markdown")
+    action_text = "yoqildi" if new_val else "o'chirildi"
+    await cb.answer(f"🔇 Tungi jimjitlik (mute) {action_text}!")
+
+@router.callback_query(F.data == "gset_toggle_secret")
+async def cb_gset_toggle_secret(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    s = await db.get_group_settings(chat_id)
+    new_val = 0 if s.get("secret_voting") else 1
+    await db.update_group_setting(chat_id, "secret_voting", new_val, title=cb.message.chat.title or "")
+    s = await db.get_group_settings(chat_id)
+    text = get_group_settings_text(cb.message.chat.title or "Guruh", s)
+    await cb.message.edit_text(text, reply_markup=get_group_settings_main_kb(), parse_mode="Markdown")
+    action_text = "yoqildi" if new_val else "o'chirildi"
+    await cb.answer(f"🕵️ Yashirin ovoz berish {action_text}!")
+
+@router.callback_query(F.data == "gset_close")
+async def cb_gset_close(cb: types.CallbackQuery, bot: Bot):
+    chat_id = cb.message.chat.id
+    user_id = cb.from_user.id
+    if not await is_user_group_admin(bot, chat_id, user_id):
+        await cb.answer("⚠️ Siz guruh admini emassiz!", show_alert=True)
+        return
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+    await cb.answer("Sozlamalar oynasi yopildi.")
+
+@router.message(Command("topgroups", "topguruhlar"))
+async def cmd_topgroups(message: types.Message):
+    top_groups = await db.get_top_groups(10)
+    
+    if not top_groups:
+        await message.answer("🌐 Hozircha guruhlar statistikasi mavjud emas. Guruhlarda o'yinlar o'ynalgach reyting shakllanadi!")
+        return
+        
+    text = "🌐 **DarkTown — Eng Faol Top 10 Guruhlar**:\n\n"
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    
+    for i, g in enumerate(top_groups):
+        medal = medals[i] if i < len(medals) else f"{i+1}."
+        title = g.get('title') or f"Guruh {g['chat_id']}"
+        username_str = f" (@{g['username']})" if g.get('username') else ""
+        games = g.get('total_games', 0)
+        players = g.get('total_players', 0)
+        
+        for char in ['_', '*', '[', '`']:
+            title = title.replace(char, f"\\{char}")
+            
+        text += f"{medal} **{title}**{username_str}\n   🎮 O'yinlar: **{games} ta** | 👥 Ishtirokchilar: **{players} ta**\n\n"
+        
     await message.answer(text, parse_mode="Markdown")
 
 # Enforce group chat rules (mute on night phase, silence dead players)
