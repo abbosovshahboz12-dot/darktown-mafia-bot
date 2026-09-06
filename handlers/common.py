@@ -1,5 +1,10 @@
 import logging
-from aiogram import Router, F, types
+import csv
+import io
+import asyncio
+from datetime import datetime
+from aiogram import Router, F, types, Bot
+from aiogram.types import BufferedInputFile
 from aiogram.filters import CommandStart, Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database import db
@@ -11,6 +16,58 @@ from locales import get_text
 
 router = Router()
 router.message.filter(F.chat.type == "private")
+
+def generate_users_csv(users_data: list[dict]) -> bytes:
+    output = io.StringIO()
+    # Write UTF-8-SIG BOM so Microsoft Excel and Google Sheets render Uzbek/Cyrillic characters properly
+    output.write('\ufeff')
+    writer = csv.writer(output, delimiter=';')
+    
+    # Header row
+    writer.writerow([
+        "№",
+        "Telegram ID",
+        "Ism (First Name)",
+        "Username",
+        "Daraja (Level)",
+        "XP Ballari",
+        "Tangalar (Coins)",
+        "Jami O'yinlar",
+        "G'alabalar",
+        "G'alaba Foizi (Winrate %)",
+        "Qalqon",
+        "Bloklanganmi",
+        "Til",
+        "Ro'yxatdan O'tgan",
+        "So'nggi Faollik"
+    ])
+    
+    for i, u in enumerate(users_data, 1):
+        total = u.get("total_games", 0)
+        wins = u.get("total_wins", 0)
+        winrate = f"{(wins / total * 100):.1f}%" if total > 0 else "0%"
+        shield = "Faol" if u.get("shield_active") else "Yo'q"
+        banned = "Ha (Bloklangan)" if u.get("banned") else "Yo'q"
+        
+        writer.writerow([
+            i,
+            u.get("user_id", ""),
+            u.get("first_name", ""),
+            f"@{u['username']}" if u.get("username") else "",
+            u.get("level", 1),
+            u.get("xp", 0),
+            u.get("coins", 0),
+            total,
+            wins,
+            winrate,
+            shield,
+            banned,
+            u.get("language", "uz"),
+            u.get("created_at") or "-",
+            u.get("last_active") or "-"
+        ])
+        
+    return output.getvalue().encode('utf-8-sig')
 
 def escape_markdown(text: str) -> str:
     if not text:
@@ -834,7 +891,8 @@ async def cb_activate_booster(cb: types.CallbackQuery):
 
 def get_admin_panel_keyboard() -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.add(types.InlineKeyboardButton(text="📊 To'liq Statistika", callback_data="admin_stats"))
+    kb.add(types.InlineKeyboardButton(text="📊 Batafsil Statistika", callback_data="admin_stats"))
+    kb.add(types.InlineKeyboardButton(text="📥 O'yinchilar Ro'yxati (Excel)", callback_data="admin_export_excel"))
     kb.add(types.InlineKeyboardButton(text="🎮 Faol O'yinlar", callback_data="admin_active_games"))
     kb.add(types.InlineKeyboardButton(text="💰 O'zimga +1000 🪙", callback_data="admin_self_coins"))
     kb.add(types.InlineKeyboardButton(text="⚡ O'zimga +500 XP", callback_data="admin_self_xp"))
@@ -842,7 +900,7 @@ def get_admin_panel_keyboard() -> types.InlineKeyboardMarkup:
     kb.add(types.InlineKeyboardButton(text="🚫 Ban / Unban", callback_data="admin_ban_help"))
     kb.add(types.InlineKeyboardButton(text="🔍 Foydalanuvchi Tekshirish", callback_data="admin_user_help"))
     kb.add(types.InlineKeyboardButton(text="◀️ Bosh Menyu", callback_data="menu_back"))
-    kb.adjust(2, 2, 2, 1, 1)
+    kb.adjust(2, 1, 2, 2, 1, 1)
     return kb.as_markup()
 
 @router.callback_query(F.data == "admin_panel")
@@ -851,16 +909,18 @@ async def cb_admin_panel(cb: types.CallbackQuery):
         await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
         return
         
-    stats = await db.get_global_stats()
+    stats = await db.get_detailed_admin_analytics()
     from game.manager import game_manager
     active_games = len(game_manager.games)
     
     text = (
         f"👑 **DarkTown — Maxsus Admin Paneli**\n\n"
-        f"Salom, Admin! Quyidagi tugmalar yoki buyruqlar orqali botni to'liq boshqarishingiz mumkin:\n\n"
-        f"👥 Foydalanuvchilar: **{stats['total_users']} ta**\n"
-        f"🎮 Umumiy o'yinlar: **{stats['total_plays']} ta**\n"
-        f"⚡ Faol o'yinlar: **{active_games} ta**\n\n"
+        f"Assalomu alaykum, Hurmatli Admin!\n\n"
+        f"👥 Jami o'yinchilar: **{stats['total_users']} ta**\n"
+        f"📅 Bugungi faol o'yinchilar (DAU): **{stats['today_active']} ta**\n"
+        f"🎮 Bugun o'ynalgan o'yinlar: **{stats['today_games']} ta**\n"
+        f"🕹 Jami o'ynalgan o'yinlar: **{stats['total_games']} ta**\n"
+        f"🔥 Hozirgi faol o'yinlar: **{active_games} ta**\n\n"
         f"Kerakli bo'limni tanlang:"
     )
     await cb.message.edit_text(text, reply_markup=get_admin_panel_keyboard(), parse_mode="Markdown")
@@ -872,22 +932,59 @@ async def cb_admin_stats(cb: types.CallbackQuery):
         await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
         return
         
-    stats = await db.get_global_stats()
+    stats = await db.get_detailed_admin_analytics()
     from game.manager import game_manager
     active_games = len(game_manager.games)
     
     kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="📥 Excel Faylni Yuklab Olish", callback_data="admin_export_excel"))
     kb.add(types.InlineKeyboardButton(text="◀️ Admin Panelga qaytish", callback_data="admin_panel"))
+    kb.adjust(1)
     
     text = (
-        f"📊 **DarkTown Bot To'liq Statistikasi**\n\n"
-        f"👤 Jami o'yinchilar: **{stats['total_users']} ta**\n"
-        f"🕹 Jami o'ynalgan o'yinlar: **{stats['total_plays']} ta**\n"
-        f"🔥 Ayni paytdagi faol o'yinlar: **{active_games} ta**\n\n"
-        f"💡 _Statistika real vaqt rejimida yangilanadi._"
+        f"📊 **DarkTown Bot — Kengaytirilgan Analitika & Statistika**\n\n"
+        f"👥 **Foydalanuvchilar:**\n"
+        f"• Jami ro'yxatdan o'tgan: **{stats['total_users']} ta**\n"
+        f"• Bugun kirganlar (Faol DAU): **{stats['today_active']} ta**\n"
+        f"• Bloklangan foydalanuvchilar: **{stats['banned_count']} ta**\n\n"
+        f"🎮 **O'yinlar:**\n"
+        f"• Bugun o'ynalgan o'yinlar: **{stats['today_games']} ta**\n"
+        f"• Jami o'yinlar soni: **{stats['total_games']} ta**\n"
+        f"• Hozir guruhlarda davom etayotgan: **{active_games} ta**\n\n"
+        f"💰 **Iqtisodiyot:**\n"
+        f"• Muomaladagi jami tangalar: **{stats['total_coins']} 🪙**\n\n"
+        f"💡 _Barcha o'yinchilarning to'liq jadvalini Excel formatida yuklab olishingiz mumkin._"
     )
     await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
     await cb.answer()
+
+@router.callback_query(F.data == "admin_export_excel")
+async def cb_admin_export_excel(cb: types.CallbackQuery, bot: Bot):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+        
+    await cb.answer("⏳ Excel fayl tayyorlanmoqda...")
+    users_data = await db.get_all_users_for_export()
+    csv_bytes = generate_users_csv(users_data)
+    
+    today_str = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    filename = f"DarkTown_Oyinchilar_{today_str}.csv"
+    input_file = BufferedInputFile(csv_bytes, filename=filename)
+    
+    caption = (
+        f"📊 **DarkTown Mafiya — Barcha O'yinchilar Ro'yxati**\n\n"
+        f"👥 Jami o'yinchilar: **{len(users_data)} ta**\n"
+        f"📅 Sana: **{datetime.now().strftime('%Y-%m-%d %H:%M')}**\n\n"
+        f"✅ _Ushbu fayl Microsoft Excel va Google Sheets dasturlarida ochish uchun to'liq moslashtirilgan (UTF-8, CSV)._"
+    )
+    
+    await bot.send_document(
+        chat_id=cb.from_user.id,
+        document=input_file,
+        caption=caption,
+        parse_mode="Markdown"
+    )
 
 @router.callback_query(F.data == "admin_self_coins")
 async def cb_admin_self_coins(cb: types.CallbackQuery):
@@ -987,19 +1084,53 @@ async def cmd_admin(message: types.Message):
         await message.answer(f"⚠️ Ushbu buyruq faqat bot admini uchun!\nSizning ID: `{user_id}`\nConfigdagi Admin ID: `{ADMIN_ID}`", parse_mode="Markdown")
         return
         
-    stats = await db.get_global_stats()
+    stats = await db.get_detailed_admin_analytics()
     from game.manager import game_manager
     active_games = len(game_manager.games)
     
     text = (
         f"👑 **DarkTown — Maxsus Admin Paneli**\n\n"
-        f"Salom, Admin! Quyidagi tugmalar yoki buyruqlar orqali botni to'liq boshqarishingiz mumkin:\n\n"
-        f"👥 Foydalanuvchilar: **{stats['total_users']} ta**\n"
-        f"🎮 Umumiy o'yinlar: **{stats['total_plays']} ta**\n"
-        f"⚡ Faol o'yinlar: **{active_games} ta**\n\n"
+        f"Assalomu alaykum, Hurmatli Admin!\n\n"
+        f"👥 Jami o'yinchilar: **{stats['total_users']} ta**\n"
+        f"📅 Bugungi faol o'yinchilar (DAU): **{stats['today_active']} ta**\n"
+        f"🎮 Bugun o'ynalgan o'yinlar: **{stats['today_games']} ta**\n"
+        f"🕹 Jami o'ynalgan o'yinlar: **{stats['total_games']} ta**\n"
+        f"🔥 Hozirgi faol o'yinlar: **{active_games} ta**\n\n"
         f"Kerakli bo'limni tanlang:"
     )
     await message.answer(text, reply_markup=get_admin_panel_keyboard(), parse_mode="Markdown")
+
+@router.message(Command("export", "exel", "excel"))
+async def cmd_export_excel(message: types.Message, bot: Bot):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
+        return
+        
+    status_msg = await message.answer("⏳ Excel fayl tayyorlanmoqda, iltimos kuting...")
+    users_data = await db.get_all_users_for_export()
+    csv_bytes = generate_users_csv(users_data)
+    
+    today_str = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    filename = f"DarkTown_Oyinchilar_{today_str}.csv"
+    input_file = BufferedInputFile(csv_bytes, filename=filename)
+    
+    caption = (
+        f"📊 **DarkTown Mafiya — Barcha O'yinchilar Ro'yxati**\n\n"
+        f"👥 Jami o'yinchilar: **{len(users_data)} ta**\n"
+        f"📅 Sana: **{datetime.now().strftime('%Y-%m-%d %H:%M')}**\n\n"
+        f"✅ _Ushbu fayl Microsoft Excel va Google Sheets dasturlarida ochish uchun to'liq moslashtirilgan (UTF-8, CSV)._"
+    )
+    
+    await bot.send_document(
+        chat_id=message.from_user.id,
+        document=input_file,
+        caption=caption,
+        parse_mode="Markdown"
+    )
+    try:
+        await status_msg.delete()
+    except Exception:
+        pass
 
 @router.message(Command("givecoins"))
 async def cmd_givecoins(message: types.Message):

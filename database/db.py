@@ -243,12 +243,21 @@ async def init_db():
             await db.execute("ALTER TABLE users ADD COLUMN channel_bonus_claimed INTEGER DEFAULT 0")
         except Exception:
             pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN created_at TEXT")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN last_active TEXT")
+        except Exception:
+            pass
             
         await db.commit()
 
 async def get_user(user_id: int, username: str = None, first_name: str = None):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             if row:
@@ -257,7 +266,6 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
                 vip_expires_at = rdict.get('vip_expires_at')
                 if is_vip == 1 and vip_expires_at:
                     try:
-                        from datetime import datetime
                         expiry = datetime.strptime(vip_expires_at, "%Y-%m-%d %H:%M:%S")
                         if datetime.now() > expiry:
                             await db.execute("UPDATE users SET is_vip = 0 WHERE user_id = ?", (user_id,))
@@ -265,19 +273,19 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
                     except Exception:
                         pass
                         
-                if username or first_name:
-                    await db.execute(
-                        "UPDATE users SET username = ?, first_name = ? WHERE user_id = ?",
-                        (username or rdict.get('username'), first_name or rdict.get('first_name'), user_id)
-                    )
-                    await db.commit()
+                # Update last active time and username/first_name
+                await db.execute(
+                    "UPDATE users SET username = ?, first_name = ?, last_active = ? WHERE user_id = ?",
+                    (username or rdict.get('username'), first_name or rdict.get('first_name'), now_str, user_id)
+                )
+                await db.commit()
                 async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor2:
                     row2 = await cursor2.fetchone()
                     return dict(row2) if row2 else {}
             
             await db.execute(
-                "INSERT INTO users (user_id, username, first_name, xp, level, coins) VALUES (?, ?, ?, 0, 1, 100)",
-                (user_id, username or f"User{user_id}", first_name or "Mafiozi")
+                "INSERT INTO users (user_id, username, first_name, xp, level, coins, created_at, last_active) VALUES (?, ?, ?, 0, 1, 100, ?, ?)",
+                (user_id, username or f"User{user_id}", first_name or "Mafiozi", now_str, now_str)
             )
             await db.commit()
             
@@ -930,6 +938,77 @@ async def get_all_user_ids() -> list[int]:
         async with db.execute("SELECT user_id FROM users") as cursor:
             rows = await cursor.fetchall()
             return [r[0] for r in rows]
+
+async def get_detailed_admin_analytics() -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Total users
+        async with db.execute("SELECT COUNT(*) FROM users") as c:
+            total_users = (await c.fetchone())[0]
+            
+        # Today active users (logged in or active today)
+        async with db.execute(
+            "SELECT COUNT(*) FROM users WHERE DATE(last_active) = DATE('now', 'localtime') OR DATE(last_streak_date) = DATE('now', 'localtime') OR daily_games_played > 0"
+        ) as c:
+            today_active = (await c.fetchone())[0]
+            
+        # Today games
+        async with db.execute(
+            "SELECT COUNT(DISTINCT room_id) FROM game_history WHERE DATE(played_at) = DATE('now', 'localtime')"
+        ) as c:
+            today_games = (await c.fetchone())[0]
+
+        # Total games played
+        async with db.execute("SELECT COUNT(DISTINCT room_id) FROM game_history") as c:
+            total_games_history = (await c.fetchone())[0]
+            
+        async with db.execute("SELECT SUM(games_played) FROM stats") as c:
+            total_plays_raw = (await c.fetchone())[0] or 0
+        total_games = max(total_games_history, total_plays_raw)
+
+        # Total coins in circulation
+        async with db.execute("SELECT SUM(coins) FROM users") as c:
+            total_coins = (await c.fetchone())[0] or 0
+            
+        # Total banned users
+        async with db.execute("SELECT COUNT(*) FROM users WHERE banned = 1") as c:
+            banned_count = (await c.fetchone())[0]
+
+        return {
+            "total_users": total_users,
+            "today_active": today_active,
+            "today_games": today_games,
+            "total_games": total_games,
+            "total_coins": total_coins,
+            "banned_count": banned_count
+        }
+
+async def get_all_users_for_export() -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        query = """
+            SELECT 
+                u.user_id,
+                u.username,
+                u.first_name,
+                u.level,
+                u.xp,
+                u.coins,
+                u.shield_active,
+                u.banned,
+                u.language,
+                u.created_at,
+                u.last_active,
+                COALESCE(SUM(s.games_played), 0) AS total_games,
+                COALESCE(SUM(s.games_won), 0) AS total_wins
+            FROM users u
+            LEFT JOIN stats s ON u.user_id = s.user_id
+            GROUP BY u.user_id
+            ORDER BY u.level DESC, u.coins DESC
+        """
+        async with db.execute(query) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
 
 # --- PHASE 2 DATABASE FUNCTIONS ---
 
