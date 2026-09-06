@@ -64,6 +64,10 @@ def get_start_keyboard(user_id: int, bot_username: str = "darktownuz_bot", lang:
         url=f"https://t.me/{bot_username}?startgroup=true"
     ))
     
+    # Faqat Bot Admini uchun alohida Admin Panel tugmasi
+    if ADMIN_ID and user_id == ADMIN_ID:
+        kb.add(types.InlineKeyboardButton(text="👑 Admin Panel", callback_data="admin_panel"))
+    
     kb.adjust(2, 2, 1, 1, 1)
     return kb.as_markup()
 
@@ -828,11 +832,23 @@ async def cb_activate_booster(cb: types.CallbackQuery):
             err_msg = "Сіз ойын қатысушысы емессіз!"
         await cb.answer(err_msg, show_alert=True)
 
-@router.message(Command("admin"))
-async def cmd_admin(message: types.Message):
-    user_id = message.from_user.id
-    if user_id != ADMIN_ID:
-        await message.answer(f"⚠️ Ushbu buyruq faqat bot admini uchun!\nSizning ID: `{user_id}`\nConfigdagi Admin ID: `{ADMIN_ID}`\n\nAgar mos kelmasa, Railway Variables bo'limida `ADMIN_ID` ni to'g'ri o'rnating.", parse_mode="Markdown")
+def get_admin_panel_keyboard() -> types.InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="📊 To'liq Statistika", callback_data="admin_stats"))
+    kb.add(types.InlineKeyboardButton(text="🎮 Faol O'yinlar", callback_data="admin_active_games"))
+    kb.add(types.InlineKeyboardButton(text="💰 O'zimga +1000 🪙", callback_data="admin_self_coins"))
+    kb.add(types.InlineKeyboardButton(text="⚡ O'zimga +500 XP", callback_data="admin_self_xp"))
+    kb.add(types.InlineKeyboardButton(text="📢 Xabar Tarqatish", callback_data="admin_broadcast_help"))
+    kb.add(types.InlineKeyboardButton(text="🚫 Ban / Unban", callback_data="admin_ban_help"))
+    kb.add(types.InlineKeyboardButton(text="🔍 Foydalanuvchi Tekshirish", callback_data="admin_user_help"))
+    kb.add(types.InlineKeyboardButton(text="◀️ Bosh Menyu", callback_data="menu_back"))
+    kb.adjust(2, 2, 2, 1, 1)
+    return kb.as_markup()
+
+@router.callback_query(F.data == "admin_panel")
+async def cb_admin_panel(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
         return
         
     stats = await db.get_global_stats()
@@ -840,15 +856,150 @@ async def cmd_admin(message: types.Message):
     active_games = len(game_manager.games)
     
     text = (
-        f"👑 **Darktown Bot - Admin Paneli**\n\n"
-        f"👥 Ro'yxatdan o'tgan o'yinchilar: **{stats['total_users']} ta**\n"
-        f"🎮 Umumiy o'yinlar soni: **{stats['total_plays']} ta**\n"
-        f"⚡ Hozirgi faol o'yinlar: **{active_games} ta**\n\n"
-        f"**Buyruqlar**:\n"
-        f"`/givecoins <user_id> <miqdor>` - Foydalanuvchiga tanga berish\n"
-        f"`/givexp <user_id> <miqdor>` - Foydalanuvchiga XP berish"
+        f"👑 **DarkTown — Maxsus Admin Paneli**\n\n"
+        f"Salom, Admin! Quyidagi tugmalar yoki buyruqlar orqali botni to'liq boshqarishingiz mumkin:\n\n"
+        f"👥 Foydalanuvchilar: **{stats['total_users']} ta**\n"
+        f"🎮 Umumiy o'yinlar: **{stats['total_plays']} ta**\n"
+        f"⚡ Faol o'yinlar: **{active_games} ta**\n\n"
+        f"Kerakli bo'limni tanlang:"
     )
-    await message.answer(text, parse_mode="Markdown")
+    await cb.message.edit_text(text, reply_markup=get_admin_panel_keyboard(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "admin_stats")
+async def cb_admin_stats(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+        
+    stats = await db.get_global_stats()
+    from game.manager import game_manager
+    active_games = len(game_manager.games)
+    
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="◀️ Admin Panelga qaytish", callback_data="admin_panel"))
+    
+    text = (
+        f"📊 **DarkTown Bot To'liq Statistikasi**\n\n"
+        f"👤 Jami o'yinchilar: **{stats['total_users']} ta**\n"
+        f"🕹 Jami o'ynalgan o'yinlar: **{stats['total_plays']} ta**\n"
+        f"🔥 Ayni paytdagi faol o'yinlar: **{active_games} ta**\n\n"
+        f"💡 _Statistika real vaqt rejimida yangilanadi._"
+    )
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "admin_self_coins")
+async def cb_admin_self_coins(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    user_id = cb.from_user.id
+    await db.add_xp_and_coins(user_id, 0, 1000)
+    user = await db.get_user(user_id)
+    await cb.answer(f"🎉 Hisobingizga +1000 Dark Coins qo'shildi!\nJami balansingiz: {user['coins']} 🪙", show_alert=True)
+
+@router.callback_query(F.data == "admin_self_xp")
+async def cb_admin_self_xp(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    user_id = cb.from_user.id
+    leveled, new_lvl = await db.add_xp_and_coins(user_id, 500, 0)
+    await cb.answer(f"⚡ Hisobingizga +500 XP qo'shildi! (Daraja: {new_lvl})", show_alert=True)
+
+@router.callback_query(F.data == "admin_active_games")
+async def cb_admin_active_games(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    from game.manager import game_manager
+    games = game_manager.games
+    
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="◀️ Admin Panelga qaytish", callback_data="admin_panel"))
+    
+    if not games:
+        text = "🎮 **Hozirda faol o'yinlar mavjud emas.**"
+    else:
+        text = f"🎮 **Hozirgi faol o'yinlar ({len(games)} ta)**:\n\n"
+        for chat_id, g in games.items():
+            text += f"• Guruh ID: `{chat_id}` | Faza: **{g.phase}** | O'yinchilar: **{len(g.players)} ta**\n"
+    
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "admin_broadcast_help")
+async def cb_admin_broadcast_help(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="◀️ Admin Panelga qaytish", callback_data="admin_panel"))
+    
+    text = (
+        f"📢 **Xabar Tarqatish (Broadcast) Yo'riqnomasi**\n\n"
+        f"Barcha bot foydalanuvchilariga xabar yuborish uchun chatga quyidagicha yozing:\n\n"
+        f"`/broadcast Xabaringiz matni shu yerda bo'ladi`\n\n"
+        f"Bot barcha a'zolarga xabarni yetkazib, yakunda hisobot beradi."
+    )
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "admin_ban_help")
+async def cb_admin_ban_help(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="◀️ Admin Panelga qaytish", callback_data="admin_panel"))
+    
+    text = (
+        f"🚫 **Foydalanuvchini Bloklash / Blokdan Chiqarish**\n\n"
+        f"• Bloklash uchun: `/ban <user_id>`\n"
+        f"• Blokdan chiqarish uchun: `/unban <user_id>`\n\n"
+        f"Misol: `/ban 12345678`"
+    )
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "admin_user_help")
+async def cb_admin_user_help(cb: types.CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        await cb.answer("⚠️ Siz bot admini emassiz!", show_alert=True)
+        return
+    kb = InlineKeyboardBuilder()
+    kb.add(types.InlineKeyboardButton(text="◀️ Admin Panelga qaytish", callback_data="admin_panel"))
+    
+    text = (
+        f"🔍 **Foydalanuvchini Tekshirish**\n\n"
+        f"Foydalanuvchi haqida to'liq ma'lumot (balans, daraja, XP, g'alabalar, ban) olish uchun:\n\n"
+        f"`/user <user_id>`\n\n"
+        f"Misol: `/user 12345678`"
+    )
+    await cb.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="Markdown")
+    await cb.answer()
+
+@router.message(Command("admin"))
+async def cmd_admin(message: types.Message):
+    user_id = message.from_user.id
+    if user_id != ADMIN_ID:
+        await message.answer(f"⚠️ Ushbu buyruq faqat bot admini uchun!\nSizning ID: `{user_id}`\nConfigdagi Admin ID: `{ADMIN_ID}`", parse_mode="Markdown")
+        return
+        
+    stats = await db.get_global_stats()
+    from game.manager import game_manager
+    active_games = len(game_manager.games)
+    
+    text = (
+        f"👑 **DarkTown — Maxsus Admin Paneli**\n\n"
+        f"Salom, Admin! Quyidagi tugmalar yoki buyruqlar orqali botni to'liq boshqarishingiz mumkin:\n\n"
+        f"👥 Foydalanuvchilar: **{stats['total_users']} ta**\n"
+        f"🎮 Umumiy o'yinlar: **{stats['total_plays']} ta**\n"
+        f"⚡ Faol o'yinlar: **{active_games} ta**\n\n"
+        f"Kerakli bo'limni tanlang:"
+    )
+    await message.answer(text, reply_markup=get_admin_panel_keyboard(), parse_mode="Markdown")
 
 @router.message(Command("givecoins"))
 async def cmd_givecoins(message: types.Message):
@@ -865,7 +1016,7 @@ async def cmd_givecoins(message: types.Message):
         target_uid = int(args[1].strip("<>"))
         amount = int(args[2].strip("<>"))
         await db.add_xp_and_coins(target_uid, 0, amount)
-        await message.answer(f"✅ O'yinchi {target_uid} ga **{amount}** Dark Coins berildi!")
+        await message.answer(f"✅ O'yinchi `{target_uid}` ga **{amount}** Dark Coins berildi!", parse_mode="Markdown")
     except Exception as e:
         await message.answer(f"Xato: {e}")
 
@@ -884,9 +1035,117 @@ async def cmd_givexp(message: types.Message):
         target_uid = int(args[1].strip("<>"))
         amount = int(args[2].strip("<>"))
         await db.add_xp_and_coins(target_uid, amount, 0)
-        await message.answer(f"✅ O'yinchi {target_uid} ga **{amount}** XP berildi!")
+        await message.answer(f"✅ O'yinchi `{target_uid}` ga **{amount}** XP berildi!", parse_mode="Markdown")
     except Exception as e:
         await message.answer(f"Xato: {e}")
+
+@router.message(Command("ban"))
+async def cmd_ban(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Format: `/ban <user_id>`", parse_mode="Markdown")
+        return
+    try:
+        target_uid = int(args[1].strip("<>"))
+        await db.ban_user(target_uid, True)
+        await message.answer(f"🚫 Foydalanuvchi `{target_uid}` botda bloklandi!", parse_mode="Markdown")
+    except Exception as e:
+        await message.answer(f"Xatolik: {e}")
+
+@router.message(Command("unban"))
+async def cmd_unban(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Format: `/unban <user_id>`", parse_mode="Markdown")
+        return
+    try:
+        target_uid = int(args[1].strip("<>"))
+        await db.ban_user(target_uid, False)
+        await message.answer(f"✅ Foydalanuvchi `{target_uid}` blokdan chiqarildi!", parse_mode="Markdown")
+    except Exception as e:
+        await message.answer(f"Xatolik: {e}")
+
+@router.message(Command("user"))
+async def cmd_user_info(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
+        return
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("Format: `/user <user_id>`", parse_mode="Markdown")
+        return
+    try:
+        target_uid = int(args[1].strip("<>"))
+        user = await db.get_user(target_uid)
+        is_banned = await db.is_user_banned(target_uid)
+        stats = await db.get_user_stats(target_uid)
+        total_played = sum(s['games_played'] for s in stats)
+        total_won = sum(s['games_won'] for s in stats)
+        
+        info = (
+            f"👤 **Foydalanuvchi Ma'lumotlari**:\n\n"
+            f"• ID: `{target_uid}`\n"
+            f"• Ism: **{user.get('first_name', 'Noma\'lum')}**\n"
+            f"• Username: @{user.get('username') or 'Mavjud emas'}\n"
+            f"• Daraja (Level): **{user.get('level', 1)}** (XP: {user.get('xp', 0)})\n"
+            f"• Tangalar: **{user.get('coins', 0)} 🪙**\n"
+            f"• Qalqon: {'🛡️ Faol' if user.get('shield_active') else '❌ Yo\'q'}\n"
+            f"• Bloklangan: {'🚫 Ha' if is_banned else '🟢 Yo\'q'}\n"
+            f"• O'yinlar: **{total_played} ta** (G'alaba: {total_won} ta)\n"
+        )
+        await message.answer(info, parse_mode="Markdown")
+    except Exception as e:
+        await message.answer(f"Xatolik: {e}")
+
+@router.message(Command("broadcast"))
+async def cmd_broadcast(message: types.Message, bot: Bot):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
+        return
+    text_to_send = message.text.replace("/broadcast", "").strip()
+    if not text_to_send:
+        await message.answer("Format: `/broadcast <yubormoqchi bo'lgan xabaringiz>`", parse_mode="Markdown")
+        return
+        
+    user_ids = await db.get_all_user_ids()
+    status_msg = await message.answer(f"⏳ Xabar tarqatish boshlandi... Jami: {len(user_ids)} ta foydalanuvchi.")
+    
+    sent = 0
+    failed = 0
+    for uid in user_ids:
+        try:
+            await bot.send_message(uid, f"📢 **E'lon**:\n\n{text_to_send}", parse_mode="Markdown")
+            sent += 1
+            await asyncio.sleep(0.05) # Rate limit protection
+        except Exception:
+            failed += 1
+            
+    await status_msg.edit_text(
+        f"✅ **Xabar tarqatish yakunlandi!**\n\n"
+        f"📤 Yetib bordi: **{sent} ta**\n"
+        f"❌ Xatolik (bloklaganlar): **{failed} ta**"
+    )
+
+@router.message(Command("activegames"))
+async def cmd_activegames(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ Ushbu buyruq faqat bot admini uchun!")
+        return
+    from game.manager import game_manager
+    games = game_manager.games
+    if not games:
+        await message.answer("🎮 Hozirda guruhlarda faol o'yinlar yo'q.")
+        return
+    text = f"🎮 **Faol o'yinlar ({len(games)} ta)**:\n\n"
+    for chat_id, g in games.items():
+        text += f"• Guruh ID: `{chat_id}` | Faza: **{g.phase}** | O'yinchilar: **{len(g.players)} ta**\n"
+    await message.answer(text, parse_mode="Markdown")
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
