@@ -215,7 +215,7 @@ def get_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     
     # Stars button at the top of the shop
-    stars_btn = "⭐️ Tanga & VIP olish (Stars)" if lang == "uz" else "⭐️ Купить Монеты & VIP (Stars)" if lang == "ru" else "⭐️ Buy Coins & VIP (Stars)" if lang == "en" else "⭐️ Монета & VIP алу (Stars)"
+    stars_btn = "⭐️ Tanga sotib olish (Stars)" if lang == "uz" else "⭐️ Купить Монеты (Stars)" if lang == "ru" else "⭐️ Buy Coins (Stars)" if lang == "en" else "⭐️ Монета алу (Stars)"
     kb.add(types.InlineKeyboardButton(text=stars_btn, callback_data="shop_stars_menu"))
     
     for key, item in SHOP_ITEMS.items():
@@ -223,7 +223,7 @@ def get_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
         cost = item["cost"]
         kb.add(types.InlineKeyboardButton(text=f"{name} — {cost} 🪙", callback_data=f"buy_shop_{key}"))
         
-    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Наzad" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
     kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
     kb.adjust(1)
     return kb.as_markup()
@@ -234,12 +234,10 @@ def get_stars_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
     c100 = "⭐️ 100 Coins — 25 Stars"
     c500 = "⭐️ 500 Coins (+50 Bonus) — 99 Stars"
     c1000 = "⭐️ 1000 Coins (+200 Bonus) — 179 Stars"
-    vip = "👑 VIP Status (30 kun) — 149 Stars" if lang == "uz" else "👑 VIP Статус (30 дней) — 149 Stars" if lang == "ru" else "👑 VIP Status (30 days) — 149 Stars" if lang == "en" else "👑 VIP Мәртебесі (30 күн) — 149 Stars"
     
     kb.add(types.InlineKeyboardButton(text=c100, callback_data="buy_stars_coins_100"))
     kb.add(types.InlineKeyboardButton(text=c500, callback_data="buy_stars_coins_500"))
     kb.add(types.InlineKeyboardButton(text=c1000, callback_data="buy_stars_coins_1000"))
-    kb.add(types.InlineKeyboardButton(text=vip, callback_data="buy_stars_vip_1month"))
     
     back_text = "◀️ Do'konga qaytish" if lang == "uz" else "◀️ В магазин" if lang == "ru" else "◀️ Back to Shop" if lang == "en" else "◀️ Дүкенге қайту"
     kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_shop"))
@@ -327,25 +325,25 @@ async def cb_shop_stars_menu(cb: types.CallbackQuery):
     coins = user.get('coins', 0)
     
     text = (
-        f"⭐️ **Telegram Stars orqali Tanga va VIP xarid qilish**\n\n"
+        f"⭐️ **Telegram Stars orqali Tanga xarid qilish**\n\n"
         f"💰 Hozirgi balansingiz: **{coins} Dark Coins**\n\n"
         f"Kerakli paketni tanlang va to'g'ridan-to'g'ri Telegram Stars yordamida to'lov qiling:"
     )
     if lang == "ru":
         text = (
-            f"⭐️ **Покупка Монет и VIP через Telegram Stars**\n\n"
+            f"⭐️ **Покупка Монет через Telegram Stars**\n\n"
             f"💰 Ваш баланс: **{coins} Dark Coins**\n\n"
             f"Выберите нужный пакет и оплатите напрямую через Telegram Stars:"
         )
     elif lang == "en":
         text = (
-            f"⭐️ **Buy Coins & VIP with Telegram Stars**\n\n"
+            f"⭐️ **Buy Coins with Telegram Stars**\n\n"
             f"💰 Your balance: **{coins} Dark Coins**\n\n"
             f"Choose a package and pay directly with Telegram Stars:"
         )
     elif lang == "kz":
         text = (
-            f"⭐️ **Telegram Stars арқылы Монета және VIP сатып алу**\n\n"
+            f"⭐️ **Telegram Stars арқылы Монета сатып алу**\n\n"
             f"💰 Балансыңыз: **{coins} Dark Coins**\n\n"
             f"Қажетті топтаманы таңдап, Telegram Stars арқылы төлем жасаңыз:"
         )
@@ -376,12 +374,6 @@ async def cb_buy_stars(cb: types.CallbackQuery):
             "desc": "Darktown Mafiya o'yini uchun 1200 ta Dark Coins",
             "stars": 179,
             "payload": "coins_1000"
-        },
-        "vip_1month": {
-            "title": "👑 VIP Status (30 kun)",
-            "desc": "Darktown VIP status: Oltin ramka, maxsus nishon va profil bezagi",
-            "stars": 149,
-            "payload": "vip_1month"
         }
     }
     
