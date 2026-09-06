@@ -203,14 +203,14 @@ async def process_successful_payment(message: types.Message):
         await db.add_xp_and_coins(user_id, 0, 100)
         await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **100 ta Dark Coins** qo'shildi!")
     elif payload == "coins_500":
-        await db.add_xp_and_coins(user_id, 0, 500)
-        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **500 ta Dark Coins** qo'shildi!")
+        await db.add_xp_and_coins(user_id, 0, 550)
+        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **550 ta Dark Coins (+50 bonus)** qo'shildi!")
     elif payload == "coins_1000":
-        await db.add_xp_and_coins(user_id, 0, 1000)
-        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **1000 ta Dark Coins** qo'shildi!")
+        await db.add_xp_and_coins(user_id, 0, 1200)
+        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **1200 ta Dark Coins (+200 bonus)** qo'shildi!")
     elif payload == "vip_1month":
         await db.upgrade_to_vip(user_id, 30)
-        await message.answer("👑 **Tabriklaymiz!** Siz **VIP status**ga ega bo'ldingiz! Profilingizda Oltin ramka va Shaxsiy Fon imkoniyati ochildi.")
+        await message.answer("👑 **Tabriklaymiz!** Siz **VIP status (30 kun)**ga ega bo'ldingiz! Profilingizda Oltin ramka va VIP imtiyozlar ochildi.")
     else:
         await message.answer("🎉 **To'lov qabul qilindi!** Rahmat!")
 

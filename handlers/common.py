@@ -213,12 +213,36 @@ SHOP_ITEMS = {
 
 def get_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
+    
+    # Stars button at the top of the shop
+    stars_btn = "⭐️ Tanga & VIP olish (Stars)" if lang == "uz" else "⭐️ Купить Монеты & VIP (Stars)" if lang == "ru" else "⭐️ Buy Coins & VIP (Stars)" if lang == "en" else "⭐️ Монета & VIP алу (Stars)"
+    kb.add(types.InlineKeyboardButton(text=stars_btn, callback_data="shop_stars_menu"))
+    
     for key, item in SHOP_ITEMS.items():
         name = item.get(f"name_{lang}", item["name_uz"])
         cost = item["cost"]
         kb.add(types.InlineKeyboardButton(text=f"{name} — {cost} 🪙", callback_data=f"buy_shop_{key}"))
-    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Назад" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
+        
+    back_text = "◀️ Orqaga" if lang == "uz" else "◀️ Наzad" if lang == "ru" else "◀️ Back" if lang == "en" else "◀️ Артқа"
     kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_back"))
+    kb.adjust(1)
+    return kb.as_markup()
+
+def get_stars_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    
+    c100 = "⭐️ 100 Coins — 25 Stars"
+    c500 = "⭐️ 500 Coins (+50 Bonus) — 99 Stars"
+    c1000 = "⭐️ 1000 Coins (+200 Bonus) — 179 Stars"
+    vip = "👑 VIP Status (30 kun) — 149 Stars" if lang == "uz" else "👑 VIP Статус (30 дней) — 149 Stars" if lang == "ru" else "👑 VIP Status (30 days) — 149 Stars" if lang == "en" else "👑 VIP Мәртебесі (30 күн) — 149 Stars"
+    
+    kb.add(types.InlineKeyboardButton(text=c100, callback_data="buy_stars_coins_100"))
+    kb.add(types.InlineKeyboardButton(text=c500, callback_data="buy_stars_coins_500"))
+    kb.add(types.InlineKeyboardButton(text=c1000, callback_data="buy_stars_coins_1000"))
+    kb.add(types.InlineKeyboardButton(text=vip, callback_data="buy_stars_vip_1month"))
+    
+    back_text = "◀️ Do'konga qaytish" if lang == "uz" else "◀️ В магазин" if lang == "ru" else "◀️ Back to Shop" if lang == "en" else "◀️ Дүкенге қайту"
+    kb.add(types.InlineKeyboardButton(text=back_text, callback_data="menu_shop"))
     kb.adjust(1)
     return kb.as_markup()
 
@@ -294,6 +318,92 @@ async def cb_buy_shop(cb: types.CallbackQuery):
     else:
         err_msg = "⚠️ Tangalaringiz yetarli emas!" if lang == "uz" else "⚠️ Недостаточно монет!" if lang == "ru" else "⚠️ Not enough coins!" if lang == "en" else "⚠️ Монеталар жеткіліксіз!"
         await cb.answer(err_msg, show_alert=True)
+
+@router.callback_query(F.data == "shop_stars_menu")
+async def cb_shop_stars_menu(cb: types.CallbackQuery):
+    user_id = cb.from_user.id
+    lang = await db.get_user_language(user_id)
+    user = await db.get_user(user_id)
+    coins = user.get('coins', 0)
+    
+    text = (
+        f"⭐️ **Telegram Stars orqali Tanga va VIP xarid qilish**\n\n"
+        f"💰 Hozirgi balansingiz: **{coins} Dark Coins**\n\n"
+        f"Kerakli paketni tanlang va to'g'ridan-to'g'ri Telegram Stars yordamida to'lov qiling:"
+    )
+    if lang == "ru":
+        text = (
+            f"⭐️ **Покупка Монет и VIP через Telegram Stars**\n\n"
+            f"💰 Ваш баланс: **{coins} Dark Coins**\n\n"
+            f"Выберите нужный пакет и оплатите напрямую через Telegram Stars:"
+        )
+    elif lang == "en":
+        text = (
+            f"⭐️ **Buy Coins & VIP with Telegram Stars**\n\n"
+            f"💰 Your balance: **{coins} Dark Coins**\n\n"
+            f"Choose a package and pay directly with Telegram Stars:"
+        )
+    elif lang == "kz":
+        text = (
+            f"⭐️ **Telegram Stars арқылы Монета және VIP сатып алу**\n\n"
+            f"💰 Балансыңыз: **{coins} Dark Coins**\n\n"
+            f"Қажетті топтаманы таңдап, Telegram Stars арқылы төлем жасаңыз:"
+        )
+    await cb.message.edit_text(text, reply_markup=get_stars_shop_keyboard(lang), parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data.startswith("buy_stars_"))
+async def cb_buy_stars(cb: types.CallbackQuery):
+    pkg = cb.data.replace("buy_stars_", "")
+    user_id = cb.from_user.id
+    lang = await db.get_user_language(user_id)
+    
+    packages = {
+        "coins_100": {
+            "title": "100 Dark Coins",
+            "desc": "Darktown Mafiya o'yini uchun 100 ta Dark Coins",
+            "stars": 25,
+            "payload": "coins_100"
+        },
+        "coins_500": {
+            "title": "500 Dark Coins (+50 Bonus)",
+            "desc": "Darktown Mafiya o'yini uchun 550 ta Dark Coins",
+            "stars": 99,
+            "payload": "coins_500"
+        },
+        "coins_1000": {
+            "title": "1000 Dark Coins (+200 Bonus)",
+            "desc": "Darktown Mafiya o'yini uchun 1200 ta Dark Coins",
+            "stars": 179,
+            "payload": "coins_1000"
+        },
+        "vip_1month": {
+            "title": "👑 VIP Status (30 kun)",
+            "desc": "Darktown VIP status: Oltin ramka, maxsus nishon va profil bezagi",
+            "stars": 149,
+            "payload": "vip_1month"
+        }
+    }
+    
+    if pkg not in packages:
+        await cb.answer("⚠️ Paket topilmadi!", show_alert=True)
+        return
+        
+    p = packages[pkg]
+    try:
+        await cb.bot.send_invoice(
+            chat_id=user_id,
+            title=p["title"],
+            description=p["desc"],
+            payload=p["payload"],
+            currency="XTR",
+            prices=[types.LabeledPrice(label=p["title"], amount=p["stars"])],
+            provider_token=""
+        )
+        await cb.answer("⭐️ To'lov schyoti yuborildi!")
+    except Exception as e:
+        logging.error(f"Error sending stars invoice: {e}")
+        await cb.answer("⚠️ To'lov schyotini yaratishda xatolik yuz berdi.", show_alert=True)
 
 @router.message(Command("ref", "referral", "taklif"))
 async def cmd_referral(message: types.Message):
