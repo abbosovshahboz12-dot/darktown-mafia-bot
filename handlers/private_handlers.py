@@ -210,33 +210,7 @@ async def cb_spy(cb: types.CallbackQuery):
     target_id = int(cb.data.replace("spy_", ""))
     await register_night_choice(cb, "spy", target_id)
 
-# Telegram Stars Payment Handlers
-@router.pre_checkout_query()
-async def process_pre_checkout(pre_checkout_query: types.PreCheckoutQuery):
-    await pre_checkout_query.answer(ok=True)
 
-@router.message(F.successful_payment)
-async def process_successful_payment(message: types.Message):
-    user_id = message.from_user.id
-    payment = message.successful_payment
-    payload = payment.invoice_payload
-    
-    logging.info(f"Successful Telegram Stars Payment from User {user_id}: Payload {payload}")
-    
-    if payload == "coins_100":
-        await db.add_xp_and_coins(user_id, 0, 100)
-        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **100 ta Dark Coins** qo'shildi!")
-    elif payload == "coins_500":
-        await db.add_xp_and_coins(user_id, 0, 550)
-        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **550 ta Dark Coins (+50 bonus)** qo'shildi!")
-    elif payload == "coins_1000":
-        await db.add_xp_and_coins(user_id, 0, 1200)
-        await message.answer("🎉 **To'lov muvaffaqiyatli amalga oshirildi!**\nSizga **1200 ta Dark Coins (+200 bonus)** qo'shildi!")
-    elif payload == "vip_1month":
-        await db.upgrade_to_vip(user_id, 30)
-        await message.answer("👑 **Tabriklaymiz!** Siz **VIP status (30 kun)**ga ega bo'ldingiz! Profilingizda Oltin ramka va VIP imtiyozlar ochildi.")
-    else:
-        await message.answer("🎉 **To'lov qabul qilindi!** Rahmat!")
 
 @router.message()
 async def private_text_handler(message: types.Message):

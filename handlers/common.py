@@ -319,10 +319,12 @@ def get_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
 def get_stars_shop_keyboard(lang: str = "uz") -> types.InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     
+    c50 = "⭐️ 50 Coins (Starter Pack) — 10 Stars"
     c100 = "⭐️ 100 Coins — 25 Stars"
     c500 = "⭐️ 500 Coins (+50 Bonus) — 99 Stars"
     c1000 = "⭐️ 1000 Coins (+200 Bonus) — 179 Stars"
     
+    kb.add(types.InlineKeyboardButton(text=c50, callback_data="buy_stars_coins_50"))
     kb.add(types.InlineKeyboardButton(text=c100, callback_data="buy_stars_coins_100"))
     kb.add(types.InlineKeyboardButton(text=c500, callback_data="buy_stars_coins_500"))
     kb.add(types.InlineKeyboardButton(text=c1000, callback_data="buy_stars_coins_1000"))
@@ -445,6 +447,12 @@ async def cb_buy_stars(cb: types.CallbackQuery):
     lang = await db.get_user_language(user_id)
     
     packages = {
+        "coins_50": {
+            "title": "50 Dark Coins (Starter Pack)",
+            "desc": "Darktown Mafiya o'yini uchun 50 ta Dark Coins (Sinov paketi)",
+            "stars": 10,
+            "payload": "coins_50"
+        },
         "coins_100": {
             "title": "100 Dark Coins",
             "desc": "Darktown Mafiya o'yini uchun 100 ta Dark Coins",
@@ -1516,8 +1524,14 @@ async def successful_payment_handler(message: types.Message):
         await message.answer(success_msg, parse_mode="Markdown")
         return
 
-    coins = 0
-    if payload.startswith("coins_"):
+    coin_rewards = {
+        "coins_50": 50,
+        "coins_100": 100,
+        "coins_500": 550,
+        "coins_1000": 1200
+    }
+    coins = coin_rewards.get(payload, 0)
+    if not coins and payload.startswith("coins_"):
         try:
             coins = int(payload.replace("coins_", ""))
         except ValueError:
@@ -1526,13 +1540,19 @@ async def successful_payment_handler(message: types.Message):
     if coins > 0:
         await db.add_xp_and_coins(message.from_user.id, 0, coins)
         
-        success_msg = f"🎉 **Xarid muvaffaqiyatli yakunlandi!** Hisobingizga **{coins}** tanga qo'shildi."
+        bonus_text = ""
+        if payload == "coins_500":
+            bonus_text = " (+50 bonus)"
+        elif payload == "coins_1000":
+            bonus_text = " (+200 bonus)"
+            
+        success_msg = f"🎉 **Xarid muvaffaqiyatli yakunlandi!** Hisobingizga **{coins}** tanga{bonus_text} qo'shildi."
         if lang == "ru":
-            success_msg = f"🎉 **Покупка успешно завершена!** На ваш баланс зачислено **{coins}** монет."
+            success_msg = f"🎉 **Покупка успешно завершена!** На ваш баланс зачислено **{coins}** монет{bonus_text}."
         elif lang == "en":
-            success_msg = f"🎉 **Purchase completed successfully!** **{coins}** coins have been added to your balance."
+            success_msg = f"🎉 **Purchase completed successfully!** **{coins}** coins{bonus_text} have been added to your balance."
         elif lang == "kz":
-            success_msg = f"🎉 **Сатып алу сәтті аяқталды!** Балансыңызға **{coins}** монета қосылды."
+            success_msg = f"🎉 **Сатып алу сәтті аяқталды!** Балансыңызға **{coins}** монета{bonus_text} қосылды."
             
         await message.answer(success_msg, parse_mode="Markdown")
 
