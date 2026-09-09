@@ -1328,6 +1328,25 @@ async function loadAdminStats() {
             if (maintenanceToggle) {
                 maintenanceToggle.checked = data.maintenance_enabled === true;
             }
+
+            // Render dynamic weekly activity chart
+            const chartContainer = document.getElementById('admin-weekly-chart-bars');
+            if (chartContainer && data.weekly_activity && Array.isArray(data.weekly_activity)) {
+                const maxCount = Math.max(...data.weekly_activity.map(d => d.count), 1);
+                chartContainer.innerHTML = data.weekly_activity.map(d => {
+                    const barHeight = d.count > 0 ? Math.max(14, Math.round((d.count / maxCount) * 80)) : 6;
+                    const isToday = d.days_ago === 0;
+                    const barColor = isToday ? '#00f2fe' : (d.count > 0 ? 'rgba(0, 242, 254, 0.45)' : 'rgba(255, 255, 255, 0.1)');
+                    const glow = isToday ? 'box-shadow: 0 0 10px rgba(0,242,254,0.6);' : '';
+                    return `
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px; flex:1;">
+                            <span style="font-size:10px; color:${isToday ? '#00f2fe' : '#cbd5e1'}; font-weight:bold;">${d.count}</span>
+                            <div style="width:16px; height:${barHeight}px; background:${barColor}; border:1px solid ${isToday ? '#00f2fe' : 'rgba(0,242,254,0.3)'}; border-radius:4px 4px 0 0; transition:height 0.4s ease; ${glow}"></div>
+                            <span style="font-size:10px; color:${isToday ? '#00f2fe' : '#94a3b8'}; font-weight:${isToday ? 'bold' : 'normal'};">${d.day}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
         
         // Fetch active games list

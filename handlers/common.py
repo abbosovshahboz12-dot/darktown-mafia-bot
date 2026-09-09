@@ -275,27 +275,60 @@ async def cmd_quests_pm(message: types.Message):
     await message.answer(text, parse_mode="Markdown")
 
 SHOP_ITEMS = {
-    "booster_active": {
-        "name_uz": "🎭 Faol Rol Busteri",
-        "name_ru": "🎭 Бустер Активной Роли",
-        "name_en": "🎭 Active Role Booster",
-        "name_kz": "🎭 Белсенді рөл бустері",
-        "cost": 200,
-        "desc_uz": "Tinch aholi bo'lib qolmaslik va qiziqarli faol rol (Mafiya, Komissar, Shifokor) olish kafolati!",
-        "desc_ru": "Гарантия получения активной роли (Мафия, Комиссар, Доктор) вместо мирного жителя!",
-        "desc_en": "Guarantees getting an active role (Mafia, Detective, Doctor) instead of Civilian!",
-        "desc_kz": "Бейбіт тұрғын емес, белсенді рөл алу кепілдігі!"
-    },
     "shield": {
         "name_uz": "🛡️ XP Qalqoni",
         "name_ru": "🛡️ Щит опыта",
         "name_en": "🛡️ XP Shield",
         "name_kz": "🛡️ Қалқан",
         "cost": 150,
-        "desc_uz": "Tunda o'ldirilganda XP va tangalarni himoyalaydi",
+        "desc_uz": "Tunda o'ldirilganda XP va tangalarni yo'qotishdan himoyalaydi",
         "desc_ru": "Защищает от потери XP при ночном убийстве",
         "desc_en": "Protects XP and coins on night death",
         "desc_kz": "Түнде өлтірілгенде XP қорғайды"
+    },
+    "booster_mafia": {
+        "name_uz": "🔴 Mafiya Boosteri",
+        "name_ru": "🔴 Бустер Мафии",
+        "name_en": "🔴 Mafia Booster",
+        "name_kz": "🔴 Мафия бустері",
+        "cost": 250,
+        "desc_uz": "Keyingi o'yinda Mafiya jamoasiga tushish ehtimolini keskin oshiradi!",
+        "desc_ru": "Значительно увеличивает шанс стать Мафией в следующей игре!",
+        "desc_en": "Greatly increases the chance of becoming Mafia in the next game!",
+        "desc_kz": "Келесі ойында Мафия болу мүмкіндігін арттырады!"
+    },
+    "booster_detective": {
+        "name_uz": "🔵 Komissar Boosteri",
+        "name_ru": "🔵 Бустер Комиссара",
+        "name_en": "🔵 Detective Booster",
+        "name_kz": "🔵 Комиссар бустері",
+        "cost": 250,
+        "desc_uz": "Keyingi o'yinda Komissar (Sherif) roliga tushish imkoniyati!",
+        "desc_ru": "Шанс получить роль Комиссара (Шерифа) в следующей игре!",
+        "desc_en": "High chance to get the Detective role in the next game!",
+        "desc_kz": "Келесі ойында Комиссар рөлін алу мүмкіндігі!"
+    },
+    "booster_doctor": {
+        "name_uz": "🟡 Shifokor Boosteri",
+        "name_ru": "🟡 Бустер Доктора",
+        "name_en": "🟡 Doctor Booster",
+        "name_kz": "🟡 Дәрігер бустері",
+        "cost": 200,
+        "desc_uz": "Keyingi o'yinda Shifokor (Doctor) roliga tushish imkoniyati!",
+        "desc_ru": "Шанс получить роль Доктора в следующей игре!",
+        "desc_en": "High chance to get the Doctor role in the next game!",
+        "desc_kz": "Келесі ойында Дәрігер рөлін алу мүмкіндігі!"
+    },
+    "booster_maniac": {
+        "name_uz": "🦹 Telba Boosteri",
+        "name_ru": "🦹 Бустер Маньяка",
+        "name_en": "🦹 Maniac Booster",
+        "name_kz": "🦹 Маньяк бустері",
+        "cost": 300,
+        "desc_uz": "Keyingi o'yinda yolg'iz qotil — Maniac (Telba) roliga tushish imkoniyati!",
+        "desc_ru": "Шанс получить опасную роль Маньяка в следующей игре!",
+        "desc_en": "High chance to get the solo Maniac role in the next game!",
+        "desc_kz": "Келесі ойында Маньяк рөлін алу мүмкіндігі!"
     }
 }
 

@@ -1071,6 +1071,28 @@ async def get_detailed_admin_analytics() -> dict:
             "banned_count": banned_count
         }
 
+async def get_weekly_activity() -> list[dict]:
+    day_names_uz = ["Dush", "Sesh", "Chor", "Pay", "Jum", "Shan", "Yak"]
+    async with aiosqlite.connect(DB_PATH) as db:
+        results = []
+        for i in range(6, -1, -1):
+            date_query = f"DATE('now', 'localtime', '-{i} day')"
+            async with db.execute(
+                f"SELECT COUNT(DISTINCT room_id), STRFTIME('%w', {date_query}) FROM game_history WHERE DATE(played_at) = {date_query}"
+            ) as c:
+                row = await c.fetchone()
+                count = row[0] if (row and row[0] is not None) else 0
+                w_day = int(row[1]) if (row and row[1] is not None) else 0
+                # SQLite %w: 0=Sunday, 1=Monday, ..., 6=Saturday
+                idx = (w_day - 1) % 7 # 0=Dush, ..., 6=Yak
+                results.append({
+                    "day": day_names_uz[idx],
+                    "day_idx": idx,
+                    "count": count,
+                    "days_ago": i
+                })
+        return results
+
 async def get_all_users_for_export() -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row

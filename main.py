@@ -229,6 +229,7 @@ async def admin_stats_handler(request):
             return err_resp
             
         stats = await db.get_global_stats()
+        weekly_activity = await db.get_weekly_activity()
         from game.manager import game_manager
         active_games = len(game_manager.games)
         
@@ -237,6 +238,7 @@ async def admin_stats_handler(request):
             "total_users": stats["total_users"],
             "total_plays": stats["total_plays"],
             "active_games": active_games,
+            "weekly_activity": weekly_activity,
             "maintenance_enabled": MAINTENANCE_MODE
         })
     except Exception as e:
