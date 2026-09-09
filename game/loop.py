@@ -1,6 +1,7 @@
 import asyncio
 import random
 import logging
+import urllib.parse
 from typing import List, Optional
 from aiogram import Bot, types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -1259,6 +1260,33 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
                 await db.add_tournament_points(player.user_id, t_points)
             
             await db.add_battle_pass_xp(player.user_id, xp_gain=(50 if is_winner else 15))
+            
+            # Send Viral PM Share link to winners and MVP
+            if is_winner or is_mvp:
+                try:
+                    bot_user = (await bot.get_me()).username
+                    ref_link = f"https://t.me/{bot_user}?start=ref_{player.user_id}"
+                    role_icon = ROLE_EMOJIS.get(player.role, "🎭")
+                    
+                    if is_mvp:
+                        share_text = f"Men hozirgina Darktown Mafiya o'yinida {role_icon} {player.role} bo'lib MVP bo'ldim va butun shaharni yutdim! 👑🔥 Sen ham kuchingni sinab ko'r:"
+                    else:
+                        share_text = f"Men hozirgina Darktown Mafiya o'yinida {role_icon} {player.role} bo'lib g'alaba qozondim! 🏆✨ Biz bilan o'yna:"
+                        
+                    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
+                    
+                    pm_kb = InlineKeyboardBuilder()
+                    pm_kb.add(types.InlineKeyboardButton(text="📤 Do'stlarga ulashish (+50 tanga)", url=share_url))
+                    
+                    title_text = "👑 **O'YIN QAHRAMONI (MVP)!**" if is_mvp else "🏆 **G'ALABA TABRIGI!**"
+                    await bot.send_message(
+                        player.user_id,
+                        f"{title_text}\n\nSiz **+{xp} XP** va **+{coins} Tanga** qo'lga kiritdingiz!\n\nG'alabangizni do'stlarga ulashing va har bir do'stingiz uchun **+50 qo'shimcha tanga** oling! 👇",
+                        reply_markup=pm_kb.as_markup(),
+                        parse_mode="Markdown"
+                    )
+                except Exception:
+                    pass
         except Exception as ex:
             logging.error(f"Error saving game history/achievements: {ex}")
 
@@ -1276,6 +1304,15 @@ async def end_game(bot: Bot, game: Game, winning_faction: str):
             logging.warning(f"Could not update group stats for chat {game.chat_id}: {ex}")
         
     recap_kb = InlineKeyboardBuilder()
+    
+    try:
+        bot_user = (await bot.get_me()).username
+        group_share_text = "Do'stlar, kelinglar Telegramda birgalikda Darktown Mafiya o'ynaymiz! 🕶️🔥 O'yin linki:"
+        group_share_url = f"https://t.me/share/url?url=https://t.me/{bot_user}&text={urllib.parse.quote(group_share_text)}"
+        recap_kb.add(types.InlineKeyboardButton(text="📤 O'yinni do'stlarga ulashish", url=group_share_url))
+    except Exception:
+        pass
+        
     recap_kb.add(types.InlineKeyboardButton(text="🔄 Yana o'ynash (/newgame)", callback_data="replay_newgame"))
     recap_kb.adjust(1)
     

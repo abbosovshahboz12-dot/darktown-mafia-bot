@@ -448,13 +448,27 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
     # Update lobby text
     lang = await db.get_group_language(chat_id)
     players_list = "\n".join([f"{i}. {p.name_escaped}" for i, p in enumerate(game.players.values(), 1)])
+    count = len(game.players)
+    needed = max(0, 4 - count)
+    
+    if needed > 0:
+        callout_uz = f"⚡ O'yin boshlanishi uchun yana **{needed} kishi** kerak!"
+        callout_ru = f"⚡ Для начала игры нужно еще **{needed} чел.**!"
+        callout_en = f"⚡ Need **{needed} more players** to start the game!"
+        callout_kz = f"⚡ Ойынды бастау үшін тағы **{needed} адам** қажет!"
+    else:
+        callout_uz = f"🔥 O'yinni boshlash mumkin (**{count} kishi**)! Yoki yana qo'shilishingiz mumkin."
+        callout_ru = f"🔥 Игру можно начинать (**{count} чел.**)! Или можете еще присоединиться."
+        callout_en = f"🔥 Game is ready to start (**{count} players**)! Or more can join."
+        callout_kz = f"🔥 Ойынды бастауға болады (**{count} адам**)! Немесе тағы қосыла аласыз."
     
     if lang == "ru":
         lobby_text = (
             f"🎮 **Игра Мафия Darktown**\n\n"
             f"Создана новая игра! Игроки собираются.\n\n"
-            f"👥 **Список игроков ({len(game.players)})**:\n"
+            f"👥 **Список игроков ({count})**:\n"
             f"{players_list}\n\n"
+            f"{callout_ru}\n\n"
             f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
         )
         join_confirm = "Вы успешно присоединились!"
@@ -462,8 +476,9 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
         lobby_text = (
             f"🎮 **Darktown Mafia Game**\n\n"
             f"New game created! Players are gathering.\n\n"
-            f"👥 **Player List ({len(game.players)})**:\n"
+            f"👥 **Player List ({count})**:\n"
             f"{players_list}\n\n"
+            f"{callout_en}\n\n"
             f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
         )
         join_confirm = "You have joined successfully!"
@@ -471,8 +486,9 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
         lobby_text = (
             f"🎮 **Darktown Мафия Ойыны**\n\n"
             f"Жаңа ойын құрылды! Ойыншылар жиналуда.\n\n"
-            f"👥 **Ойыншылар тізімі ({len(game.players)})**:\n"
+            f"👥 **Ойыншылар тізімі ({count})**:\n"
             f"{players_list}\n\n"
+            f"{callout_kz}\n\n"
             f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
         )
         join_confirm = "Сіз ойынға сәтті қосылдыңыз!"
@@ -480,8 +496,9 @@ async def join_callback(cb: types.CallbackQuery, bot: Bot):
         lobby_text = (
             f"🎮 **Darktown Mafiya O'yini**\n\n"
             f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda.\n\n"
-            f"👥 **O'yinchilar ro'yxati ({len(game.players)})**:\n"
+            f"👥 **O'yinchilar ro'yxati ({count})**:\n"
             f"{players_list}\n\n"
+            f"{callout_uz}\n\n"
             f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
         )
         join_confirm = "Siz muvaffaqiyatli qo'shildingiz!"
