@@ -24,6 +24,7 @@ FEATURE_LEADERBOARD = os.getenv("FEATURE_LEADERBOARD", "True").lower() in ("true
 FEATURE_CLANS = os.getenv("FEATURE_CLANS", "False").lower() in ("true", "1", "yes")
 FEATURE_BATTLEPASS = os.getenv("FEATURE_BATTLEPASS", "False").lower() in ("true", "1", "yes")
 FEATURE_CASINO = os.getenv("FEATURE_CASINO", "False").lower() in ("true", "1", "yes")
+FEATURE_VIP = os.getenv("FEATURE_VIP", "False").lower() in ("true", "1", "yes")
 
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN topilmadi! .env faylini tekshiring.")
