@@ -277,58 +277,36 @@ async def cmd_quests_pm(message: types.Message):
 SHOP_ITEMS = {
     "shield": {
         "name_uz": "🛡️ XP Qalqoni",
-        "name_ru": "🛡️ Щит опыта",
+        "name_ru": "🛡️ Щит XP",
         "name_en": "🛡️ XP Shield",
-        "name_kz": "🛡️ Қалқан",
+        "name_kz": "🛡️ XP Қалқаны",
         "cost": 150,
-        "desc_uz": "Tunda o'ldirilganda XP va tangalarni yo'qotishdan himoyalaydi",
-        "desc_ru": "Защищает от потери XP при ночном убийстве",
-        "desc_en": "Protects XP and coins on night death",
-        "desc_kz": "Түнде өлтірілгенде XP қорғайды"
+        "desc_uz": "Tunda o'ldirilganda XP va tangalarni yo'qotishdan himoyalaydi (1 martalik)",
+        "desc_ru": "Защищает от потери опыта и монет при ночном убийстве (одноразовый)",
+        "desc_en": "Protects XP and coins on night death (1-time use)",
+        "desc_kz": "Түнде өлтірілгенде XP мен монеталарды қорғайды (1 реттік)"
     },
-    "booster_mafia": {
-        "name_uz": "🔴 Mafiya Boosteri",
-        "name_ru": "🔴 Бустер Мафии",
-        "name_en": "🔴 Mafia Booster",
-        "name_kz": "🔴 Мафия бустері",
-        "cost": 250,
-        "desc_uz": "Keyingi o'yinda Mafiya jamoasiga tushish ehtimolini keskin oshiradi!",
-        "desc_ru": "Значительно увеличивает шанс стать Мафией в следующей игре!",
-        "desc_en": "Greatly increases the chance of becoming Mafia in the next game!",
-        "desc_kz": "Келесі ойында Мафия болу мүмкіндігін арттырады!"
-    },
-    "booster_detective": {
-        "name_uz": "🔵 Komissar Boosteri",
-        "name_ru": "🔵 Бустер Комиссара",
-        "name_en": "🔵 Detective Booster",
-        "name_kz": "🔵 Комиссар бустері",
-        "cost": 250,
-        "desc_uz": "Keyingi o'yinda Komissar (Sherif) roliga tushish imkoniyati!",
-        "desc_ru": "Шанс получить роль Комиссара (Шерифа) в следующей игре!",
-        "desc_en": "High chance to get the Detective role in the next game!",
-        "desc_kz": "Келесі ойында Комиссар рөлін алу мүмкіндігі!"
-    },
-    "booster_doctor": {
-        "name_uz": "🟡 Shifokor Boosteri",
-        "name_ru": "🟡 Бустер Доктора",
-        "name_en": "🟡 Doctor Booster",
-        "name_kz": "🟡 Дәрігер бустері",
+    "booster_active": {
+        "name_uz": "🎭 Faol Rol Busteri",
+        "name_ru": "🎭 Бустер Активной Роли",
+        "name_en": "🎭 Active Role Booster",
+        "name_kz": "🎭 Белсенді рөл бустері",
         "cost": 200,
-        "desc_uz": "Keyingi o'yinda Shifokor (Doctor) roliga tushish imkoniyati!",
-        "desc_ru": "Шанс получить роль Доктора в следующей игре!",
-        "desc_en": "High chance to get the Doctor role in the next game!",
-        "desc_kz": "Келесі ойында Дәрігер рөлін алу мүмкіндігі!"
+        "desc_uz": "Tinch aholi bo'lib qolmaslik va faol rol (Mafiya, Komissar, Shifokor, Telba) olish kafolati!",
+        "desc_ru": "Гарантия получения активной роли (Мафия, Комиссар, Доктор, Маньяк) вместо мирного жителя!",
+        "desc_en": "Guarantees getting an active role (Mafia, Detective, Doctor, Maniac) instead of Civilian!",
+        "desc_kz": "Бейбіт тұрғын емес, белсенді рөл алу кепілдігі!"
     },
-    "booster_maniac": {
-        "name_uz": "🦹 Telba Boosteri",
-        "name_ru": "🦹 Бустер Маньяка",
-        "name_en": "🦹 Maniac Booster",
-        "name_kz": "🦹 Маньяк бустері",
-        "cost": 300,
-        "desc_uz": "Keyingi o'yinda yolg'iz qotil — Maniac (Telba) roliga tushish imkoniyati!",
-        "desc_ru": "Шанс получить опасную роль Маньяка в следующей игре!",
-        "desc_en": "High chance to get the solo Maniac role in the next game!",
-        "desc_kz": "Келесі ойында Маньяк рөлін алу мүмкіндігі!"
+    "fake_doc": {
+        "name_uz": "📄 Soxta Hujjat",
+        "name_ru": "📄 Фальшивые Документы",
+        "name_en": "📄 Fake Documents",
+        "name_kz": "📄 Жалған Құжат",
+        "cost": 250,
+        "desc_uz": "Mafiya bo'lganingizda Komissar tekshirsa, sizni «Tinch aholi» qilib ko'rsatadi (1 martalik)!",
+        "desc_ru": "Если вы Мафия и Комиссар вас проверяет, покажет вас как «Мирный житель» (одноразовый)!",
+        "desc_en": "If you are Mafia and Detective checks you, shows you as Civilian (1-time use)!",
+        "desc_kz": "Мафия болсаңыз және Комиссар тексерсе, сізді «Бейбіт тұрғын» деп көрсетеді (1 реттік)!"
     }
 }
 

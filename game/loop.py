@@ -608,12 +608,30 @@ async def process_night(bot: Bot, game: Game):
                     side = "Tinch aholi"
                     show_role = "Civilian"
                 else:
-                    side = "Mafiya" if checked_player.role in ["Mafia", "Don", "Lawyer"] else "Tinch aholi"
-                    if checked_player.role == "Maniac":
-                        side = "Telba (Maniac)"
-                    show_role = checked_player.role
-                    if checked_player.role in ["Mafia", "Don", "Lawyer", "Maniac"]:
-                        game.add_mvp_points(active_det.user_id, 20)
+                    # Check if Mafia/Don/Lawyer has Fake Document (Soxta Hujjat)
+                    used_fake_doc = False
+                    if checked_player.role in ["Mafia", "Don", "Lawyer"]:
+                        inv = await db.get_inventory(checked_player.user_id)
+                        if inv.get("fake_doc", 0) > 0:
+                            await db.use_item(checked_player.user_id, "fake_doc")
+                            used_fake_doc = True
+                            side = "Tinch aholi"
+                            show_role = "Civilian"
+                            try:
+                                await bot.send_message(
+                                    checked_player.user_id,
+                                    "📄 **Soxta Hujjat ishga tushdi!**\nKomissar sizni tekshirdi, ammo sizdagi Soxta Hujjat sababli u sizni **Tinch aholi** deb bildi. (1 ta soxta hujjat sarflandi)"
+                                )
+                            except Exception:
+                                pass
+                    
+                    if not used_fake_doc:
+                        side = "Mafiya" if checked_player.role in ["Mafia", "Don", "Lawyer"] else "Tinch aholi"
+                        if checked_player.role == "Maniac":
+                            side = "Telba (Maniac)"
+                        show_role = checked_player.role
+                        if checked_player.role in ["Mafia", "Don", "Lawyer", "Maniac"]:
+                            game.add_mvp_points(active_det.user_id, 20)
                 try:
                     await bot.send_message(
                         active_det.user_id,

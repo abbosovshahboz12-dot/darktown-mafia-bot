@@ -302,10 +302,8 @@ function renderInventory(inventory, shieldActive) {
     
     const items = {
         "shield": { name: t("shop_shield_name"), icon: "🛡️", type: "shield" },
-        "booster_mafia": { name: t("shop_mafia_name"), icon: "🔴", type: "booster" },
-        "booster_detective": { name: t("shop_det_name"), icon: "🔵", type: "booster" },
-        "booster_doctor": { name: t("shop_doc_name"), icon: "🟡", type: "booster" },
-        "booster_maniac": { name: t("shop_maniac_name"), icon: "🦹", type: "booster" }
+        "booster_active": { name: t("shop_booster_name"), icon: "🎭", type: "booster" },
+        "fake_doc": { name: t("shop_fakedoc_name"), icon: "📄", type: "passive" }
     };
     
     let hasItems = false;
@@ -324,6 +322,9 @@ function renderInventory(inventory, shieldActive) {
             } else if (itemDef.type === 'booster') {
                 const hintText = currentLang === 'ru' ? 'Напишите /boost в группе' : currentLang === 'en' ? 'Use /boost in group' : currentLang === 'kz' ? 'Топта /boost жазыңыз' : 'Guruhda /boost yozib faollashtiring';
                 actionBtnHtml = `<span style="font-size:0.75rem; color:var(--text-muted);">${hintText}</span>`;
+            } else if (itemDef.type === 'passive') {
+                const passiveText = currentLang === 'ru' ? 'Пассивный (авто)' : currentLang === 'en' ? 'Passive (auto)' : currentLang === 'kz' ? 'Автоматты' : 'Avtomatik himoya';
+                actionBtnHtml = `<span style="font-size:0.75rem; color:var(--accent);">${passiveText}</span>`;
             }
             
             const qtyLabel = currentLang === 'ru' ? 'Кол-во:' : currentLang === 'en' ? 'Qty:' : currentLang === 'kz' ? 'Саны:' : 'Soni:';
@@ -1780,15 +1781,11 @@ const LOCALES = {
         "lbl_shop": "Darktown Do'koni",
         "lbl_leaderboard_title": "Global Top O'yinchilar",
         "shop_shield_name": "XP Qalqoni",
-        "shop_shield_desc": "Yutqazganingizda XP yo'qotishdan himoya qiladi (1 martalik).",
-        "shop_mafia_name": "Mafiya Booster",
-        "shop_mafia_desc": "Keyingi o'yinda Mafiya rolini olish imkoniyatini oshiradi.",
-        "shop_det_name": "Komissar Booster",
-        "shop_det_desc": "Keyingi o'yinda Komissar rolini olish imkoniyatini oshiradi.",
-        "shop_doc_name": "Shifokor Booster",
-        "shop_doc_desc": "Keyingi o'yinda Shifokor rolini olish imkoniyatini oshiradi.",
-        "shop_maniac_name": "Telba Booster",
-        "shop_maniac_desc": "Keyingi o'yinda Telba (Maniac) rolini olish imkoniyatini oshiradi.",
+        "shop_shield_desc": "Tunda o'ldirilganda XP va tangalarni himoyalaydi (1 martalik).",
+        "shop_booster_name": "Faol Rol Busteri",
+        "shop_booster_desc": "Tinch aholi bo'lib qolmaslik va faol rol (Mafiya, Komissar, Shifokor, Telba) olish kafolati!",
+        "shop_fakedoc_name": "Soxta Hujjat",
+        "shop_fakedoc_desc": "Mafiya bo'lganingizda Komissar tekshirsa, sizni «Tinch aholi» qilib ko'rsatadi (1 martalik)!",
         "coin_pack_desc": "Mini App do'koni uchun {count} tanga.",
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal"
@@ -1844,15 +1841,11 @@ const LOCALES = {
         "lbl_shop": "Магазин Darktown",
         "lbl_leaderboard_title": "Глобальный Топ Игроков",
         "shop_shield_name": "Щит XP",
-        "shop_shield_desc": "Защищает от потери опыта при поражении (одноразовый).",
-        "shop_mafia_name": "Бустер Мафии",
-        "shop_mafia_desc": "Увеличивает шанс получить роль Мафии в следующей игре.",
-        "shop_det_name": "Бустер Комиссара",
-        "shop_det_desc": "Увеличивает шанс получить роль Комиссара в следующей игре.",
-        "shop_doc_name": "Бустер Доктора",
-        "shop_doc_desc": "Увеличивает шанс получить роль Доктора в следующей игре.",
-        "shop_maniac_name": "Бустер Маньяка",
-        "shop_maniac_desc": "Увеличивает шанс получить роль Маньяка в следующей игре.",
+        "shop_shield_desc": "Защищает от потери опыта и монет при ночном убийстве (одноразовый).",
+        "shop_booster_name": "Бустер Активной Роли",
+        "shop_booster_desc": "Гарантия получения активной роли (Мафия, Комиссар, Доктор, Маньяк) вместо мирного жителя!",
+        "shop_fakedoc_name": "Фальшивые Документы",
+        "shop_fakedoc_desc": "Если вы Мафия и Комиссар вас проверяет, покажет вас как «Мирный житель» (одноразовый)!",
         "coin_pack_desc": "Для покупок в магазине {count} монет.",
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal"
@@ -1908,15 +1901,11 @@ const LOCALES = {
         "lbl_shop": "Darktown Shop",
         "lbl_leaderboard_title": "Global Top Players",
         "shop_shield_name": "XP Shield",
-        "shop_shield_desc": "Protects from losing XP when you lose (1-time use).",
-        "shop_mafia_name": "Mafia Booster",
-        "shop_mafia_desc": "Increases the chance of getting the Mafia role in the next game.",
-        "shop_det_name": "Detective Booster",
-        "shop_det_desc": "Increases the chance of getting the Detective role in the next game.",
-        "shop_doc_name": "Doctor Booster",
-        "shop_doc_desc": "Increases the chance of getting the Doctor role in the next game.",
-        "shop_maniac_name": "Maniac Booster",
-        "shop_maniac_desc": "Increases the chance of getting the Maniac role in the next game.",
+        "shop_shield_desc": "Protects XP and coins on night death (1-time use).",
+        "shop_booster_name": "Active Role Booster",
+        "shop_booster_desc": "Guarantees getting an active role (Mafia, Detective, Doctor, Maniac) instead of Civilian!",
+        "shop_fakedoc_name": "Fake Documents",
+        "shop_fakedoc_desc": "If you are Mafia and Detective checks you, shows you as Civilian (1-time use)!",
         "coin_pack_desc": "Get {count} coins for the Mini App shop.",
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal"
@@ -1972,15 +1961,11 @@ const LOCALES = {
         "lbl_shop": "Darktown Дүкені",
         "lbl_leaderboard_title": "Глобалды Үздік Ойыншылар",
         "shop_shield_name": "XP Қалқаны",
-        "shop_shield_desc": "Ұтылған кезде тәжірибені (XP) жоғалтудан қорғайды (1 реттік).",
-        "shop_mafia_name": "Мафия Бустері",
-        "shop_mafia_desc": "Келесі ойында Мафия рөлін алу мүмкіндігін арттырады.",
-        "shop_det_name": "Комиссар Бустерi",
-        "shop_det_desc": "Келесі ойында Комиссар рөлін алу мүмкіндігін арттырады.",
-        "shop_doc_name": "Дәрігер Бустерi",
-        "shop_doc_desc": "Келесі ойында Дәрігер рөлін алу мүмкіндігін арттырады.",
-        "shop_maniac_name": "Маньяк Бустерi",
-        "shop_maniac_desc": "Келесі ойында Маньяк рөлін алу мүмкіндігін арттырады.",
+        "shop_shield_desc": "Түнде өлтірілгенде XP мен монеталарды қорғайды (1 реттік).",
+        "shop_booster_name": "Белсенді Рөл Бустері",
+        "shop_booster_desc": "Бейбіт тұрғын емес, белсенді рөл (Мафия, Комиссар, Дәрігер, Маньяк) алу кепілдігі!",
+        "shop_fakedoc_name": "Жалған Құжат",
+        "shop_fakedoc_desc": "Мафия болсаңыз және Комиссар тексерсе, сізді «Бейбіт тұрғын» деп көрсетеді (1 реттік)!",
         "coin_pack_desc": "Дүкен үшін {count} монета.",
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal"
@@ -2092,48 +2077,24 @@ function updateLang(lang) {
     
     const shieldNameEl = document.getElementById('shop-item-shield-name');
     if (shieldNameEl) shieldNameEl.innerText = t("shop_shield_name");
-    
     const shieldDescEl = document.getElementById('shop-item-shield-desc');
     if (shieldDescEl) shieldDescEl.innerText = t("shop_shield_desc");
-    
     const shieldBtnEl = document.getElementById('shop-item-shield-btn');
     if (shieldBtnEl) shieldBtnEl.innerText = t("btn_buy");
     
-    const mafiaNameEl = document.getElementById('shop-item-mafia-name');
-    if (mafiaNameEl) mafiaNameEl.innerText = t("shop_mafia_name");
+    const boosterNameEl = document.getElementById('shop-item-booster-name');
+    if (boosterNameEl) boosterNameEl.innerText = t("shop_booster_name");
+    const boosterDescEl = document.getElementById('shop-item-booster-desc');
+    if (boosterDescEl) boosterDescEl.innerText = t("shop_booster_desc");
+    const boosterBtnEl = document.getElementById('shop-item-booster-btn');
+    if (boosterBtnEl) boosterBtnEl.innerText = t("btn_buy");
     
-    const mafiaDescEl = document.getElementById('shop-item-mafia-desc');
-    if (mafiaDescEl) mafiaDescEl.innerText = t("shop_mafia_desc");
-    
-    const mafiaBtnEl = document.getElementById('shop-item-mafia-btn');
-    if (mafiaBtnEl) mafiaBtnEl.innerText = t("btn_buy");
-    
-    const detNameEl = document.getElementById('shop-item-det-name');
-    if (detNameEl) detNameEl.innerText = t("shop_det_name");
-    
-    const detDescEl = document.getElementById('shop-item-det-desc');
-    if (detDescEl) detDescEl.innerText = t("shop_det_desc");
-    
-    const detBtnEl = document.getElementById('shop-item-det-btn');
-    if (detBtnEl) detBtnEl.innerText = t("btn_buy");
-    
-    const docNameEl = document.getElementById('shop-item-doc-name');
-    if (docNameEl) docNameEl.innerText = t("shop_doc_name");
-    
-    const docDescEl = document.getElementById('shop-item-doc-desc');
-    if (docDescEl) docDescEl.innerText = t("shop_doc_desc");
-    
-    const docBtnEl = document.getElementById('shop-item-doc-btn');
-    if (docBtnEl) docBtnEl.innerText = t("btn_buy");
-    
-    const manNameEl = document.getElementById('shop-item-maniac-name');
-    if (manNameEl) manNameEl.innerText = t("shop_maniac_name");
-    
-    const manDescEl = document.getElementById('shop-item-maniac-desc');
-    if (manDescEl) manDescEl.innerText = t("shop_maniac_desc");
-    
-    const manBtnEl = document.getElementById('shop-item-maniac-btn');
-    if (manBtnEl) manBtnEl.innerText = t("btn_buy");
+    const fakedocNameEl = document.getElementById('shop-item-fakedoc-name');
+    if (fakedocNameEl) fakedocNameEl.innerText = t("shop_fakedoc_name");
+    const fakedocDescEl = document.getElementById('shop-item-fakedoc-desc');
+    if (fakedocDescEl) fakedocDescEl.innerText = t("shop_fakedoc_desc");
+    const fakedocBtnEl = document.getElementById('shop-item-fakedoc-btn');
+    if (fakedocBtnEl) fakedocBtnEl.innerText = t("btn_buy");
     
     // Coin packages
     const pack1Desc = document.getElementById('lbl-pack1-desc');

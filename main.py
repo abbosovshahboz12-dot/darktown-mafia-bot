@@ -158,10 +158,8 @@ async def buy_handler(request):
         
         shop_items = {
             "shield": {"name": "XP Qalqoni", "cost": 150},
-            "booster_mafia": {"name": "Mafiya Booster", "cost": 250},
-            "booster_detective": {"name": "Komissar Booster", "cost": 250},
-            "booster_doctor": {"name": "Shifokor Booster", "cost": 200},
-            "booster_maniac": {"name": "Telba Booster", "cost": 300}
+            "booster_active": {"name": "Faol Rol Busteri", "cost": 200},
+            "fake_doc": {"name": "Soxta Hujjat", "cost": 250}
         }
         
         if not user_id or item_key not in shop_items:
