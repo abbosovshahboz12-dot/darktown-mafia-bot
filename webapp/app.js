@@ -228,6 +228,8 @@ async function loadProfile() {
                 const roleKey = stat.role.toLowerCase();
                 const emoji = roleEmojis[roleKey] || "🎭";
                 const roleTitle = stat.role.charAt(0).toUpperCase() + stat.role.slice(1);
+                const playedTxt = t("lbl_stat_played_suffix") || "o'yin";
+                const wonTxt = t("lbl_stat_won_suffix") || "yutuq";
                 
                 const item = document.createElement('div');
                 item.className = 'role-stat-item';
@@ -236,15 +238,15 @@ async function loadProfile() {
                         <span class="role-emoji">${emoji}</span>
                         <div>
                             <div class="role-name">${roleTitle}</div>
-                            <div class="role-played">${stat.games_played} o'yin</div>
+                            <div class="role-played">${stat.games_played} ${playedTxt}</div>
                         </div>
                     </div>
-                    <span class="role-win-badge">${stat.games_won} yutuq</span>
+                    <span class="role-win-badge">${stat.games_won} ${wonTxt}</span>
                 `;
                 rolesStatsContainer.appendChild(item);
             });
         } else {
-            rolesStatsContainer.innerHTML = '<div class="no-data">Hozircha o\'yinlar o\'ynalmagan.</div>';
+            rolesStatsContainer.innerHTML = `<div class="no-data">${t("lbl_no_data")}</div>`;
         }
         
         document.getElementById('stats-played').innerText = totalPlayed;
@@ -254,7 +256,7 @@ async function loadProfile() {
         
         // Shield active check
         const shieldActive = data.user.shield_active === 1;
-        document.getElementById('shield-status').innerText = shieldActive ? "Faol (Yutqazsangiz XP himoya qilinadi)" : "Faol emas";
+        document.getElementById('shield-status').innerText = shieldActive ? t("lbl_shield_active") : t("lbl_shield_inactive");
         document.getElementById('shield-status').style.color = shieldActive ? "var(--success)" : "var(--text-muted)";
         
         // Render inventory
@@ -508,17 +510,14 @@ function updateCalculator(playerCount) {
         "Maniac": "🦹"
     };
     
-    const roleUzNames = {
-        "Mafia": "Mafiya",
-        "Don": "Don (Boshliq)",
-        "Civilian": "Tinch aholi",
-        "Detective": "Komissar (Detective)",
-        "Doctor": "Shifokor",
-        "Bodyguard": "Tansoqchi",
-        "Witch": "Jodugar",
-        "Courtesan": "Jodugar",
-        "Maniac": "Telba (Maniac)"
+    const roleNamesByLang = {
+        uz: { "Mafia": "Mafiya", "Don": "Don (Boshliq)", "Civilian": "Tinch aholi", "Detective": "Komissar", "Doctor": "Shifokor", "Bodyguard": "Tansoqchi", "Courtesan": "Jodugar", "Maniac": "Telba (Maniac)" },
+        ru: { "Mafia": "Мафия", "Don": "Дон", "Civilian": "Мирный житель", "Detective": "Комиссар", "Doctor": "Доктор", "Bodyguard": "Телохранитель", "Courtesan": "Любовница", "Maniac": "Маньяк" },
+        en: { "Mafia": "Mafia", "Don": "Don", "Civilian": "Civilian", "Detective": "Detective", "Doctor": "Doctor", "Bodyguard": "Bodyguard", "Courtesan": "Witch", "Maniac": "Maniac" },
+        kz: { "Mafia": "Мафия", "Don": "Дон", "Civilian": "Бейбіт тұрғын", "Detective": "Комиссар", "Doctor": "Дәрігер", "Bodyguard": "Оққағар", "Courtesan": "Сиқыршы", "Maniac": "Маньяк" }
     };
+    const activeNames = roleNamesByLang[currentLang] || roleNamesByLang.uz;
+    const countSuffix = currentLang === 'ru' ? 'шт' : currentLang === 'en' ? 'pcs' : currentLang === 'kz' ? 'дана' : 'ta';
     
     for (let r in roleCounts) {
         const item = document.createElement('div');
@@ -526,17 +525,71 @@ function updateCalculator(playerCount) {
         
         const count = roleCounts[r];
         const emoji = roleEmojis[r] || "🎭";
-        const name = roleUzNames[r] || r;
+        const name = activeNames[r] || r;
         
         item.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px;">
                 <span style="font-size:1.3rem;">${emoji}</span>
                 <span style="font-weight:600; font-size:0.9rem;">${name}</span>
             </div>
-            <span style="font-weight:800; color:var(--primary); font-size:0.95rem;">${count} ta</span>
+            <span style="font-weight:800; color:var(--primary); font-size:0.95rem;">${count} ${countSuffix}</span>
         `;
         list.appendChild(item);
     }
+}
+
+function renderCalculatorGuide() {
+    const guideList = document.getElementById('calc-roles-guide-list');
+    if (!guideList) return;
+    const guides = {
+        uz: [
+            { role: "🔴 Mafiya", desc: "Tunda shahar a'zolarini o'ldirish uchun sheriklari bilan ovoz beradi." },
+            { role: "🕶️ Don", desc: "Komissarni topish uchun tunda har bir o'yinchini tekshiradi." },
+            { role: "🔵 Komissar (Detective)", desc: "Tunda shubhalanuvchini tekshiradi yoki uni to'g'ridan-to'g'ri otib tashlaydi." },
+            { role: "🟢 Tinch aholi (Civilian)", desc: "Tunda uxlaydi, kunduzi shubhalilarni dorda osish uchun ovoz beradi." },
+            { role: "🏥 Shifokor (Doctor)", desc: "Tunda o'ldirilgan o'yinchilardan birini o'limdan qutqarish uchun davolaydi." },
+            { role: "🛡️ Tansoqchi (Bodyguard)", desc: "Tunda kimnidir himoya qiladi (u o'rniga o'zi o'limga duch keladi)." },
+            { role: "🌸 Jodugar (Witch)", desc: "Tunda istalgan bir o'yinchining tungi qobiliyatini bloklaydi." },
+            { role: "🦹 Telba (Maniac)", desc: "Har bir tunda o'z xohishiga ko'ra o'ldirish uchun bitta qurbon tanlaydi." }
+        ],
+        ru: [
+            { role: "🔴 Мафия", desc: "Ночью голосует с сообщниками за убийство мирных жителей." },
+            { role: "🕶️ Дон", desc: "Ночью ищет Комиссара, проверяя игроков." },
+            { role: "🔵 Комиссар (Шериф)", desc: "Ночью проверяет роль подозреваемого или стреляет в него." },
+            { role: "🟢 Мирный житель", desc: "Ночью спит, днем голосует на суде Линча за исключение подозреваемых." },
+            { role: "🏥 Доктор", desc: "Ночью лечит одного из игроков, спасая от ночного нападения." },
+            { role: "🛡️ Телохранитель", desc: "Ночью защищает цель (принимает удар на себя)." },
+            { role: "🌸 Любовница (Ведьма)", desc: "Блокирует ночное действие любого выбранного игрока." },
+            { role: "🦹 Маньяк", desc: "Одиночный убийца. Каждую ночь выбирает жертву." }
+        ],
+        en: [
+            { role: "🔴 Mafia", desc: "Votes with teammates at night to eliminate town members." },
+            { role: "🕶️ Don", desc: "Checks players at night searching for the Detective." },
+            { role: "🔵 Detective", desc: "Checks player roles at night or shoots a suspect." },
+            { role: "🟢 Civilian", desc: "Sleeps at night, discusses and votes to hang suspects by day." },
+            { role: "🏥 Doctor", desc: "Heals one player each night to save them from death." },
+            { role: "🛡️ Bodyguard", desc: "Protects a player at night (dies in their place if attacked)." },
+            { role: "🌸 Witch / Courtesan", desc: "Blocks the night ability of any chosen player." },
+            { role: "🦹 Maniac", desc: "Solo killer. Chooses one victim to eliminate every night." }
+        ],
+        kz: [
+            { role: "🔴 Мафия", desc: "Түнде сыбайластарымен бірге бейбіт тұрғындарды өлтіруге дауыс береді." },
+            { role: "🕶️ Дон", desc: "Түнде ойыншыларды тексеріп, Комиссарды іздейді." },
+            { role: "🔵 Комиссар", desc: "Түнде күдіктінің рөлін тексереді немесе оны атады." },
+            { role: "🟢 Бейбіт тұрғын", desc: "Түнде ұйықтайды, күндіз күдіктілерге дауыс береді." },
+            { role: "🏥 Дәрігер", desc: "Түнде бір ойыншыны емдеп, өлімнен құтқарады." },
+            { role: "🛡️ Оққағар", desc: "Түнде біреуді қорғайды (орнына өзі өледі)." },
+            { role: "🌸 Сиқыршы", desc: "Кез келген ойыншының түнгі әрекетін бұғаттайды." },
+            { role: "🦹 Маньяк", desc: "Жалғыз қанішер. Әр түнде бір құрбанды таңдайды." }
+        ]
+    };
+    const list = guides[currentLang] || guides.uz;
+    guideList.innerHTML = list.map(g => `
+        <div>
+            <span style="font-weight:bold; color:#00f2fe;">${g.role}</span>
+            <p style="margin:4px 0 0 0; font-size:11px; color:#94a3b8;">${g.desc}</p>
+        </div>
+    `).join('');
 }
 
 // Initial load
@@ -1738,6 +1791,9 @@ const LOCALES = {
         "lbl_xp_progress": "Tajriba (XP)",
         "lbl_shield_active": "Faol (tajriba himoyalangan)",
         "lbl_shield_inactive": "Faol emas",
+        "lbl_shield_title": "XP Himoya Qalqoni",
+        "lbl_stat_played_suffix": "o'yin",
+        "lbl_stat_won_suffix": "yutuq",
         "lbl_no_data": "Hozircha o'yinlar o'ynalmagan.",
         "lbl_buy_coins": "🪙 Tanga sotib olish",
         "lbl_inventory": "Sizning Inventaringiz",
@@ -1751,6 +1807,9 @@ const LOCALES = {
         "lbl_ref_title": "👥 Taklifnoma Tizimi",
         "lbl_ref_desc": "Do'stlaringizni taklif qiling va har biri uchun +50 tanga bonus oling!",
         "btn_copy_ref": "Havolani nusxalash",
+        "lbl_vip_bg_title": "👑 VIP Shaxsiy Orqa Fon",
+        "lbl_vip_bg_desc": "Mini App foniga qo'yish uchun rasm URL havolasini kiriting:",
+        "btn_save_vip_bg": "Fonga o'rnatish",
         "lbl_achievements_title": "Erishilgan Yutuqlar",
         "lbl_stats_title": "O'yin Statistikasi",
         "lbl_quests_title": "📋 Kunlik Vazifalar",
@@ -1770,7 +1829,7 @@ const LOCALES = {
         "lbl_role_prefix": "🕵️‍♂️ Rol: ",
         "lbl_reward_coins": "tanga",
         "calc_title": "🎮 Mafiya Balans Kalkulyatori",
-        "calc_lbl_players": "O'yinchilar soni",
+        "calc_lbl_players": "O'yinchilar soni:",
         "calc_roles_distribution": "👥 Kutilayotgan rollar taqsimoti",
         "calc_roles_guide": "🎭 Rol qoidalari va tavsiflari",
         "nav_profile": "Profil",
@@ -1788,7 +1847,40 @@ const LOCALES = {
         "shop_fakedoc_desc": "Mafiya bo'lganingizda Komissar tekshirsa, sizni «Tinch aholi» qilib ko'rsatadi (1 martalik)!",
         "coin_pack_desc": "Mini App do'koni uchun {count} tanga.",
         "btn_pay_stars": "⭐️ Telegram Stars",
-        "btn_pay_card": "💳 Visa / PayPal"
+        "btn_pay_card": "💳 Visa / PayPal",
+        "lbl_hmenu_title": "⚙️ Menyu va Sozlamalar",
+        "lbl_hmenu_rules": "O'yin Qoidalari",
+        "lbl_hmenu_pass": "Mavsumiy Battle Pass",
+        "lbl_hmenu_channel": "Rasmiy Kanal (@DarkTownuz)",
+        "lbl_hmenu_shop": "Do'kon (Tangalar va Busterlar)",
+        "lbl_hmenu_sound": "Ovoz effektlari",
+        "lbl_party_title": "👥 Geymerlar Partiyasi",
+        "party_status_solo": "Yakka (Solo)",
+        "party_info_solo": "Siz hozircha guruhda emassiz. Do'stlaringiz bilan birga o'ynash uchun partiya yarating.",
+        "btn_create_party": "Partiya Yaratish",
+        "btn_copy_party_link": "Taklif Havolasi",
+        "lbl_matchmaking_title": "🎮 O'yin Topish & Xona Yaratish",
+        "btn_auto_match": "🔍 Avto Matching (CS2)",
+        "lbl_room_private": "🔒 Faqat do'stlar uchun (Private)",
+        "lbl_room_pin": "PIN-kod o'rnatish:",
+        "lbl_room_day": "☀️ Kun vaqti (soniya):",
+        "lbl_room_night": "🌙 Tun vaqti (soniya):",
+        "btn_submit_create_room": "Xona Yaratish",
+        "lbl_join_id": "ID orqali ulanish:",
+        "lbl_join_pin": "PIN-kod (agar mavjud bo'lsa):",
+        "btn_submit_join_room": "Ulanish",
+        "lbl_public_rooms_title": "🌐 Faol Ochiq Xonalar (Lobby)",
+        "lbl_no_active_rooms": "Hozircha ochiq lobbilar yo'q. Avto matching orqali birinchilardan bo'lib yarating!",
+        "lobby_room_status": "O'yinchilar kutilmoqda...",
+        "btn_lobby_leave": "Chiqish",
+        "btn_lobby_start": "O'yinni Boshlash",
+        "btn_active_game_leave": "Chiqish",
+        "lbl_game_my_role_prefix": "Sizning rolingiz:",
+        "lbl_day_chat_title": "💬 Kunlik Munozara Chati",
+        "input_day_chat": "Munozaraga qo'shiling...",
+        "lbl_mafia_chat_title": "🔴 Mafiya Maxfiy Chati",
+        "input_mafia_chat": "Mafiyaga xabar...",
+        "input_ghost_chat": "Xabar yozing..."
     },
     ru: {
         "title_profile": "👤 Профиль",
@@ -1798,6 +1890,9 @@ const LOCALES = {
         "lbl_xp_progress": "Опыт (XP)",
         "lbl_shield_active": "Активен (опыт защищен)",
         "lbl_shield_inactive": "Не активен",
+        "lbl_shield_title": "Щит защиты XP",
+        "lbl_stat_played_suffix": "игр",
+        "lbl_stat_won_suffix": "побед",
         "lbl_no_data": "Игр пока нет.",
         "lbl_buy_coins": "🪙 Купить монеты",
         "lbl_inventory": "Ваш Инвентарь",
@@ -1811,6 +1906,9 @@ const LOCALES = {
         "lbl_ref_title": "👥 Реферальная Система",
         "lbl_ref_desc": "Приглашайте друзей и получайте +50 монет за каждого!",
         "btn_copy_ref": "Копировать ссылку",
+        "lbl_vip_bg_title": "👑 VIP Персональный Фон",
+        "lbl_vip_bg_desc": "Введите URL картинки для фона Mini App:",
+        "btn_save_vip_bg": "Установить фон",
         "lbl_achievements_title": "Достижения",
         "lbl_stats_title": "Статистика Игры",
         "lbl_quests_title": "📋 Ежедневные Задания",
@@ -1830,7 +1928,7 @@ const LOCALES = {
         "lbl_role_prefix": "🕵️‍♂️ Роль: ",
         "lbl_reward_coins": "монет",
         "calc_title": "🎮 Калькулятор Баланса Мафии",
-        "calc_lbl_players": "Количество игроков",
+        "calc_lbl_players": "Количество игроков:",
         "calc_roles_distribution": "👥 Ожидаемое распределение ролей",
         "calc_roles_guide": "🎭 Правила и описание ролей",
         "nav_profile": "Профиль",
@@ -1848,7 +1946,40 @@ const LOCALES = {
         "shop_fakedoc_desc": "Если вы Мафия и Комиссар вас проверяет, покажет вас как «Мирный житель» (одноразовый)!",
         "coin_pack_desc": "Для покупок в магазине {count} монет.",
         "btn_pay_stars": "⭐️ Telegram Stars",
-        "btn_pay_card": "💳 Visa / PayPal"
+        "btn_pay_card": "💳 Visa / PayPal",
+        "lbl_hmenu_title": "⚙️ Меню и Настройки",
+        "lbl_hmenu_rules": "Правила игры",
+        "lbl_hmenu_pass": "Сезонный Battle Pass",
+        "lbl_hmenu_channel": "Официальный Канал (@DarkTownuz)",
+        "lbl_hmenu_shop": "Магазин (Монеты и Бустеры)",
+        "lbl_hmenu_sound": "Звуковые эффекты",
+        "lbl_party_title": "👥 Пати Игроков",
+        "party_status_solo": "Соло",
+        "party_info_solo": "Вы пока не в пати. Создайте пати для совместной игры с друзьями.",
+        "btn_create_party": "Создать пати",
+        "btn_copy_party_link": "Ссылка-приглашение",
+        "lbl_matchmaking_title": "🎮 Поиск Игры & Создание Комнаты",
+        "btn_auto_match": "🔍 Авто Поиск (CS2)",
+        "lbl_room_private": "🔒 Только для друзей (Private)",
+        "lbl_room_pin": "Установить PIN-код:",
+        "lbl_room_day": "☀️ Время дня (сек):",
+        "lbl_room_night": "🌙 Время ночи (сек):",
+        "btn_submit_create_room": "Создать комнату",
+        "lbl_join_id": "ID комнаты:",
+        "lbl_join_pin": "PIN-код (если есть):",
+        "btn_submit_join_room": "Войти",
+        "lbl_public_rooms_title": "🌐 Активные Открытые Комнаты",
+        "lbl_no_active_rooms": "Открытых комнат пока нет. Создайте первую через Авто Поиск!",
+        "lobby_room_status": "Ожидание игроков...",
+        "btn_lobby_leave": "Выйти",
+        "btn_lobby_start": "Начать игру",
+        "btn_active_game_leave": "Выйти",
+        "lbl_game_my_role_prefix": "Ваша роль:",
+        "lbl_day_chat_title": "💬 Дневной Чат Обсуждения",
+        "input_day_chat": "Присоединяйтесь к обсуждению...",
+        "lbl_mafia_chat_title": "🔴 Секретный Чат Мафии",
+        "input_mafia_chat": "Сообщение мафии...",
+        "input_ghost_chat": "Напишите сообщение..."
     },
     en: {
         "title_profile": "👤 Profile",
@@ -1858,6 +1989,9 @@ const LOCALES = {
         "lbl_xp_progress": "Experience (XP)",
         "lbl_shield_active": "Active (XP protected)",
         "lbl_shield_inactive": "Inactive",
+        "lbl_shield_title": "XP Shield",
+        "lbl_stat_played_suffix": "games",
+        "lbl_stat_won_suffix": "wins",
         "lbl_no_data": "No games played yet.",
         "lbl_buy_coins": "🪙 Buy Coins",
         "lbl_inventory": "Your Inventory",
@@ -1871,6 +2005,9 @@ const LOCALES = {
         "lbl_ref_title": "👥 Referral Program",
         "lbl_ref_desc": "Invite friends and get +50 coins for each referral!",
         "btn_copy_ref": "Copy Invite Link",
+        "lbl_vip_bg_title": "👑 VIP Custom Background",
+        "lbl_vip_bg_desc": "Enter image URL for Mini App background:",
+        "btn_save_vip_bg": "Set Background",
         "lbl_achievements_title": "Achievements",
         "lbl_stats_title": "Game Stats",
         "lbl_quests_title": "📋 Daily Quests",
@@ -1890,7 +2027,7 @@ const LOCALES = {
         "lbl_role_prefix": "🕵️‍♂️ Role: ",
         "lbl_reward_coins": "coins",
         "calc_title": "🎮 Mafia Balance Calculator",
-        "calc_lbl_players": "Number of players",
+        "calc_lbl_players": "Number of players:",
         "calc_roles_distribution": "👥 Expected Role Distribution",
         "calc_roles_guide": "🎭 Role Rules & Descriptions",
         "nav_profile": "Profile",
@@ -1908,7 +2045,40 @@ const LOCALES = {
         "shop_fakedoc_desc": "If you are Mafia and Detective checks you, shows you as Civilian (1-time use)!",
         "coin_pack_desc": "Get {count} coins for the Mini App shop.",
         "btn_pay_stars": "⭐️ Telegram Stars",
-        "btn_pay_card": "💳 Visa / PayPal"
+        "btn_pay_card": "💳 Visa / PayPal",
+        "lbl_hmenu_title": "⚙️ Menu & Settings",
+        "lbl_hmenu_rules": "Game Rules",
+        "lbl_hmenu_pass": "Seasonal Battle Pass",
+        "lbl_hmenu_channel": "Official Channel (@DarkTownuz)",
+        "lbl_hmenu_shop": "Shop (Coins & Boosters)",
+        "lbl_hmenu_sound": "Sound Effects",
+        "lbl_party_title": "👥 Gamer Party",
+        "party_status_solo": "Solo",
+        "party_info_solo": "You are not in a party. Create a party to play with friends.",
+        "btn_create_party": "Create Party",
+        "btn_copy_party_link": "Invite Link",
+        "lbl_matchmaking_title": "🎮 Matchmaking & Create Room",
+        "btn_auto_match": "🔍 Auto Matchmaking (CS2)",
+        "lbl_room_private": "🔒 Friends Only (Private)",
+        "lbl_room_pin": "Set PIN code:",
+        "lbl_room_day": "☀️ Day time (sec):",
+        "lbl_room_night": "🌙 Night time (sec):",
+        "btn_submit_create_room": "Create Room",
+        "lbl_join_id": "Join by ID:",
+        "lbl_join_pin": "PIN code (if any):",
+        "btn_submit_join_room": "Join",
+        "lbl_public_rooms_title": "🌐 Active Public Rooms",
+        "lbl_no_active_rooms": "No open rooms right now. Create one via Auto Matchmaking!",
+        "lobby_room_status": "Waiting for players...",
+        "btn_lobby_leave": "Leave",
+        "btn_lobby_start": "Start Game",
+        "btn_active_game_leave": "Leave",
+        "lbl_game_my_role_prefix": "Your role:",
+        "lbl_day_chat_title": "💬 Day Discussion Chat",
+        "input_day_chat": "Join the discussion...",
+        "lbl_mafia_chat_title": "🔴 Secret Mafia Chat",
+        "input_mafia_chat": "Message to mafia...",
+        "input_ghost_chat": "Type a message..."
     },
     kz: {
         "title_profile": "👤 Профиль",
@@ -1918,6 +2088,9 @@ const LOCALES = {
         "lbl_xp_progress": "Тәжірибе (XP)",
         "lbl_shield_active": "Белсенді (XP қорғалған)",
         "lbl_shield_inactive": "Белсенді емес",
+        "lbl_shield_title": "XP Қорғау Қалқаны",
+        "lbl_stat_played_suffix": "ойын",
+        "lbl_stat_won_suffix": "жеңіс",
         "lbl_no_data": "Әзірге ойындар жоқ.",
         "lbl_buy_coins": "🪙 Монета сатып алу",
         "lbl_inventory": "Сіздің Инвентарыңыз",
@@ -1931,6 +2104,9 @@ const LOCALES = {
         "lbl_ref_title": "👥 Шақыру Жүйесі",
         "lbl_ref_desc": "Достарыңызды шақырыңыз және әрқайсысы үшін +50 монета алыңыз!",
         "btn_copy_ref": "Сілтемені Көшіру",
+        "lbl_vip_bg_title": "👑 VIP Жеке Фон",
+        "lbl_vip_bg_desc": "Mini App фонына сурет URL енгізіңіз:",
+        "btn_save_vip_bg": "Фонға орнату",
         "lbl_achievements_title": "Қол Жеткізілген Жетістіктер",
         "lbl_stats_title": "Ойын Статистикасы",
         "lbl_quests_title": "📋 Күнделікті Тапсырмалар",
@@ -1950,7 +2126,7 @@ const LOCALES = {
         "lbl_role_prefix": "🕵️‍♂️ Рөл: ",
         "lbl_reward_coins": "монета",
         "calc_title": "🎮 Мафия Баланс Калькуляторы",
-        "calc_lbl_players": "Ойыншылар саны",
+        "calc_lbl_players": "Ойыншылар саны:",
         "calc_roles_distribution": "👥 Күтілетін рөлдерді бөлу",
         "calc_roles_guide": "🎭 Рөлдердің ережелері мен сипаттамасы",
         "nav_profile": "Профиль",
@@ -1968,7 +2144,40 @@ const LOCALES = {
         "shop_fakedoc_desc": "Мафия болсаңыз және Комиссар тексерсе, сізді «Бейбіт тұрғын» деп көрсетеді (1 реттік)!",
         "coin_pack_desc": "Дүкен үшін {count} монета.",
         "btn_pay_stars": "⭐️ Telegram Stars",
-        "btn_pay_card": "💳 Visa / PayPal"
+        "btn_pay_card": "💳 Visa / PayPal",
+        "lbl_hmenu_title": "⚙️ Мәзір және Баптаулар",
+        "lbl_hmenu_rules": "Ойын ережелері",
+        "lbl_hmenu_pass": "Маусымдық Battle Pass",
+        "lbl_hmenu_channel": "Ресми Арна (@DarkTownuz)",
+        "lbl_hmenu_shop": "Дүкен (Монеталар мен Бустерлер)",
+        "lbl_hmenu_sound": "Дыбыс әсерлері",
+        "lbl_party_title": "👥 Ойыншылар Партиясы",
+        "party_status_solo": "Жалғыз (Solo)",
+        "party_info_solo": "Сіз топта емессіз. Достарыңызбен ойнау үшін партия құрыңыз.",
+        "btn_create_party": "Партия құру",
+        "btn_copy_party_link": "Шақыру сілтемесі",
+        "lbl_matchmaking_title": "🎮 Ойын Іздеу & Бөлме Құру",
+        "btn_auto_match": "🔍 Авто Іздеу (CS2)",
+        "lbl_room_private": "🔒 Тек достар үшін (Private)",
+        "lbl_room_pin": "PIN-код орнату:",
+        "lbl_room_day": "☀️ Күн уақыты (сек):",
+        "lbl_room_night": "🌙 Түн уақыты (сек):",
+        "btn_submit_create_room": "Бөлме құру",
+        "lbl_join_id": "ID арқылы қосылу:",
+        "lbl_join_pin": "PIN-код (бар болса):",
+        "btn_submit_join_room": "Қосылу",
+        "lbl_public_rooms_title": "🌐 Белсенді Ашық Бөлмелер",
+        "lbl_no_active_rooms": "Әзірге ашық бөлмелер жоқ. Авто Іздеу арқылы бірінші болып құрыңыз!",
+        "lobby_room_status": "Ойыншылар күтілуде...",
+        "btn_lobby_leave": "Шығу",
+        "btn_lobby_start": "Ойынды бастау",
+        "btn_active_game_leave": "Шығу",
+        "lbl_game_my_role_prefix": "Сіздің рөліңіз:",
+        "lbl_day_chat_title": "💬 Күндізгі Талқылау Чаты",
+        "input_day_chat": "Талқылауға қосылыңыз...",
+        "lbl_mafia_chat_title": "🔴 Мафия Құпия Чаты",
+        "input_mafia_chat": "Мафияға хабарлама...",
+        "input_ghost_chat": "Хабарлама жазыңыз..."
     }
 };
 
@@ -1991,11 +2200,25 @@ function updateLang(lang) {
     const profileLangEl = document.getElementById('lbl-profile-lang');
     if (profileLangEl) profileLangEl.innerText = langPrefix + langNames[lang];
     
+    // Hamburger Menu
+    const hTitle = document.getElementById('lbl-hmenu-title');
+    if (hTitle) hTitle.innerText = t("lbl_hmenu_title");
+    const hRules = document.getElementById('lbl-hmenu-rules');
+    if (hRules) hRules.innerText = t("lbl_hmenu_rules");
+    const hPass = document.getElementById('lbl-hmenu-pass');
+    if (hPass) hPass.innerText = t("lbl_hmenu_pass");
+    const hChannel = document.getElementById('lbl-hmenu-channel');
+    if (hChannel) hChannel.innerText = t("lbl_hmenu_channel");
+    const hShop = document.getElementById('lbl-hmenu-shop');
+    if (hShop) hShop.innerText = t("lbl_hmenu_shop");
+    const hSound = document.getElementById('lbl-hmenu-sound');
+    if (hSound) hSound.innerText = t("lbl_hmenu_sound");
+
     // Profile labels
     const dailyClaimEl = document.getElementById('lbl-daily-claim');
     if (dailyClaimEl) dailyClaimEl.innerText = t("lbl_daily_claim");
     
-    const streakTitleEl = document.querySelector('.streak-card span');
+    const streakTitleEl = document.getElementById('lbl-streak-title');
     if (streakTitleEl) streakTitleEl.innerText = t("lbl_streak_title");
     
     const streakSubEl = document.getElementById('lbl-streak-subtitle');
@@ -2004,6 +2227,13 @@ function updateLang(lang) {
     const btnClaimStreak = document.getElementById('btn-claim-streak');
     if (btnClaimStreak) btnClaimStreak.innerText = t("btn_claim_streak");
     
+    for (let day = 1; day <= 7; day++) {
+        const sDayEl = document.getElementById(`lbl-sday-title-${day}`);
+        if (sDayEl) {
+            sDayEl.innerText = currentLang === 'ru' ? `${day}-й день` : currentLang === 'en' ? `Day ${day}` : currentLang === 'kz' ? `${day}-күн` : `${day}-kun`;
+        }
+    }
+
     const refTitleEl = document.getElementById('lbl-ref-title');
     if (refTitleEl) refTitleEl.innerText = t("lbl_ref_title");
     
@@ -2013,6 +2243,13 @@ function updateLang(lang) {
     const btnCopyRef = document.getElementById('btn-copy-ref');
     if (btnCopyRef) btnCopyRef.innerText = t("btn_copy_ref");
     
+    const vipBgTitle = document.getElementById('lbl-vip-bg-title');
+    if (vipBgTitle) vipBgTitle.innerText = t("lbl_vip_bg_title");
+    const vipBgDesc = document.getElementById('lbl-vip-bg-desc');
+    if (vipBgDesc) vipBgDesc.innerText = t("lbl_vip_bg_desc");
+    const btnSaveVipBg = document.getElementById('btn-save-vip-bg');
+    if (btnSaveVipBg) btnSaveVipBg.innerText = t("btn_save_vip_bg");
+
     const achTitleEl = document.getElementById('lbl-achievements-title');
     if (achTitleEl) achTitleEl.innerText = t("lbl_achievements_title");
     
@@ -2020,17 +2257,27 @@ function updateLang(lang) {
     if (statsTitleEl) statsTitleEl.innerText = t("lbl_stats_title");
     
     // Stats grid labels
-    const statBoxes = document.querySelectorAll('.stats-grid .stat-box .stat-lbl');
-    if (statBoxes.length >= 3) {
-        statBoxes[0].innerText = t("lbl_games");
-        statBoxes[1].innerText = t("lbl_wins");
-        statBoxes[2].innerText = t("lbl_win_rate");
-    }
-    
+    const statGamesEl = document.getElementById('lbl-stat-games');
+    if (statGamesEl) statGamesEl.innerText = t("lbl_games");
+    const statWinsEl = document.getElementById('lbl-stat-wins');
+    if (statWinsEl) statWinsEl.innerText = t("lbl_wins");
+    const statWinrateEl = document.getElementById('lbl-stat-winrate');
+    if (statWinrateEl) statWinrateEl.innerText = t("lbl_win_rate");
+
     // XP label
-    const xpLabelEl = document.querySelector('.xp-labels span:first-child');
+    const xpLabelEl = document.getElementById('lbl-xp-title');
     if (xpLabelEl) xpLabelEl.innerText = t("lbl_xp_progress");
     
+    // Shield label
+    const shieldTitleEl = document.getElementById('lbl-shield-title');
+    if (shieldTitleEl) shieldTitleEl.innerText = t("lbl_shield_title");
+    const btnActivateShield = document.getElementById('btn-activate-shield');
+    if (btnActivateShield) btnActivateShield.innerText = t("btn_activate");
+
+    // Roles stats title
+    const rolesStatsTitleEl = document.getElementById('lbl-roles-stats-title');
+    if (rolesStatsTitleEl) rolesStatsTitleEl.innerText = t("lbl_roles_stats_title");
+
     // Inventory and Shop titles
     const invTitleEl = document.getElementById('lbl-inventory-title');
     if (invTitleEl) invTitleEl.innerText = t("lbl_inventory");
@@ -2039,11 +2286,10 @@ function updateLang(lang) {
     if (buyCoinsTitleEl) buyCoinsTitleEl.innerText = t("lbl_buy_coins");
     
     // Quests & History headers
-    const questHeaders = document.querySelectorAll('#tab-profile .section-header .section-title');
-    if (questHeaders.length >= 2) {
-        questHeaders[0].innerText = t("lbl_quests_title");
-        questHeaders[1].innerText = t("lbl_history_title");
-    }
+    const questsTitleEl = document.getElementById('lbl-quests-title');
+    if (questsTitleEl) questsTitleEl.innerText = t("lbl_quests_title");
+    const historyTitleEl = document.getElementById('lbl-history-title');
+    if (historyTitleEl) historyTitleEl.innerText = t("lbl_history_title");
     
     // Game Arena labels
     const playersTitleEl = document.getElementById('lbl-players-title');
@@ -2055,19 +2301,81 @@ function updateLang(lang) {
     const ghostChatTitleEl = document.getElementById('lbl-ghost-chat-title');
     if (ghostChatTitleEl) ghostChatTitleEl.innerText = t("lbl_ghost_chat_title");
     
+    const mafiaChatTitleEl = document.getElementById('lbl-mafia-chat-title');
+    if (mafiaChatTitleEl) mafiaChatTitleEl.innerText = t("lbl_mafia_chat_title");
+
+    const dayChatTitleEl = document.getElementById('lbl-day-chat-title');
+    if (dayChatTitleEl) dayChatTitleEl.innerText = t("lbl_day_chat_title");
+
+    // Placeholders
+    const dayChatInput = document.getElementById('room-day-chat-input');
+    if (dayChatInput) dayChatInput.placeholder = t("input_day_chat");
+    const ghostChatInput = document.getElementById('ghost-input');
+    if (ghostChatInput) ghostChatInput.placeholder = t("input_ghost_chat");
+    const mafiaChatInput = document.getElementById('mafia-input');
+    if (mafiaChatInput) mafiaChatInput.placeholder = t("input_mafia_chat");
+
+    // Matchmaking Lobby
+    const partyTitle = document.getElementById('lbl-party-title');
+    if (partyTitle) partyTitle.innerText = t("lbl_party_title");
+    const partyBadge = document.getElementById('party-status-badge');
+    if (partyBadge && partyBadge.innerText.includes('Solo') || partyBadge?.innerText.includes('Yakka')) {
+        partyBadge.innerText = t("party_status_solo");
+    }
+    const btnCreateParty = document.getElementById('btn-create-party');
+    if (btnCreateParty) btnCreateParty.innerText = t("btn_create_party");
+    const btnCopyParty = document.getElementById('btn-copy-party-link');
+    if (btnCopyParty) btnCopyParty.innerText = t("btn_copy_party_link");
+
+    const matchTitle = document.getElementById('lbl-matchmaking-title');
+    if (matchTitle) matchTitle.innerText = t("lbl_matchmaking_title");
+    const btnAutoMatch = document.getElementById('btn-auto-match');
+    if (btnAutoMatch) btnAutoMatch.innerText = t("btn_auto_match");
+
+    const roomPriv = document.getElementById('lbl-room-private');
+    if (roomPriv) roomPriv.innerText = t("lbl_room_private");
+    const roomPinLbl = document.getElementById('lbl-room-pin-label');
+    if (roomPinLbl) roomPinLbl.innerText = t("lbl_room_pin");
+    const roomDayLbl = document.getElementById('lbl-room-day-label');
+    if (roomDayLbl) roomDayLbl.innerText = t("lbl_room_day");
+    const roomNightLbl = document.getElementById('lbl-room-night-label');
+    if (roomNightLbl) roomNightLbl.innerText = t("lbl_room_night");
+    const btnSubmitRoom = document.getElementById('btn-submit-create-room');
+    if (btnSubmitRoom) btnSubmitRoom.innerText = t("btn_submit_create_room");
+
+    const joinIdLbl = document.getElementById('lbl-join-id-label');
+    if (joinIdLbl) joinIdLbl.innerText = t("lbl_join_id");
+    const joinPinLbl = document.getElementById('lbl-join-pin-label');
+    if (joinPinLbl) joinPinLbl.innerText = t("lbl_join_pin");
+    const btnSubmitJoin = document.getElementById('btn-submit-join-room');
+    if (btnSubmitJoin) btnSubmitJoin.innerText = t("btn_submit_join_room");
+
+    const pubRoomsTitle = document.getElementById('lbl-public-rooms-title');
+    if (pubRoomsTitle) pubRoomsTitle.innerText = t("lbl_public_rooms_title");
+    const noRoomsLbl = document.getElementById('lbl-no-active-rooms');
+    if (noRoomsLbl) noRoomsLbl.innerText = t("lbl_no_active_rooms");
+
+    const lobbyStatus = document.getElementById('lobby-room-status');
+    if (lobbyStatus) lobbyStatus.innerText = t("lobby_room_status");
+    const btnLobbyLeave = document.getElementById('btn-lobby-leave');
+    if (btnLobbyLeave) btnLobbyLeave.innerText = t("btn_lobby_leave");
+    const btnLobbyStart = document.getElementById('btn-lobby-start');
+    if (btnLobbyStart) btnLobbyStart.innerText = t("btn_lobby_start");
+
+    const btnGameLeave = document.getElementById('btn-active-game-leave');
+    if (btnGameLeave) btnGameLeave.innerText = t("btn_active_game_leave");
+    const rolePrefixEl = document.getElementById('lbl-game-my-role-prefix');
+    if (rolePrefixEl) rolePrefixEl.innerText = t("lbl_game_my_role_prefix");
+
     // Bottom nav bar labels
     const navProfile = document.getElementById('nav-lbl-profile');
     if (navProfile) navProfile.innerText = t("nav_profile");
-    
     const navShop = document.getElementById('nav-lbl-shop');
     if (navShop) navShop.innerText = t("nav_shop");
-    
     const navLeaderboard = document.getElementById('nav-lbl-leaderboard');
     if (navLeaderboard) navLeaderboard.innerText = t("nav_leaderboard");
-    
     const navMatch = document.getElementById('nav-lbl-match');
     if (navMatch) navMatch.innerText = t("nav_match");
-    
     const navAdmin = document.getElementById('nav-lbl-admin');
     if (navAdmin) navAdmin.innerText = t("nav_admin");
     
@@ -2099,10 +2407,8 @@ function updateLang(lang) {
     // Coin packages
     const pack1Desc = document.getElementById('lbl-pack1-desc');
     if (pack1Desc) pack1Desc.innerText = t("coin_pack_desc").replace("{count}", "100");
-    
     const pack2Desc = document.getElementById('lbl-pack2-desc');
     if (pack2Desc) pack2Desc.innerText = t("coin_pack_desc").replace("{count}", "500");
-    
     const pack3Desc = document.getElementById('lbl-pack3-desc');
     if (pack3Desc) pack3Desc.innerText = t("coin_pack_desc").replace("{count}", "1000");
     
@@ -2115,9 +2421,20 @@ function updateLang(lang) {
     if (lbTitleEl) lbTitleEl.innerText = t("lbl_leaderboard_title");
     
     // Calculator labels
-    const calcTitle = document.querySelector('#match-calc-view .section-title');
-    if (calcTitle) calcTitle.innerText = "🎮 " + t("calc_title");
+    const calcTitle = document.getElementById('lbl-calc-title');
+    if (calcTitle) calcTitle.innerText = t("calc_title");
+    const calcPlayersLbl = document.getElementById('calc-lbl-players');
+    if (calcPlayersLbl) calcPlayersLbl.innerText = t("calc_lbl_players");
+    const calcDistLbl = document.getElementById('calc-roles-distribution');
+    if (calcDistLbl) calcDistLbl.innerText = t("calc_roles_distribution");
+    const calcGuideLbl = document.getElementById('calc-roles-guide');
+    if (calcGuideLbl) calcGuideLbl.innerText = t("calc_roles_guide");
     
+    // Update calculator roles & guide
+    const sliderEl = document.getElementById('player-slider');
+    if (sliderEl) updateCalculator(parseInt(sliderEl.value) || 5);
+    renderCalculatorGuide();
+
     // Reload dynamic lists with current lang
     loadDailyQuests();
     loadGameHistory();
