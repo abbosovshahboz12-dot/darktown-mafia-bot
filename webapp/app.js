@@ -2233,18 +2233,14 @@ function updateLang(lang) {
     // Hamburger Menu
     const hTitle = document.getElementById('lbl-hmenu-title');
     if (hTitle) hTitle.innerText = t("lbl_hmenu_title");
-    const hClans = document.getElementById('lbl-hmenu-clans');
-    if (hClans) hClans.innerText = t("lbl_hmenu_clans");
     const hRules = document.getElementById('lbl-hmenu-rules');
     if (hRules) hRules.innerText = t("lbl_hmenu_rules");
     const rTitle = document.getElementById('lbl-rules-modal-title');
     if (rTitle) rTitle.innerText = t("lbl_rules_modal_title");
-    const hPass = document.getElementById('lbl-hmenu-pass');
-    if (hPass) hPass.innerText = t("lbl_hmenu_pass");
-    const hChannel = document.getElementById('lbl-hmenu-channel');
-    if (hChannel) hChannel.innerText = t("lbl_hmenu_channel");
     const hShop = document.getElementById('lbl-hmenu-shop');
     if (hShop) hShop.innerText = t("lbl_hmenu_shop");
+    const hChannel = document.getElementById('lbl-hmenu-channel');
+    if (hChannel) hChannel.innerText = t("lbl_hmenu_channel");
     const hSound = document.getElementById('lbl-hmenu-sound');
     if (hSound) hSound.innerText = t("lbl_hmenu_sound");
 
@@ -3294,10 +3290,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.style.display = 'none';
     });
     
-    safeAddListener('hmenu-clans', 'click', () => {
-        switchTab('clans');
-    });
-    
     safeAddListener('hmenu-rules', 'click', () => {
         const modal = document.getElementById('modal-hamburger');
         if (modal) modal.style.display = 'none';
@@ -3311,18 +3303,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (rModal) rModal.style.display = 'none';
     });
     
-    safeAddListener('hmenu-pass', 'click', () => {
-        switchTab('pass');
+    safeAddListener('hmenu-shop', 'click', () => {
+        switchTab('shop');
     });
     
     safeAddListener('hmenu-channel', 'click', () => {
         const modal = document.getElementById('modal-hamburger');
         if (modal) modal.style.display = 'none';
         safeOpenTelegramLink('https://t.me/DarkTownuz');
-    });
-    
-    safeAddListener('hmenu-shop', 'click', () => {
-        switchTab('shop');
     });
     
     safeAddListener('btn-sound-toggle-menu', 'click', () => {
