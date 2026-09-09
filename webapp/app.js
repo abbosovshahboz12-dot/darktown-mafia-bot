@@ -1,6 +1,6 @@
-// Global Error Handler for debugging
+// Global Error Handler
 window.onerror = function(message, source, lineno, colno, error) {
-    alert("JS Error: " + message + " on line " + lineno);
+    console.error("[DarkTown WebApp Error]:", message, "at", source, ":", lineno, error);
     return false;
 };
 
@@ -111,43 +111,65 @@ async function autoJoinParty(partyId) {
     }
 }
 
-// Tab navigation
+// Global Tab Navigation Function
 let currentActiveTab = 'profile';
-const navItems = document.querySelectorAll('.nav-item');
-const tabContents = document.querySelectorAll('.tab-content');
 
+function switchTab(tabName) {
+    if (!tabName) return;
+    currentActiveTab = tabName;
+    
+    // Update nav items
+    const allNavItems = document.querySelectorAll('.nav-item');
+    allNavItems.forEach(nav => {
+        if (nav.getAttribute('data-tab') === tabName) {
+            nav.classList.add('active');
+        } else {
+            nav.classList.remove('active');
+        }
+    });
+    
+    // Update tabs
+    const allTabContents = document.querySelectorAll('.tab-content');
+    allTabContents.forEach(content => content.classList.remove('active'));
+    
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) {
+        targetTab.classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    // Close modals that might be open
+    const hamburgerModal = document.getElementById('modal-hamburger');
+    if (hamburgerModal) hamburgerModal.style.display = 'none';
+    const rulesModal = document.getElementById('modal-rules');
+    if (rulesModal) rulesModal.style.display = 'none';
+    
+    // Actions on tab click
+    if (tabName === 'leaderboard') {
+        loadLeaderboard();
+    } else if (tabName === 'shop' || tabName === 'profile') {
+        loadProfile();
+    } else if (tabName === 'match') {
+        loadActiveGame();
+        initCalculator();
+    } else if (tabName === 'clans') {
+        loadClanData();
+        loadClanLeaderboard();
+    } else if (tabName === 'tournaments') {
+        loadTournaments();
+    } else if (tabName === 'pass') {
+        loadBattlePass();
+    } else if (tabName === 'admin') {
+        loadAdminStats();
+    }
+}
+window.switchTab = switchTab;
+
+const navItems = document.querySelectorAll('.nav-item');
 navItems.forEach(item => {
     item.addEventListener('click', () => {
         const tabName = item.getAttribute('data-tab');
-        currentActiveTab = tabName;
-        
-        // Update nav items
-        navItems.forEach(nav => nav.classList.remove('active'));
-        item.classList.add('active');
-        
-        // Update tabs
-        tabContents.forEach(content => content.classList.remove('active'));
-        const targetTab = document.getElementById(`tab-${tabName}`);
-        if (targetTab) targetTab.classList.add('active');
-        
-        // Actions on tab click
-        if (tabName === 'leaderboard') {
-            loadLeaderboard();
-        } else if (tabName === 'shop' || tabName === 'profile') {
-            loadProfile();
-        } else if (tabName === 'match') {
-            loadActiveGame();
-            initCalculator();
-        } else if (tabName === 'clans') {
-            loadClanData();
-            loadClanLeaderboard();
-        } else if (tabName === 'tournaments') {
-            loadTournaments();
-        } else if (tabName === 'pass') {
-            loadBattlePass();
-        } else if (tabName === 'admin') {
-            loadAdminStats();
-        }
+        switchTab(tabName);
     });
 });
 
@@ -1849,7 +1871,9 @@ const LOCALES = {
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal",
         "lbl_hmenu_title": "⚙️ Menyu va Sozlamalar",
+        "lbl_hmenu_clans": "Klanlar (Clans)",
         "lbl_hmenu_rules": "O'yin Qoidalari",
+        "lbl_rules_modal_title": "O'yin Qoidalari",
         "lbl_hmenu_pass": "Mavsumiy Battle Pass",
         "lbl_hmenu_channel": "Rasmiy Kanal (@DarkTownuz)",
         "lbl_hmenu_shop": "Do'kon (Tangalar va Busterlar)",
@@ -1876,9 +1900,9 @@ const LOCALES = {
         "btn_lobby_start": "O'yinni Boshlash",
         "btn_active_game_leave": "Chiqish",
         "lbl_game_my_role_prefix": "Sizning rolingiz:",
-        "lbl_day_chat_title": "💬 Kunlik Munozara Chati",
-        "input_day_chat": "Munozaraga qo'shiling...",
-        "lbl_mafia_chat_title": "🔴 Mafiya Maxfiy Chati",
+        "lbl_day_chat_title": "💬 Kunduzgi Muhokama Chati",
+        "input_day_chat": "Fikringizni yozing...",
+        "lbl_mafia_chat_title": "🔴 Mafiya Yashirin Chati",
         "input_mafia_chat": "Mafiyaga xabar...",
         "input_ghost_chat": "Xabar yozing..."
     },
@@ -1886,36 +1910,36 @@ const LOCALES = {
         "title_profile": "👤 Профиль",
         "lbl_games": "Игры",
         "lbl_wins": "Победы",
-        "lbl_win_rate": "Процент побед",
+        "lbl_win_rate": "Процент Побед",
         "lbl_xp_progress": "Опыт (XP)",
-        "lbl_shield_active": "Активен (опыт защищен)",
+        "lbl_shield_active": "Активен (XP защищен)",
         "lbl_shield_inactive": "Не активен",
-        "lbl_shield_title": "Щит защиты XP",
+        "lbl_shield_title": "Щит Защиты XP",
         "lbl_stat_played_suffix": "игр",
         "lbl_stat_won_suffix": "побед",
         "lbl_no_data": "Игр пока нет.",
-        "lbl_buy_coins": "🪙 Купить монеты",
+        "lbl_buy_coins": "🪙 Купить Монеты",
         "lbl_inventory": "Ваш Инвентарь",
         "lbl_no_inventory": "Инвентарь пуст.",
-        "lbl_daily_claim": "Ежедневный Бонус",
+        "lbl_daily_claim": "Ежедневная Награда",
         "lbl_daily_claim_time": "Забрать",
         "lbl_streak_title": "🔥 7-Дневный Бонус Стрик",
         "lbl_streak_subtitle": "Заходите каждый день и получайте бонусы!",
         "btn_claim_streak": "Забрать",
         "lbl_lang_prefix": "Язык: ",
-        "lbl_ref_title": "👥 Реферальная Система",
+        "lbl_ref_title": "👥 Реферальная Программа",
         "lbl_ref_desc": "Приглашайте друзей и получайте +50 монет за каждого!",
-        "btn_copy_ref": "Копировать ссылку",
+        "btn_copy_ref": "Скопировать Ссылку",
         "lbl_vip_bg_title": "👑 VIP Персональный Фон",
         "lbl_vip_bg_desc": "Введите URL картинки для фона Mini App:",
-        "btn_save_vip_bg": "Установить фон",
+        "btn_save_vip_bg": "Установить Фон",
         "lbl_achievements_title": "Достижения",
-        "lbl_stats_title": "Статистика Игры",
-        "lbl_quests_title": "📋 Ежедневные Задания",
-        "lbl_no_quests": "Заданий пока нет.",
-        "lbl_history_title": "📜 История последних игр",
-        "lbl_no_history": "Истории игр пока нет.",
-        "lbl_roles_stats_title": "Победы по ролям",
+        "lbl_stats_title": "Статистика Игр",
+        "lbl_quests_title": "📋 Ежедневные Квесты",
+        "lbl_no_quests": "Квестов пока нет.",
+        "lbl_history_title": "📜 История Последних Матчей",
+        "lbl_no_history": "Истории матчей пока нет.",
+        "lbl_roles_stats_title": "Победы по Ролям",
         "lbl_ghost_chat_title": "👻 Чат Призраков (Ghost Chat)",
         "lbl_game_logs_title": "📜 События игры",
         "lbl_players_title": "👥 Игровое поле",
@@ -1948,7 +1972,9 @@ const LOCALES = {
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal",
         "lbl_hmenu_title": "⚙️ Меню и Настройки",
+        "lbl_hmenu_clans": "Кланы (Clans)",
         "lbl_hmenu_rules": "Правила игры",
+        "lbl_rules_modal_title": "Правила Игры",
         "lbl_hmenu_pass": "Сезонный Battle Pass",
         "lbl_hmenu_channel": "Официальный Канал (@DarkTownuz)",
         "lbl_hmenu_shop": "Магазин (Монеты и Бустеры)",
@@ -2016,38 +2042,40 @@ const LOCALES = {
         "lbl_no_history": "No match history yet.",
         "lbl_roles_stats_title": "Wins by Role",
         "lbl_ghost_chat_title": "👻 Ghost Chat",
-        "lbl_game_logs_title": "📜 Game events",
-        "lbl_players_title": "👥 Player Field",
+        "lbl_game_logs_title": "📜 Game Events",
+        "lbl_players_title": "👥 Players Arena",
         "msg_copied": "Link copied to clipboard!",
-        "msg_already_claimed": "Daily reward already claimed!",
+        "msg_already_claimed": "Daily bonus already claimed!",
         "btn_buy": "Buy",
         "btn_activate": "Activate",
-        "badge_win": "Victory",
-        "badge_loss": "Defeat",
+        "badge_win": "Win",
+        "badge_loss": "Loss",
         "lbl_role_prefix": "🕵️‍♂️ Role: ",
         "lbl_reward_coins": "coins",
         "calc_title": "🎮 Mafia Balance Calculator",
-        "calc_lbl_players": "Number of players:",
+        "calc_lbl_players": "Number of Players:",
         "calc_roles_distribution": "👥 Expected Role Distribution",
-        "calc_roles_guide": "🎭 Role Rules & Descriptions",
+        "calc_roles_guide": "🎭 Roles Rules & Guide",
         "nav_profile": "Profile",
         "nav_shop": "Shop",
         "nav_leaderboard": "Leaderboard",
-        "nav_match": "Play",
+        "nav_match": "Game",
         "nav_admin": "Admin",
         "lbl_shop": "Darktown Shop",
         "lbl_leaderboard_title": "Global Top Players",
         "shop_shield_name": "XP Shield",
-        "shop_shield_desc": "Protects XP and coins on night death (1-time use).",
+        "shop_shield_desc": "Protects against losing XP and coins when killed at night (1-time use).",
         "shop_booster_name": "Active Role Booster",
-        "shop_booster_desc": "Guarantees getting an active role (Mafia, Detective, Doctor, Maniac) instead of Civilian!",
-        "shop_fakedoc_name": "Fake Documents",
-        "shop_fakedoc_desc": "If you are Mafia and Detective checks you, shows you as Civilian (1-time use)!",
-        "coin_pack_desc": "Get {count} coins for the Mini App shop.",
+        "shop_booster_desc": "Guarantees getting an active role (Mafia, Detective, Doctor, Maniac) instead of civilian!",
+        "shop_fakedoc_name": "Fake ID Card",
+        "shop_fakedoc_desc": "If you are Mafia and Detective inspects you, shows you as Civilian (1-time use)!",
+        "coin_pack_desc": "{count} coins for the Mini App shop.",
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal",
         "lbl_hmenu_title": "⚙️ Menu & Settings",
+        "lbl_hmenu_clans": "Clans",
         "lbl_hmenu_rules": "Game Rules",
+        "lbl_rules_modal_title": "Game Rules",
         "lbl_hmenu_pass": "Seasonal Battle Pass",
         "lbl_hmenu_channel": "Official Channel (@DarkTownuz)",
         "lbl_hmenu_shop": "Shop (Coins & Boosters)",
@@ -2146,7 +2174,9 @@ const LOCALES = {
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal",
         "lbl_hmenu_title": "⚙️ Мәзір және Баптаулар",
+        "lbl_hmenu_clans": "Кландар (Clans)",
         "lbl_hmenu_rules": "Ойын ережелері",
+        "lbl_rules_modal_title": "Ойын Ережелері",
         "lbl_hmenu_pass": "Маусымдық Battle Pass",
         "lbl_hmenu_channel": "Ресми Арна (@DarkTownuz)",
         "lbl_hmenu_shop": "Дүкен (Монеталар мен Бустерлер)",
@@ -2203,8 +2233,12 @@ function updateLang(lang) {
     // Hamburger Menu
     const hTitle = document.getElementById('lbl-hmenu-title');
     if (hTitle) hTitle.innerText = t("lbl_hmenu_title");
+    const hClans = document.getElementById('lbl-hmenu-clans');
+    if (hClans) hClans.innerText = t("lbl_hmenu_clans");
     const hRules = document.getElementById('lbl-hmenu-rules');
     if (hRules) hRules.innerText = t("lbl_hmenu_rules");
+    const rTitle = document.getElementById('lbl-rules-modal-title');
+    if (rTitle) rTitle.innerText = t("lbl_rules_modal_title");
     const hPass = document.getElementById('lbl-hmenu-pass');
     if (hPass) hPass.innerText = t("lbl_hmenu_pass");
     const hChannel = document.getElementById('lbl-hmenu-channel');
@@ -3142,6 +3176,110 @@ async function checkChannelSubscription() {
     }
 }
 
+// Render Game Rules Modal
+function renderRulesModal() {
+    const contentEl = document.getElementById('rules-modal-content');
+    if (!contentEl) return;
+    
+    if (currentLang === 'ru') {
+        contentEl.innerHTML = `
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🎭 Главная цель игры</div>
+                <div style="margin-bottom:4px;"><b>Мирные жители:</b> Вычислить всех мафиози и исключить их голосованием днем.</div>
+                <div><b>Мафия:</b> Уничтожить мирных жителей ночью и захватить город.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ffc439; margin-bottom:4px;">☀️ Дневная фаза</div>
+                <div>Игроки обсуждают подозрения в общем чате, выдвигают кандидатов и голосуют. Набравший большинство исключается из игры.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#9d4edd; margin-bottom:4px;">🌙 Ночная фаза</div>
+                <div>Мафия выбирает жертву. Комиссар проверяет статус игрока. Доктор лечит выбранного жителя. Дон руководит мафией. Любовница блокирует ночные действия.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ff4d4d; margin-bottom:4px;">⚡ Честная игра и правила</div>
+                <div>Запрещено оскорблять игроков, раскрывать роли скриншотами вне игры и выходить во время активной партии.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🪙 Награды и Опыт (XP)</div>
+                <div>За победы и активность начисляются XP и монеты для прокачки уровня, покупки бустеров и Battle Pass.</div>
+            </div>
+        `;
+    } else if (currentLang === 'en') {
+        contentEl.innerHTML = `
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🎭 Main Objective</div>
+                <div style="margin-bottom:4px;"><b>Civilians:</b> Identify and eliminate all Mafia members by voting during the day.</div>
+                <div><b>Mafia:</b> Eliminate civilians during the night to outnumber the town.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ffc439; margin-bottom:4px;">☀️ Day Phase</div>
+                <div>Discuss clues and suspicions in the chat, nominate suspects, and vote to eliminate the guilty player.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#9d4edd; margin-bottom:4px;">🌙 Night Phase</div>
+                <div>Mafia chooses their target. Detective investigates. Doctor heals. Don commands the Mafia. Escort blocks player actions.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ff4d4d; margin-bottom:4px;">⚡ Fair Play</div>
+                <div>No toxicity, no cheating via external screenshots, and no quitting during active matches.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🪙 Rewards & XP</div>
+                <div>Earn XP and coins with every match and win to level up, unlock Battle Pass tiers, and buy boosters.</div>
+            </div>
+        `;
+    } else if (currentLang === 'kz') {
+        contentEl.innerHTML = `
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🎭 Негізгі Мақсат</div>
+                <div style="margin-bottom:4px;"><b>Бейбіт тұрғындар:</b> Барлық мафияларды анықтап, күндіз дауыс беру арқылы шығару.</div>
+                <div><b>Мафия:</b> Түнде бейбіт тұрғындарды жойып, қаланы басып алу.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ffc439; margin-bottom:4px;">☀️ Күндізгі кезең</div>
+                <div>Ойыншылар жалпы чатта талқылайды, күдіктілерге дауыс беріп ойыннан шығарады.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#9d4edd; margin-bottom:4px;">🌙 Түнгі кезең</div>
+                <div>Мафия құрбанды таңдайды. Комиссар ойыншыны тексереді. Дәрігер емдейді. Дон бұйрық береді.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ff4d4d; margin-bottom:4px;">⚡ Әділ ойын</div>
+                <div>Чатта балағат сөздер айтуға, ойын барысында шығып кетуге және скриншот арқылы рөлді ашуға тыйым салынады.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🪙 Марапаттар мен Тәжірибе (XP)</div>
+                <div>Жеңістер үшін XP және тиындар беріледі. Деңгейді көтеріп, бустерлер мен Battle Pass ашыңыз.</div>
+            </div>
+        `;
+    } else {
+        contentEl.innerHTML = `
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🎭 Rollarning Asosiy Maqsadi</div>
+                <div style="margin-bottom:4px;"><b>Tinch aholi:</b> Shahardagi barcha mafiozilarni fosh qilib, kunduzgi ovoz berish orqali o'yindan chiqarish.</div>
+                <div><b>Mafiya guruhi:</b> Tunda tinch aholini birma-bir yo'q qilib, ko'pchilikka erishish.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ffc439; margin-bottom:4px;">☀️ Kunduzgi Faza</div>
+                <div>Barcha o'yinchilar chatda dalillar va shubhalarni muhokama qiladi, gumonlanuvchilarga ovoz berib qatl qiladi.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#9d4edd; margin-bottom:4px;">🌙 Tungi Faza</div>
+                <div>Mafiya o'z qurbonini nishonga oladi. Komissar tekshiruv o'tkazadi. Shifokor bir o'yinchini davolaydi. Don buyruq beradi. Jazoirchi (Jariya) boshqa o'yinchining faoliyatini bloklaydi.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#ff4d4d; margin-bottom:4px;">⚡ O'yin Odobi va Cheklovlar</div>
+                <div>Chatda haqorat qilish, tashqi skrinshotlar orqali rolini fosh etish yoki o'yin davomida ataylab chiqib ketish qat'iyan man etiladi.</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px;">
+                <div style="font-weight:bold; color:#00f2fe; margin-bottom:4px;">🪙 Mukofotlar va Tajriba (XP)</div>
+                <div>Har bir g'alaba va ishtirok uchun XP va tangalar beriladi. Tangalarga busterlar, himoya va Battle Pass xarid qiling.</div>
+            </div>
+        `;
+    }
+}
+
 // Hamburger Menu & Admin Tournament Creator JS Logic
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(checkChannelSubscription, 1000);
@@ -3156,25 +3294,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.style.display = 'none';
     });
     
+    safeAddListener('hmenu-clans', 'click', () => {
+        switchTab('clans');
+    });
+    
     safeAddListener('hmenu-rules', 'click', () => {
         const modal = document.getElementById('modal-hamburger');
         if (modal) modal.style.display = 'none';
-        alert(t("rules_text") || "Qoidalar Telegram chatida /rules buyrug'i orqali ko'rinadi.");
+        renderRulesModal();
+        const rModal = document.getElementById('modal-rules');
+        if (rModal) rModal.style.display = 'flex';
+    });
+    
+    safeAddListener('btn-close-rules', 'click', () => {
+        const rModal = document.getElementById('modal-rules');
+        if (rModal) rModal.style.display = 'none';
     });
     
     safeAddListener('hmenu-pass', 'click', () => {
-        const modal = document.getElementById('modal-hamburger');
-        if (modal) modal.style.display = 'none';
         switchTab('pass');
     });
     
     safeAddListener('hmenu-channel', 'click', () => {
+        const modal = document.getElementById('modal-hamburger');
+        if (modal) modal.style.display = 'none';
         safeOpenTelegramLink('https://t.me/DarkTownuz');
     });
     
     safeAddListener('hmenu-shop', 'click', () => {
-        const modal = document.getElementById('modal-hamburger');
-        if (modal) modal.style.display = 'none';
         switchTab('shop');
     });
     
@@ -3184,7 +3331,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const isMuted = btn.innerText === 'OFF';
             btn.innerText = isMuted ? 'ON' : 'OFF';
             btn.style.background = isMuted ? '#00f2fe' : '#64748b';
-            alert(isMuted ? "🔊 Ovoz effektlari yoqildi" : "🔇 Ovoz effektlari o'chirildi");
         }
     });
     
