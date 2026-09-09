@@ -301,11 +301,11 @@ function renderInventory(inventory, shieldActive) {
     list.innerHTML = '';
     
     const items = {
-        "shield": { name: "XP Qalqoni", icon: "🛡️", type: "shield" },
-        "booster_mafia": { name: "Mafiya Booster", icon: "🔴", type: "booster" },
-        "booster_detective": { name: "Komissar Booster", icon: "🔵", type: "booster" },
-        "booster_doctor": { name: "Shifokor Booster", icon: "🟡", type: "booster" },
-        "booster_maniac": { name: "Telba Booster", icon: "🦹", type: "booster" }
+        "shield": { name: t("shop_shield_name"), icon: "🛡️", type: "shield" },
+        "booster_mafia": { name: t("shop_mafia_name"), icon: "🔴", type: "booster" },
+        "booster_detective": { name: t("shop_det_name"), icon: "🔵", type: "booster" },
+        "booster_doctor": { name: t("shop_doc_name"), icon: "🟡", type: "booster" },
+        "booster_maniac": { name: t("shop_maniac_name"), icon: "🦹", type: "booster" }
     };
     
     let hasItems = false;
@@ -320,17 +320,19 @@ function renderInventory(inventory, shieldActive) {
             
             let actionBtnHtml = '';
             if (itemDef.type === 'shield' && !shieldActive) {
-                actionBtnHtml = `<button class="btn btn-sm btn-secondary" onclick="activateShield()">Faollashtirish</button>`;
+                actionBtnHtml = `<button class="btn btn-sm btn-secondary" onclick="activateShield()">${t("btn_activate")}</button>`;
             } else if (itemDef.type === 'booster') {
-                actionBtnHtml = `<span style="font-size:0.75rem; color:var(--text-muted);">Bot guruhida /boost yozib faollashtiring</span>`;
+                const hintText = currentLang === 'ru' ? 'Напишите /boost в группе' : currentLang === 'en' ? 'Use /boost in group' : currentLang === 'kz' ? 'Топта /boost жазыңыз' : 'Guruhda /boost yozib faollashtiring';
+                actionBtnHtml = `<span style="font-size:0.75rem; color:var(--text-muted);">${hintText}</span>`;
             }
             
+            const qtyLabel = currentLang === 'ru' ? 'Кол-во:' : currentLang === 'en' ? 'Qty:' : currentLang === 'kz' ? 'Саны:' : 'Soni:';
             div.innerHTML = `
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span style="font-size:1.4rem;">${itemDef.icon}</span>
                     <div>
                         <div style="font-weight:600; font-size:0.9rem;">${itemDef.name}</div>
-                        <div style="font-size:0.75rem; color:var(--text-muted);">Soni: ${qty} dona</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">${qtyLabel} ${qty}</div>
                     </div>
                 </div>
                 ${actionBtnHtml}
@@ -340,7 +342,7 @@ function renderInventory(inventory, shieldActive) {
     }
     
     if (!hasItems) {
-        list.innerHTML = '<div class="no-data">Sizda sotib olingan narsalar yo\'q.</div>';
+        list.innerHTML = `<div class="no-data">${t("lbl_no_inventory")}</div>`;
     }
 }
 
@@ -1444,16 +1446,22 @@ async function loadDailyQuests() {
         const container = document.getElementById('quests-container');
         if (!container) return;
         if (!data.quests || data.quests.length === 0) {
-            container.innerHTML = `<div class="no-data">Hozircha vazifalar mavjud emas.</div>`;
+            container.innerHTML = `<div class="no-data">${t("lbl_no_quests")}</div>`;
             return;
         }
         container.innerHTML = data.quests.map(q => {
             const percentage = Math.min(100, Math.round((q.progress / q.target) * 100));
+            let qName = q.name_uz;
+            if (currentLang === 'ru') qName = q.name_ru || qName;
+            else if (currentLang === 'en') qName = q.name_en || qName;
+            else if (currentLang === 'kz') qName = q.name_kz || qName;
+            
+            const coinText = t("lbl_reward_coins");
             return `
                 <div class="quest-card ${q.completed ? 'completed' : ''}">
                     <div class="quest-header">
-                        <span class="quest-name">${q.completed ? '✅' : '📌'} ${q.name_uz}</span>
-                        <span class="quest-reward">+${q.reward} tanga</span>
+                        <span class="quest-name">${q.completed ? '✅' : '📌'} ${qName}</span>
+                        <span class="quest-reward">+${q.reward} ${coinText}</span>
                     </div>
                     <div class="quest-bar-bg">
                         <div class="quest-bar-fill" style="width: ${percentage}%"></div>
@@ -1474,18 +1482,19 @@ async function loadGameHistory() {
         const container = document.getElementById('history-container');
         if (!container) return;
         if (!data.history || data.history.length === 0) {
-            container.innerHTML = `<div class="no-data">Hozircha o'yinlar tarixi mavjud emas.</div>`;
+            container.innerHTML = `<div class="no-data">${t("lbl_no_history")}</div>`;
             return;
         }
         container.innerHTML = data.history.map(h => {
             const isWin = h.is_winner === 1;
             const roleClass = isWin ? 'win' : 'loss';
             const badgeClass = isWin ? 'win' : 'loss';
-            const textResult = isWin ? "G'alaba" : "Mag'lubiyat";
+            const textResult = isWin ? t("badge_win") : t("badge_loss");
+            const rolePrefix = t("lbl_role_prefix");
             return `
                 <div class="history-item ${roleClass}">
                     <div class="history-left">
-                        <span class="history-role">🕵️‍♂️ Roli: ${h.role}</span>
+                        <span class="history-role">${rolePrefix}${h.role}</span>
                         <span class="history-date">${h.played_at}</span>
                     </div>
                     <div class="history-right">
@@ -1706,18 +1715,29 @@ const LOCALES = {
         "lbl_games": "O'yinlar",
         "lbl_wins": "G'alabalar",
         "lbl_win_rate": "Yutuq Foizi",
+        "lbl_xp_progress": "Tajriba (XP)",
         "lbl_shield_active": "Faol (tajriba himoyalangan)",
         "lbl_shield_inactive": "Faol emas",
         "lbl_no_data": "Hozircha o'yinlar o'ynalmagan.",
         "lbl_buy_coins": "🪙 Tanga sotib olish",
         "lbl_inventory": "Sizning Inventaringiz",
+        "lbl_no_inventory": "Inventar bo'sh.",
         "lbl_daily_claim": "Kunlik Bonus",
         "lbl_daily_claim_time": "Hozir olish",
+        "lbl_streak_title": "🔥 7-Kunlik Bonus Streak",
+        "lbl_streak_subtitle": "Har kuni o'yinga kiring va bonuslarga erishing!",
+        "btn_claim_streak": "Hozir Olish",
+        "lbl_lang_prefix": "Til: ",
         "lbl_ref_title": "👥 Taklifnoma Tizimi",
         "lbl_ref_desc": "Do'stlaringizni taklif qiling va har biri uchun +50 tanga bonus oling!",
         "btn_copy_ref": "Havolani nusxalash",
         "lbl_achievements_title": "Erishilgan Yutuqlar",
         "lbl_stats_title": "O'yin Statistikasi",
+        "lbl_quests_title": "📋 Kunlik Vazifalar",
+        "lbl_no_quests": "Hozircha vazifalar mavjud emas.",
+        "lbl_history_title": "📜 Oxirgi O'yinlar Tarixi",
+        "lbl_no_history": "Hozircha o'yinlar tarixi mavjud emas.",
+        "lbl_roles_stats_title": "Rollar bo'yicha g'alabalar",
         "lbl_ghost_chat_title": "👻 Arvoxlar Chati (Ghost Chat)",
         "lbl_game_logs_title": "📜 O'yin voqealari",
         "lbl_players_title": "👥 O'yinchilar maydoni",
@@ -1725,6 +1745,10 @@ const LOCALES = {
         "msg_already_claimed": "Kunlik bonus allaqachon olingan!",
         "btn_buy": "Sotib olish",
         "btn_activate": "Faollashtirish",
+        "badge_win": "G'alaba",
+        "badge_loss": "Mag'lubiyat",
+        "lbl_role_prefix": "🕵️‍♂️ Rol: ",
+        "lbl_reward_coins": "tanga",
         "calc_title": "🎮 Mafiya Balans Kalkulyatori",
         "calc_lbl_players": "O'yinchilar soni",
         "calc_roles_distribution": "👥 Kutilayotgan rollar taqsimoti",
@@ -1755,18 +1779,29 @@ const LOCALES = {
         "lbl_games": "Игры",
         "lbl_wins": "Победы",
         "lbl_win_rate": "Процент побед",
+        "lbl_xp_progress": "Опыт (XP)",
         "lbl_shield_active": "Активен (опыт защищен)",
         "lbl_shield_inactive": "Не активен",
         "lbl_no_data": "Игр пока нет.",
         "lbl_buy_coins": "🪙 Купить монеты",
         "lbl_inventory": "Ваш Инвентарь",
+        "lbl_no_inventory": "Инвентарь пуст.",
         "lbl_daily_claim": "Ежедневный Бонус",
         "lbl_daily_claim_time": "Забрать",
+        "lbl_streak_title": "🔥 7-Дневный Бонус Стрик",
+        "lbl_streak_subtitle": "Заходите каждый день и получайте бонусы!",
+        "btn_claim_streak": "Забрать",
+        "lbl_lang_prefix": "Язык: ",
         "lbl_ref_title": "👥 Реферальная Система",
         "lbl_ref_desc": "Приглашайте друзей и получайте +50 монет за каждого!",
         "btn_copy_ref": "Копировать ссылку",
         "lbl_achievements_title": "Достижения",
         "lbl_stats_title": "Статистика Игры",
+        "lbl_quests_title": "📋 Ежедневные Задания",
+        "lbl_no_quests": "Заданий пока нет.",
+        "lbl_history_title": "📜 История последних игр",
+        "lbl_no_history": "Истории игр пока нет.",
+        "lbl_roles_stats_title": "Победы по ролям",
         "lbl_ghost_chat_title": "👻 Чат Призраков (Ghost Chat)",
         "lbl_game_logs_title": "📜 События игры",
         "lbl_players_title": "👥 Игровое поле",
@@ -1774,6 +1809,10 @@ const LOCALES = {
         "msg_already_claimed": "Ежедневный бонус уже получен!",
         "btn_buy": "Купить",
         "btn_activate": "Активировать",
+        "badge_win": "Победа",
+        "badge_loss": "Поражение",
+        "lbl_role_prefix": "🕵️‍♂️ Роль: ",
+        "lbl_reward_coins": "монет",
         "calc_title": "🎮 Калькулятор Баланса Мафии",
         "calc_lbl_players": "Количество игроков",
         "calc_roles_distribution": "👥 Ожидаемое распределение ролей",
@@ -1804,18 +1843,29 @@ const LOCALES = {
         "lbl_games": "Games",
         "lbl_wins": "Wins",
         "lbl_win_rate": "Win Rate",
+        "lbl_xp_progress": "Experience (XP)",
         "lbl_shield_active": "Active (XP protected)",
         "lbl_shield_inactive": "Inactive",
         "lbl_no_data": "No games played yet.",
         "lbl_buy_coins": "🪙 Buy Coins",
         "lbl_inventory": "Your Inventory",
+        "lbl_no_inventory": "Inventory is empty.",
         "lbl_daily_claim": "Daily Reward",
         "lbl_daily_claim_time": "Claim Now",
+        "lbl_streak_title": "🔥 7-Day Bonus Streak",
+        "lbl_streak_subtitle": "Log in daily and get bonus rewards!",
+        "btn_claim_streak": "Claim Now",
+        "lbl_lang_prefix": "Language: ",
         "lbl_ref_title": "👥 Referral Program",
         "lbl_ref_desc": "Invite friends and get +50 coins for each referral!",
         "btn_copy_ref": "Copy Invite Link",
         "lbl_achievements_title": "Achievements",
         "lbl_stats_title": "Game Stats",
+        "lbl_quests_title": "📋 Daily Quests",
+        "lbl_no_quests": "No quests available yet.",
+        "lbl_history_title": "📜 Recent Match History",
+        "lbl_no_history": "No match history yet.",
+        "lbl_roles_stats_title": "Wins by Role",
         "lbl_ghost_chat_title": "👻 Ghost Chat",
         "lbl_game_logs_title": "📜 Game events",
         "lbl_players_title": "👥 Player Field",
@@ -1823,6 +1873,10 @@ const LOCALES = {
         "msg_already_claimed": "Daily reward already claimed!",
         "btn_buy": "Buy",
         "btn_activate": "Activate",
+        "badge_win": "Victory",
+        "badge_loss": "Defeat",
+        "lbl_role_prefix": "🕵️‍♂️ Role: ",
+        "lbl_reward_coins": "coins",
         "calc_title": "🎮 Mafia Balance Calculator",
         "calc_lbl_players": "Number of players",
         "calc_roles_distribution": "👥 Expected Role Distribution",
@@ -1853,18 +1907,29 @@ const LOCALES = {
         "lbl_games": "Ойындар",
         "lbl_wins": "Жеңістер",
         "lbl_win_rate": "Жеңіс Пайызы",
+        "lbl_xp_progress": "Тәжірибе (XP)",
         "lbl_shield_active": "Белсенді (XP қорғалған)",
         "lbl_shield_inactive": "Белсенді емес",
         "lbl_no_data": "Әзірге ойындар жоқ.",
         "lbl_buy_coins": "🪙 Монета сатып алу",
         "lbl_inventory": "Сіздің Инвентарыңыз",
+        "lbl_no_inventory": "Инвентарь бос.",
         "lbl_daily_claim": "Күнделікті Бонус",
         "lbl_daily_claim_time": "Қазір алу",
+        "lbl_streak_title": "🔥 7-Күндік Бонус Стрик",
+        "lbl_streak_subtitle": "Күн сайын кіріп, бонустарға қол жеткізіңіз!",
+        "btn_claim_streak": "Қазір Алу",
+        "lbl_lang_prefix": "Тіл: ",
         "lbl_ref_title": "👥 Шақыру Жүйесі",
         "lbl_ref_desc": "Достарыңызды шақырыңыз және әрқайсысы үшін +50 монета алыңыз!",
         "btn_copy_ref": "Сілтемені Көшіру",
         "lbl_achievements_title": "Қол Жеткізілген Жетістіктер",
         "lbl_stats_title": "Ойын Статистикасы",
+        "lbl_quests_title": "📋 Күнделікті Тапсырмалар",
+        "lbl_no_quests": "Әзірге тапсырмалар жоқ.",
+        "lbl_history_title": "📜 Соңғы ойындар тарихы",
+        "lbl_no_history": "Әзірге ойындар тарихы жоқ.",
+        "lbl_roles_stats_title": "Рөлдер бойынша жеңістер",
         "lbl_ghost_chat_title": "👻 Елестер Чаттары (Ghost Chat)",
         "lbl_game_logs_title": "📜 Ойын оқиғалары",
         "lbl_players_title": "👥 Ойыншылар алаңы",
@@ -1872,6 +1937,10 @@ const LOCALES = {
         "msg_already_claimed": "Күнделікті бонус алынған!",
         "btn_buy": "Сатып алу",
         "btn_activate": "Белсендіру",
+        "badge_win": "Жеңіс",
+        "badge_loss": "Жеңіліс",
+        "lbl_role_prefix": "🕵️‍♂️ Рөл: ",
+        "lbl_reward_coins": "монета",
         "calc_title": "🎮 Мафия Баланс Калькуляторы",
         "calc_lbl_players": "Ойыншылар саны",
         "calc_roles_distribution": "👥 Күтілетін рөлдерді бөлу",
@@ -1909,73 +1978,169 @@ function updateLang(lang) {
     currentLang = lang;
     
     // Update select element
-    document.getElementById('select-lang').value = lang;
+    const selectLang = document.getElementById('select-lang');
+    if (selectLang) selectLang.value = lang;
     
     // Update dropdown label text
     const langNames = { uz: "O'zbekcha", ru: "Русский", en: "English", kz: "Қазақша" };
-    document.getElementById('lbl-profile-lang').innerText = "Til: " + langNames[lang];
+    const langPrefix = t("lbl_lang_prefix");
+    const profileLangEl = document.getElementById('lbl-profile-lang');
+    if (profileLangEl) profileLangEl.innerText = langPrefix + langNames[lang];
     
     // Profile labels
-    document.getElementById('lbl-daily-claim').innerText = t("lbl_daily_claim");
-    document.getElementById('lbl-ref-title').innerText = t("lbl_ref_title");
-    document.getElementById('lbl-ref-desc').innerText = t("lbl_ref_desc");
-    document.getElementById('btn-copy-ref').innerText = t("btn_copy_ref");
-    document.getElementById('lbl-achievements-title').innerText = t("lbl_achievements_title");
-    document.getElementById('lbl-stats-title').innerText = t("lbl_stats_title");
-    document.getElementById('lbl-inventory-title').innerText = t("lbl_inventory");
-    document.getElementById('lbl-buy-coins-title').innerText = t("lbl_buy_coins");
+    const dailyClaimEl = document.getElementById('lbl-daily-claim');
+    if (dailyClaimEl) dailyClaimEl.innerText = t("lbl_daily_claim");
     
-    // Game Arena labels
-    document.getElementById('lbl-players-title').innerText = t("lbl_players_title");
-    document.getElementById('lbl-game-logs-title').innerText = t("lbl_game_logs_title");
-    document.getElementById('lbl-ghost-chat-title').innerText = t("lbl_ghost_chat_title");
+    const streakTitleEl = document.querySelector('.streak-card span');
+    if (streakTitleEl) streakTitleEl.innerText = t("lbl_streak_title");
     
-    // Bottom nav bar labels
-    document.getElementById('nav-lbl-profile').innerText = t("nav_profile");
-    document.getElementById('nav-lbl-shop').innerText = t("nav_shop");
-    document.getElementById('nav-lbl-leaderboard').innerText = t("nav_leaderboard");
-    document.getElementById('nav-lbl-match').innerText = t("nav_match");
-    if (document.getElementById('nav-lbl-admin')) {
-        document.getElementById('nav-lbl-admin').innerText = t("nav_admin");
+    const streakSubEl = document.getElementById('lbl-streak-subtitle');
+    if (streakSubEl) streakSubEl.innerText = t("lbl_streak_subtitle");
+    
+    const btnClaimStreak = document.getElementById('btn-claim-streak');
+    if (btnClaimStreak) btnClaimStreak.innerText = t("btn_claim_streak");
+    
+    const refTitleEl = document.getElementById('lbl-ref-title');
+    if (refTitleEl) refTitleEl.innerText = t("lbl_ref_title");
+    
+    const refDescEl = document.getElementById('lbl-ref-desc');
+    if (refDescEl) refDescEl.innerText = t("lbl_ref_desc");
+    
+    const btnCopyRef = document.getElementById('btn-copy-ref');
+    if (btnCopyRef) btnCopyRef.innerText = t("btn_copy_ref");
+    
+    const achTitleEl = document.getElementById('lbl-achievements-title');
+    if (achTitleEl) achTitleEl.innerText = t("lbl_achievements_title");
+    
+    const statsTitleEl = document.getElementById('lbl-stats-title');
+    if (statsTitleEl) statsTitleEl.innerText = t("lbl_stats_title");
+    
+    // Stats grid labels
+    const statBoxes = document.querySelectorAll('.stats-grid .stat-box .stat-lbl');
+    if (statBoxes.length >= 3) {
+        statBoxes[0].innerText = t("lbl_games");
+        statBoxes[1].innerText = t("lbl_wins");
+        statBoxes[2].innerText = t("lbl_win_rate");
     }
     
+    // XP label
+    const xpLabelEl = document.querySelector('.xp-labels span:first-child');
+    if (xpLabelEl) xpLabelEl.innerText = t("lbl_xp_progress");
+    
+    // Inventory and Shop titles
+    const invTitleEl = document.getElementById('lbl-inventory-title');
+    if (invTitleEl) invTitleEl.innerText = t("lbl_inventory");
+    
+    const buyCoinsTitleEl = document.getElementById('lbl-buy-coins-title');
+    if (buyCoinsTitleEl) buyCoinsTitleEl.innerText = t("lbl_buy_coins");
+    
+    // Quests & History headers
+    const questHeaders = document.querySelectorAll('#tab-profile .section-header .section-title');
+    if (questHeaders.length >= 2) {
+        questHeaders[0].innerText = t("lbl_quests_title");
+        questHeaders[1].innerText = t("lbl_history_title");
+    }
+    
+    // Game Arena labels
+    const playersTitleEl = document.getElementById('lbl-players-title');
+    if (playersTitleEl) playersTitleEl.innerText = t("lbl_players_title");
+    
+    const gameLogsTitleEl = document.getElementById('lbl-game-logs-title');
+    if (gameLogsTitleEl) gameLogsTitleEl.innerText = t("lbl_game_logs_title");
+    
+    const ghostChatTitleEl = document.getElementById('lbl-ghost-chat-title');
+    if (ghostChatTitleEl) ghostChatTitleEl.innerText = t("lbl_ghost_chat_title");
+    
+    // Bottom nav bar labels
+    const navProfile = document.getElementById('nav-lbl-profile');
+    if (navProfile) navProfile.innerText = t("nav_profile");
+    
+    const navShop = document.getElementById('nav-lbl-shop');
+    if (navShop) navShop.innerText = t("nav_shop");
+    
+    const navLeaderboard = document.getElementById('nav-lbl-leaderboard');
+    if (navLeaderboard) navLeaderboard.innerText = t("nav_leaderboard");
+    
+    const navMatch = document.getElementById('nav-lbl-match');
+    if (navMatch) navMatch.innerText = t("nav_match");
+    
+    const navAdmin = document.getElementById('nav-lbl-admin');
+    if (navAdmin) navAdmin.innerText = t("nav_admin");
+    
     // Shop labels
-    document.getElementById('lbl-shop-title').innerText = t("lbl_shop");
-    document.getElementById('shop-item-shield-name').innerText = t("shop_shield_name");
-    document.getElementById('shop-item-shield-desc').innerText = t("shop_shield_desc");
-    document.getElementById('shop-item-shield-btn').innerText = t("btn_buy");
+    const shopTitleEl = document.getElementById('lbl-shop-title');
+    if (shopTitleEl) shopTitleEl.innerText = t("lbl_shop");
     
-    document.getElementById('shop-item-mafia-name').innerText = t("shop_mafia_name");
-    document.getElementById('shop-item-mafia-desc').innerText = t("shop_mafia_desc");
-    document.getElementById('shop-item-mafia-btn').innerText = t("btn_buy");
+    const shieldNameEl = document.getElementById('shop-item-shield-name');
+    if (shieldNameEl) shieldNameEl.innerText = t("shop_shield_name");
     
-    document.getElementById('shop-item-det-name').innerText = t("shop_det_name");
-    document.getElementById('shop-item-det-desc').innerText = t("shop_det_desc");
-    document.getElementById('shop-item-det-btn').innerText = t("btn_buy");
+    const shieldDescEl = document.getElementById('shop-item-shield-desc');
+    if (shieldDescEl) shieldDescEl.innerText = t("shop_shield_desc");
     
-    document.getElementById('shop-item-doc-name').innerText = t("shop_doc_name");
-    document.getElementById('shop-item-doc-desc').innerText = t("shop_doc_desc");
-    document.getElementById('shop-item-doc-btn').innerText = t("btn_buy");
+    const shieldBtnEl = document.getElementById('shop-item-shield-btn');
+    if (shieldBtnEl) shieldBtnEl.innerText = t("btn_buy");
     
-    document.getElementById('shop-item-maniac-name').innerText = t("shop_maniac_name");
-    document.getElementById('shop-item-maniac-desc').innerText = t("shop_maniac_desc");
-    document.getElementById('shop-item-maniac-btn').innerText = t("btn_buy");
+    const mafiaNameEl = document.getElementById('shop-item-mafia-name');
+    if (mafiaNameEl) mafiaNameEl.innerText = t("shop_mafia_name");
+    
+    const mafiaDescEl = document.getElementById('shop-item-mafia-desc');
+    if (mafiaDescEl) mafiaDescEl.innerText = t("shop_mafia_desc");
+    
+    const mafiaBtnEl = document.getElementById('shop-item-mafia-btn');
+    if (mafiaBtnEl) mafiaBtnEl.innerText = t("btn_buy");
+    
+    const detNameEl = document.getElementById('shop-item-det-name');
+    if (detNameEl) detNameEl.innerText = t("shop_det_name");
+    
+    const detDescEl = document.getElementById('shop-item-det-desc');
+    if (detDescEl) detDescEl.innerText = t("shop_det_desc");
+    
+    const detBtnEl = document.getElementById('shop-item-det-btn');
+    if (detBtnEl) detBtnEl.innerText = t("btn_buy");
+    
+    const docNameEl = document.getElementById('shop-item-doc-name');
+    if (docNameEl) docNameEl.innerText = t("shop_doc_name");
+    
+    const docDescEl = document.getElementById('shop-item-doc-desc');
+    if (docDescEl) docDescEl.innerText = t("shop_doc_desc");
+    
+    const docBtnEl = document.getElementById('shop-item-doc-btn');
+    if (docBtnEl) docBtnEl.innerText = t("btn_buy");
+    
+    const manNameEl = document.getElementById('shop-item-maniac-name');
+    if (manNameEl) manNameEl.innerText = t("shop_maniac_name");
+    
+    const manDescEl = document.getElementById('shop-item-maniac-desc');
+    if (manDescEl) manDescEl.innerText = t("shop_maniac_desc");
+    
+    const manBtnEl = document.getElementById('shop-item-maniac-btn');
+    if (manBtnEl) manBtnEl.innerText = t("btn_buy");
     
     // Coin packages
-    document.getElementById('lbl-pack1-desc').innerText = t("coin_pack_desc").replace("{count}", "100");
-    document.getElementById('lbl-pack2-desc').innerText = t("coin_pack_desc").replace("{count}", "500");
-    document.getElementById('lbl-pack3-desc').innerText = t("coin_pack_desc").replace("{count}", "1000");
+    const pack1Desc = document.getElementById('lbl-pack1-desc');
+    if (pack1Desc) pack1Desc.innerText = t("coin_pack_desc").replace("{count}", "100");
+    
+    const pack2Desc = document.getElementById('lbl-pack2-desc');
+    if (pack2Desc) pack2Desc.innerText = t("coin_pack_desc").replace("{count}", "500");
+    
+    const pack3Desc = document.getElementById('lbl-pack3-desc');
+    if (pack3Desc) pack3Desc.innerText = t("coin_pack_desc").replace("{count}", "1000");
     
     // Payment buttons
     document.querySelectorAll('.btn-stars').forEach(btn => btn.innerText = t("btn_pay_stars"));
     document.querySelectorAll('.btn-card').forEach(btn => btn.innerText = t("btn_pay_card"));
     
     // Leaderboard title
-    document.getElementById('lbl-leaderboard-title').innerText = t("lbl_leaderboard_title");
+    const lbTitleEl = document.getElementById('lbl-leaderboard-title');
+    if (lbTitleEl) lbTitleEl.innerText = t("lbl_leaderboard_title");
     
     // Calculator labels
     const calcTitle = document.querySelector('#match-calc-view .section-title');
     if (calcTitle) calcTitle.innerText = "🎮 " + t("calc_title");
+    
+    // Reload dynamic lists with current lang
+    loadDailyQuests();
+    loadGameHistory();
 }
 
 function renderAchievements(achievements) {
