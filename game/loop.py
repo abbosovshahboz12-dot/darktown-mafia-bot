@@ -21,7 +21,9 @@ ROLE_EMOJIS = {
     "Bodyguard": "🛡️",
     "Witch": "🧹",
     "Maniac": "🦹",
-    "Jester": "🃏"
+    "Jester": "🃏",
+    "Kamikaze": "💣",
+    "Spy": "🕵️‍♂️"
 }
 
 def get_role_details(role: str) -> str:
@@ -36,7 +38,9 @@ def get_role_details(role: str) -> str:
         "Bodyguard": "🛡️ **Tansoqchi**: Har kecha bir o'yinchini himoya qilasiz. Agar unga hujum bo'lsa, siz uning o'rniga halok bo'lasiz.",
         "Witch": "🧹 **Jodugar**: Har kecha bir o'yinchini afsunlab, uning tungi qobiliyatini bloklaysiz.",
         "Maniac": "🦹 **Telba (Maniac)**: Yolg'iz qotil. Maqsadingiz - barcha o'yinchilarni o'ldirish va yagona tirik qolgan odam bo'lish.",
-        "Jester": "🃏 **Mazxaraboz (Jester)**: Yolg'iz o'yinchi. Maqsadingiz - shaharni aldab, kunduzgi ovoz berishda o'zingizni dorda osishlariga erishish. Dorda osilsangiz g'olib bo'lasiz!"
+        "Jester": "🃏 **Mazxaraboz (Jester)**: Yolg'iz o'yinchi. Maqsadingiz - shaharni aldab, kunduzgi ovoz berishda o'zingizni dorda osishlariga erishish. Dorda osilsangiz g'olib bo'lasiz!",
+        "Kamikaze": "💣 **Kamikadze**: Shaharliklar kunduzi sizni dorda osishga ovoz berishsa, siz o'zingiz bilan birga sizga ovoz berganlardan birini portlatib olib ketasiz!",
+        "Spy": "🕵️‍♂️ **Xufiya (Spy)**: Tinch aholi josusi. Har kecha bir o'yinchining uyini poylab, tunda uning oldiga kimlar tashrif buyurganini bilib olasiz."
     }
     return details.get(role, "")
 
@@ -48,17 +52,17 @@ def distribute_roles(players_count: int) -> List[str]:
     elif players_count == 7:
         return ["Don", "Mafia", "Doctor", "Detective", "Civilian", "Civilian", "Civilian"]
     elif players_count == 8:
-        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Civilian", "Civilian", "Civilian"]
+        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Kamikaze", "Civilian", "Civilian"]
     elif players_count == 9:
-        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Maniac", "Civilian", "Civilian", "Civilian"]
+        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Maniac", "Kamikaze", "Civilian", "Civilian"]
     elif players_count == 10:
-        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Witch", "Maniac", "Civilian", "Civilian", "Civilian"]
+        return ["Don", "Mafia", "Doctor", "Detective", "Bodyguard", "Witch", "Maniac", "Kamikaze", "Civilian", "Civilian"]
     elif players_count == 11:
-        return ["Don", "Mafia", "Mafia", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Civilian", "Civilian"]
+        return ["Don", "Mafia", "Mafia", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Spy", "Civilian"]
     elif players_count == 12:
-        return ["Don", "Mafia", "Mafia", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Jester", "Civilian"]
+        return ["Don", "Mafia", "Mafia", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Jester", "Kamikaze"]
     else: # 13+ players
-        base = ["Don", "Mafia", "Mafia", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Jester", "Bodyguard"]
+        base = ["Don", "Mafia", "Mafia", "Lawyer", "Doctor", "Detective", "Sergeant", "Bodyguard", "Witch", "Maniac", "Jester", "Kamikaze", "Spy"]
         while len(base) < players_count:
             base.append("Civilian")
         return base
@@ -119,6 +123,8 @@ def log_game_event(game: Game, text: str):
         game.logs.pop(0)
 
 async def try_mute_chat(bot: Bot, chat_id: int, mute: bool):
+    if chat_id >= 0:
+        return
     try:
         if mute:
             permissions = types.ChatPermissions(can_send_messages=False)
@@ -263,7 +269,8 @@ async def night_phase(bot: Bot, game: Game):
         "doctor": None,
         "bodyguard": None,
         "courtesan": None,
-        "maniac": None
+        "maniac": None,
+        "spy": None
     }
     
     # Send action keyboards in private message
@@ -378,6 +385,11 @@ async def night_phase(bot: Bot, game: Game):
                 else:
                     kb = target_keyboard("maniac", exclude_id=player.user_id)
                     await bot.send_message(player.user_id, "🦹 **Telba (Maniac) qotilligi**: Bugun kimni qurbon qilmoqchisiz?", reply_markup=kb)
+
+            elif player.role == "Spy":
+                # Spy observes a target
+                kb = target_keyboard("spy", exclude_id=player.user_id)
+                await bot.send_message(player.user_id, "🕵️‍♂️ **Xufiya (Spy) kuzatuvi**: Bugun tunda kimning uyini kuzatmoqchisiz?", reply_markup=kb)
         except Exception as e:
             logging.error(f"Error sending night action keyboard to user {player.user_id}: {e}")
 
@@ -449,6 +461,10 @@ def all_active_roles_acted(game: Game) -> bool:
     is_curfew = bool(game.event and game.event.get("key") == "curfew")
     if any(p.role == "Maniac" for p in alive_players) and not is_curfew and not game.night_actions.get("maniac"):
         return False
+
+    # 9. Spy check
+    if any(p.role == "Spy" for p in alive_players) and not game.night_actions.get("spy"):
+        return False
         
     return True
 
@@ -461,7 +477,11 @@ async def check_and_advance_night_if_ready(bot: Bot, game: Game):
 
 
 async def process_night(bot: Bot, game: Game):
-    if game.timer_task:
+    if game.phase != "night":
+        return
+    game.phase = "processing_night"
+    
+    if game.timer_task and not game.timer_task.done():
         game.timer_task.cancel()
         game.timer_task = None
         
@@ -540,7 +560,6 @@ async def process_night(bot: Bot, game: Game):
             else:
                 game.night_actions[role_name] = None
     # For mafia (if a mafia member is blocked, they can't vote, but we just check if all are blocked)
-    # Actually, we will just filter out votes from blocked mafias
     mafia_members = game.get_players_by_role("Mafia") + game.get_players_by_role("Don")
     blocked_mafia_ids = [m.user_id for m in mafia_members if m.is_blocked]
     
@@ -617,14 +636,16 @@ async def process_night(bot: Bot, game: Game):
                         bg = alive_guards[0]
                         bg.is_alive = False
                         game.add_mvp_points(bg.user_id, 30)
-                        victims.append((bg, "Tansoqchi Komissar o'qidan o'zini fido qildi."))
+                        if not any(v.user_id == bg.user_id for v, _ in victims):
+                            victims.append((bg, "Tansoqchi Komissar o'qidan o'zini fido qildi."))
                 else:
                     shoot_player.is_alive = False
                     if shoot_player.role in ["Mafia", "Don", "Lawyer", "Maniac"]:
                         game.add_mvp_points(active_det.user_id, 30)
                     else:
                         game.add_mvp_points(active_det.user_id, -10)
-                    victims.append((shoot_player, f"Tunda Komissar to'pponchasidan otib o'ldirildi. Rol: **{shoot_player.role}**"))
+                    if not any(v.user_id == shoot_player.user_id for v, _ in victims):
+                        victims.append((shoot_player, f"Tunda Komissar to'pponchasidan otib o'ldirildi. Rol: **{shoot_player.role}**"))
 
     # 5. Process Don Check
     don_check = game.night_actions["don"]
@@ -675,18 +696,21 @@ async def process_night(bot: Bot, game: Game):
                     bg = alive_guards[0]
                     bg.is_alive = False
                     game.add_mvp_points(bg.user_id, 30)
-                    victims.append((bg, "Tansoqchi o'z jonini fido qilib, o'yinchi himoyasida halok bo'ldi."))
+                    if not any(v.user_id == bg.user_id for v, _ in victims):
+                        victims.append((bg, "Tansoqchi o'z jonini fido qilib, o'yinchi himoyasida halok bo'ldi."))
             else:
+                was_alive = victim.is_alive
                 victim.is_alive = False
                 for m in mafia_members:
                     if m.is_alive and not m.is_blocked:
                         game.add_mvp_points(m.user_id, 10)
-                victims.append((victim, f"Shafqatsiz mafiya tomonidan o'ldirildi. Rol: **{victim.role}**"))
+                if not any(v.user_id == victim.user_id for v, _ in victims):
+                    victims.append((victim, f"Shafqatsiz mafiya tomonidan o'ldirildi. Rol: **{victim.role}**"))
                 
     # Process Maniac Homicide
     if maniac_kill_target:
         victim = game.players.get(maniac_kill_target)
-        if victim and victim.is_alive: # If not already killed by Mafia
+        if victim and victim.is_alive: # If not already killed
             if victim.is_healed:
                 docs = game.get_players_by_role("Doctor")
                 if docs and docs[0].is_alive:
@@ -698,13 +722,54 @@ async def process_night(bot: Bot, game: Game):
                     bg = alive_guards[0]
                     bg.is_alive = False
                     game.add_mvp_points(bg.user_id, 30)
-                    victims.append((bg, "Tansoqchi Telbaga (Maniac) qarshi kurashib halok bo'ldi."))
+                    if not any(v.user_id == bg.user_id for v, _ in victims):
+                        victims.append((bg, "Tansoqchi Telbaga (Maniac) qarshi kurashib halok bo'ldi."))
             else:
                 victim.is_alive = False
                 maniacs = game.get_players_by_role("Maniac")
                 if maniacs and maniacs[0].is_alive:
                     game.add_mvp_points(maniacs[0].user_id, 20)
-                victims.append((victim, f"Maniakning qo'lida jon berdi. Rol: **{victim.role}**"))
+                if not any(v.user_id == victim.user_id for v, _ in victims):
+                    victims.append((victim, f"Maniakning qo'lida jon berdi. Rol: **{victim.role}**"))
+
+    # 8. Process Spy Observation Report
+    spy_target_id = game.night_actions.get("spy")
+    if spy_target_id:
+        spies = [p for p in game.get_alive_players() if p.role == "Spy" and not p.is_blocked]
+        if spies:
+            spy_player = spies[0]
+            observed_player = game.players.get(spy_target_id)
+            if observed_player:
+                visitors = 0
+                if mafia_kill_target == spy_target_id:
+                    visitors += 1
+                if don_check == spy_target_id:
+                    visitors += 1
+                if detective_check == spy_target_id or detective_shoot == spy_target_id:
+                    visitors += 1
+                if healed_user == spy_target_id:
+                    visitors += 1
+                if guarded_user == spy_target_id:
+                    visitors += 1
+                if maniac_kill_target == spy_target_id:
+                    visitors += 1
+                if blocked_user == spy_target_id:
+                    visitors += 1
+                    
+                if visitors > 0:
+                    spy_msg = (
+                        f"🕵️‍♂️ **Xufiya hisoboti**:\n"
+                        f"Siz kuzatgan **{observed_player.name_escaped}**ning uyiga bugun tunda **{visitors} ta** shaxs tashrif buyurdi!"
+                    )
+                else:
+                    spy_msg = (
+                        f"🕵️‍♂️ **Xufiya hisoboti**:\n"
+                        f"Siz kuzatgan **{observed_player.name_escaped}**ning uyiga bugun tunda hech kim bormadi, hamma yoq tinch."
+                    )
+                try:
+                    await bot.send_message(spy_player.user_id, spy_msg, parse_mode="Markdown")
+                except Exception:
+                    pass
 
     # Mute all night victims
     for vic, _ in victims:
@@ -875,14 +940,32 @@ async def start_voting_phase(bot: Bot, game: Game):
 async def voting_timer(bot: Bot, game: Game, seconds: int):
     # Wait for all alive players to vote or timer timeout
     for sec in range(seconds, 0, -1):
-        alive_ids = [p.user_id for p in game.get_alive_players()]
-        if len(game.votes) >= len(alive_ids):
+        if game.phase != "voting":
+            return
+            
+        alive = game.get_alive_players()
+        if len(game.votes) >= len(alive):
             break
             
         if sec % 5 == 0 or sec in [5, 3, 2, 1]:
             try:
-                # Re-fetch keyboard to preserve it
                 alive = game.get_alive_players()
+                vote_counts = {}
+                for target in game.votes.values():
+                    vote_counts[target] = vote_counts.get(target, 0) + 1
+                    
+                text = "🗳️ **Ovoz berish boshlandi!**\nKimni dorda osmoqchisiz? Quyidagi tugmalardan birini tanlang.\n\n"
+                for p in alive:
+                    count = vote_counts.get(p.user_id, 0)
+                    votes_box = "🗳️" * count if count > 0 else ""
+                    text += f"- **{p.name_escaped}**: {votes_box} ({count})\n"
+                    
+                skip_count = vote_counts.get("skip", 0)
+                skip_box = "🗳️" * skip_count if skip_count > 0 else ""
+                text += f"- Hech kimga: {skip_box} ({skip_count})\n\n"
+                text += f"Ovoz berganlar: {len(game.votes)} / {len(alive)}\n"
+                text += f"⏳ **Ovoz berish tugashiga {sec} soniya qoldi...**"
+                
                 kb = InlineKeyboardBuilder()
                 for p in alive:
                     kb.add(types.InlineKeyboardButton(text=p.name, callback_data=f"vote_{p.user_id}"))
@@ -892,19 +975,23 @@ async def voting_timer(bot: Bot, game: Game, seconds: int):
                 await bot.edit_message_text(
                     chat_id=game.chat_id,
                     message_id=game.vote_message_id,
-                    text=f"🗳️ **Ovoz berish boshlandi!**\n"
-                         f"Kimni dorda osmoqchisiz? Quyidagi tugmalardan birini tanlang.\n\n"
-                         f"⏳ **Ovoz berish tugashiga {sec} soniya qoldi...**",
-                    reply_markup=kb.as_markup()
+                    text=text,
+                    reply_markup=kb.as_markup(),
+                    parse_mode="Markdown"
                 )
             except Exception:
                 pass
         await asyncio.sleep(1)
         
-    await process_voting(bot, game)
+    if game.phase == "voting":
+        await process_voting(bot, game)
 
 async def process_voting(bot: Bot, game: Game):
-    if game.timer_task:
+    if game.phase != "voting":
+        return
+    game.phase = "processing_voting"
+    
+    if game.timer_task and not game.timer_task.done():
         game.timer_task.cancel()
         game.timer_task = None
         
@@ -925,7 +1012,7 @@ async def process_voting(bot: Bot, game: Game):
         afk_text = "🚶 **AFK (Faolsizlik) tufayli o'yindan chetlashtirilganlar**:\n"
         for p in afk_killed:
             role_emoji = ROLE_EMOJIS.get(p.role, "")
-            afk_text += f"- {p.name} ({role_emoji} {p.role}): 2 ta bosqichda faolsiz bo'lgani sababli o'yindan chetlashtirildi!\n"
+            afk_text += f"- {p.name_escaped} ({role_emoji} {p.role}): 2 ta bosqichda faolsiz bo'lgani sababli o'yindan chetlashtirildi!\n"
             log_game_event(game, f"🚶 {p.name} AFK sababli chetlashtirildi.")
         await bot.send_message(game.chat_id, afk_text, parse_mode="Markdown")
         
@@ -957,7 +1044,7 @@ async def process_voting(bot: Bot, game: Game):
     for target_id, count in vote_tally.items():
         tgt_player = game.players.get(target_id)
         if tgt_player:
-            result_text += f"- {tgt_player.name}: {count} ta ovoz\n"
+            result_text += f"- {tgt_player.name_escaped}: {count} ta ovoz\n"
     if skip_votes:
         result_text += f"- Hech kimga: {skip_votes} ta ovoz\n"
         
@@ -1022,6 +1109,26 @@ async def process_voting(bot: Bot, game: Game):
                 await bot.send_message(game.chat_id, result_text, parse_mode="Markdown")
                 await end_game(bot, game, "Jester")
                 return
+            elif hanged_player.role == "Kamikaze":
+                game.add_mvp_points(hanged_player.user_id, 40)
+                voters_for_k = [uid for uid, tid in game.votes.items() if tid == hanged_id and uid != hanged_id and uid in game.players and game.players[uid].is_alive]
+                
+                blown_text = ""
+                if voters_for_k:
+                    blown_id = random.choice(voters_for_k)
+                    blown_p = game.players[blown_id]
+                    blown_p.is_alive = False
+                    await try_restrict_user(bot, game.chat_id, blown_p.user_id, True)
+                    role_emoji_blown = ROLE_EMOJIS.get(blown_p.role, "")
+                    blown_text = f"\n\n💣 **PORTLASH!** Dorga osilgan shaxs **Kamikadze** edi! U o'zi bilan birga o'ziga ovoz bergan **{blown_p.name_escaped}** ({role_emoji_blown} {blown_p.role})ni portlatib yubordi!"
+                    log_game_event(game, f"💣 Kamikadze {hanged_player.name} {blown_p.name}ni portlatdi.")
+                    
+                result_text += (
+                    f"\n⚖️ Ko'pchilikning qarori bilan **{hanged_player.name_escaped}** dorga osildi!\n"
+                    f"Uning roli: {role_emoji} **{hanged_player.role}**"
+                    f"{blown_text}"
+                )
+                log_game_event(game, f"⚖️ {hanged_player.name} dorda osildi ({hanged_player.role}).")
             else:
                 if hanged_player.role in ["Mafia", "Don", "Lawyer", "Maniac"]:
                     for voter_id, target_id in game.votes.items():

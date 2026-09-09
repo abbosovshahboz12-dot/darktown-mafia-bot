@@ -16,7 +16,7 @@ class Player:
 
     @property
     def name_escaped(self) -> str:
-        text = self.name
+        text = str(self.name) if self.name else "O'yinchi"
         for char in ['_', '*', '[', '`']:
             text = text.replace(char, f"\\{char}")
         return text
@@ -53,7 +53,8 @@ class Game:
             "doctor": None,    # target_id (Doctor heal)
             "bodyguard": None, # target_id (Bodyguard guard)
             "courtesan": None, # target_id (Courtesan block)
-            "maniac": None     # target_id (Maniac kill)
+            "maniac": None,    # target_id (Maniac kill)
+            "spy": None        # target_id (Spy observe)
         }
         self.event: Optional[dict] = None  # Current day event
         self.messages_to_delete: List[int] = []

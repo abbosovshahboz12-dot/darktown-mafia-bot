@@ -33,21 +33,33 @@ async def register_night_choice(cb: types.CallbackQuery, action_type: str, targe
             await cb.answer("⚠️ Siz mafiya emassiz!", show_alert=True)
             return
         game.night_actions["mafia"][user_id] = target_id
-        await cb.message.edit_text(f"🔴 Siz **{target_player.name}**ni o'ldirishga ovoz berdingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"🔴 Siz **{target_player.name_escaped}**ni o'ldirishga ovoz berdingiz. Tanlov qabul qilindi!")
+        
+        # Mafia Night Sync: Notify other living Mafia & Don allies in PM
+        role_label = "🕶️ Don" if player.role == "Don" else "🔴 Mafiya"
+        mafia_allies = [m for m in (game.get_players_by_role("Mafia") + game.get_players_by_role("Don")) if m.is_alive and m.user_id != user_id]
+        for ally in mafia_allies:
+            try:
+                await cb.bot.send_message(
+                    ally.user_id,
+                    f"{role_label} **{player.name_escaped}** bugun tunda **{target_player.name_escaped}**ni yo'q qilishga ovoz berdi!"
+                )
+            except Exception:
+                pass
         
     elif action_type == "don":
         if player.role != "Don":
             await cb.answer("⚠️ Siz Don emassiz!", show_alert=True)
             return
         game.night_actions["don"] = target_id
-        await cb.message.edit_text(f"🕶️ Siz **{target_player.name}**ni tekshirishni tanladingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"🕶️ Siz **{target_player.name_escaped}**ni tekshirishni tanladingiz. Tanlov qabul qilindi!")
 
     elif action_type == "lawyer":
         if player.role != "Lawyer":
             await cb.answer("⚠️ Siz Advokat emassiz!", show_alert=True)
             return
         game.night_actions["lawyer"] = target_id
-        await cb.message.edit_text(f"⚖️ Siz **{target_player.name}**ni Komissardan yashirishni tanladingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"⚖️ Siz **{target_player.name_escaped}**ni Komissardan yashirishni tanladingiz. Tanlov qabul qilindi!")
         
     elif action_type == "det":
         has_det_rights = (player.role == "Detective") or (player.role == "Sergeant" and not any(p.role == "Detective" and p.is_alive for p in game.get_alive_players()))
@@ -55,35 +67,42 @@ async def register_night_choice(cb: types.CallbackQuery, action_type: str, targe
             await cb.answer("⚠️ Sizda tekshirish huquqi yo'q!", show_alert=True)
             return
         game.night_actions["detective_check"] = target_id
-        await cb.message.edit_text(f"🔵 Siz **{target_player.name}**ni tekshirishni tanladingiz. Tun oxirida natija yuboriladi.")
+        await cb.message.edit_text(f"🔵 Siz **{target_player.name_escaped}**ni tekshirishni tanladingiz. Tun oxirida natija yuboriladi.")
         
     elif action_type == "doc":
         if player.role != "Doctor":
             await cb.answer("⚠️ Siz Shifokor emassiz!", show_alert=True)
             return
         game.night_actions["doctor"] = target_id
-        await cb.message.edit_text(f"🟡 Siz **{target_player.name}**ni davolashni tanladingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"🟡 Siz **{target_player.name_escaped}**ni davolashni tanladingiz. Tanlov qabul qilindi!")
         
     elif action_type == "guard":
         if player.role != "Bodyguard":
             await cb.answer("⚠️ Siz Tansoqchi emassiz!", show_alert=True)
             return
         game.night_actions["bodyguard"] = target_id
-        await cb.message.edit_text(f"🛡️ Siz **{target_player.name}**ni himoya qilishni tanladingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"🛡️ Siz **{target_player.name_escaped}**ni himoya qilishni tanladingiz. Tanlov qabul qilindi!")
         
     elif action_type == "block":
         if player.role != "Witch":
             await cb.answer("⚠️ Siz Jodugar emassiz!", show_alert=True)
             return
         game.night_actions["courtesan"] = target_id
-        await cb.message.edit_text(f"🧹 Siz **{target_player.name}**ni afsunlab, uning harakatini blokladingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"🧹 Siz **{target_player.name_escaped}**ni afsunlab, uning harakatini blokladingiz. Tanlov qabul qilindi!")
         
     elif action_type == "maniac":
         if player.role != "Maniac":
             await cb.answer("⚠️ Siz Telba (Maniac) emassiz!", show_alert=True)
             return
         game.night_actions["maniac"] = target_id
-        await cb.message.edit_text(f"🦹 Siz **{target_player.name}**ni o'ldirishni tanladingiz. Tanlov qabul qilindi!")
+        await cb.message.edit_text(f"🦹 Siz **{target_player.name_escaped}**ni o'ldirishni tanladingiz. Tanlov qabul qilindi!")
+
+    elif action_type == "spy":
+        if player.role != "Spy":
+            await cb.answer("⚠️ Siz Xufiya emassiz!", show_alert=True)
+            return
+        game.night_actions["spy"] = target_id
+        await cb.message.edit_text(f"🕵️‍♂️ Siz **{target_player.name_escaped}**ni kuzatishni tanladingiz. Tun oxirida ma'lumot olasiz.")
         
     await cb.answer("Tanlov qabul qilindi!")
     
@@ -185,6 +204,11 @@ async def cb_block(cb: types.CallbackQuery):
 async def cb_maniac(cb: types.CallbackQuery):
     target_id = int(cb.data.replace("maniac_", ""))
     await register_night_choice(cb, "maniac", target_id)
+
+@router.callback_query(F.data.startswith("spy_"))
+async def cb_spy(cb: types.CallbackQuery):
+    target_id = int(cb.data.replace("spy_", ""))
+    await register_night_choice(cb, "spy", target_id)
 
 # Telegram Stars Payment Handlers
 @router.pre_checkout_query()

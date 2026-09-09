@@ -239,18 +239,56 @@ async def cmd_newgame(message: types.Message, bot: Bot):
         game_manager.remove_game(chat_id)
         return
         
+    # Verify creator has started private conversation with bot
+    try:
+        ping = await bot.send_message(user_id, "⚙️ Darktown Mafiya o'yini...")
+        await bot.delete_message(user_id, ping.message_id)
+    except Exception:
+        bot_info = await bot.get_me()
+        err_msg = (
+            f"⚠️ **DIQQAT, {Player(user_id, name).name_escaped}!**\n\n"
+            f"O'yin boshlashdan oldin botning shaxsiy chatiga kirib `/start` ni bosishingiz shart!\n"
+            f"Aks holda bot sizga rolingizni va tungi harakatlarni yubora olmaydi.\n\n"
+            f"👉 [Botga o'tish va /start bosish](https://t.me/{bot_info.username}?start=start)"
+        )
+        if lang == "ru":
+            err_msg = (
+                f"⚠️ **ВНИМАНИЕ, {Player(user_id, name).name_escaped}!**\n\n"
+                f"Перед созданием игры вы должны запустить бота в личных сообщениях с помощью `/start`!\n"
+                f"Иначе бот не сможет отправить вам вашу роль и ночные действия.\n\n"
+                f"👉 [Перейти к боту и нажать /start](https://t.me/{bot_info.username}?start=start)"
+            )
+        elif lang == "en":
+            err_msg = (
+                f"⚠️ **ATTENTION, {Player(user_id, name).name_escaped}!**\n\n"
+                f"Before creating a game, you must start the bot in private messages using `/start`!\n"
+                f"Otherwise, the bot will not be able to send your role and night actions.\n\n"
+                f"👉 [Open Bot and press /start](https://t.me/{bot_info.username}?start=start)"
+            )
+        elif lang == "kz":
+            err_msg = (
+                f"⚠️ **НАЗАР АУДАРЫҢЫЗ, {Player(user_id, name).name_escaped}!**\n\n"
+                f"Ойын құрмас бұрын ботты жеке хабарламада `/start` арқылы іске қосуыңыз керек!\n\n"
+                f"👉 [Ботқа өту және /start басу](https://t.me/{bot_info.username}?start=start)"
+            )
+        await message.answer(err_msg, parse_mode="Markdown")
+        game_manager.remove_game(chat_id)
+        return
+
     # Register in DB
     await db.get_user(user_id, username, name)
     
     player = Player(user_id, name, username)
     game.players[user_id] = player
     
+    escaped_creator_name = player.name_escaped
+    
     if lang == "ru":
         lobby_text = (
             f"🎮 **Игра Мафия Darktown**\n\n"
             f"Создана новая игра! Игроки собираются. До начала осталось **120 секунд**!\n\n"
             f"👥 **Список игроков (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {escaped_creator_name}\n\n"
             f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
         )
     elif lang == "en":
@@ -258,7 +296,7 @@ async def cmd_newgame(message: types.Message, bot: Bot):
             f"🎮 **Darktown Mafia Game**\n\n"
             f"New game created! Players are gathering. **120 seconds** remaining!\n\n"
             f"👥 **Player List (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {escaped_creator_name}\n\n"
             f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
         )
     elif lang == "kz":
@@ -266,7 +304,7 @@ async def cmd_newgame(message: types.Message, bot: Bot):
             f"🎮 **Darktown Мафия Ойыны**\n\n"
             f"Жаңа ойын құрылды! Ойыншылар жиналуда. Ойынның басталуына **120 секунд** қалды!\n\n"
             f"👥 **Ойыншылар тізімі (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {escaped_creator_name}\n\n"
             f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
         )
     else:
@@ -274,7 +312,7 @@ async def cmd_newgame(message: types.Message, bot: Bot):
             f"🎮 **Darktown Mafiya O'yini**\n\n"
             f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda. Kirish tugashiga **120 soniya** qoldi!\n\n"
             f"👥 **O'yinchilar ro'yxati (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {escaped_creator_name}\n\n"
             f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
         )
         
@@ -294,15 +332,41 @@ async def cmd_tourneygame(message: types.Message, bot: Bot):
     user_id = message.from_user.id
     name = message.from_user.full_name
     username = message.from_user.username
+    lang = await db.get_group_language(chat_id)
     
     game = game_manager.get_game(chat_id)
     if game:
         await message.answer("⚠️ Bu guruhda allaqachon faol o'yin mavjud!")
         return
         
+    # Check tournament registration
+    is_registered = await db.is_user_registered_for_tournament(user_id)
+    if not is_registered:
+        kb = InlineKeyboardBuilder()
+        kb.add(types.InlineKeyboardButton(text="🏆 Turnirga Ro'yxatdan O'tish", url="https://t.me/darktownuz_bot/app"))
+        await message.answer(
+            f"⚠️ **DIQQAT, {Player(user_id, name).name_escaped}!**\n\n"
+            f"Ushbu guruhdagi turnir o'yinlarini yaratish va unda qatnashish uchun faqat **Mini App'da ro'yxatdan o'tgan** o'yinchilar ruxsat etiladi!",
+            reply_markup=kb.as_markup(),
+            parse_mode="Markdown"
+        )
+        return
+
+    # Verify PM
+    try:
+        ping = await bot.send_message(user_id, "⚙️ Darktown Turnir o'yini...")
+        await bot.delete_message(user_id, ping.message_id)
+    except Exception:
+        bot_info = await bot.get_me()
+        await message.answer(
+            f"⚠️ **DIQQAT!** Turnir o'yinini yaratishdan oldin botning shaxsiy chatiga kirib `/start` ni bosing:\n\n"
+            f"👉 [Botga o'tish](https://t.me/{bot_info.username}?start=start)",
+            parse_mode="Markdown"
+        )
+        return
+        
     game = game_manager.create_game(chat_id)
     game.is_tournament = True
-    lang = await db.get_group_language(chat_id)
     
     player = Player(user_id, name, username)
     game.players[user_id] = player
@@ -312,7 +376,7 @@ async def cmd_tourneygame(message: types.Message, bot: Bot):
         f"🏆 **RASMIY TURNIR O'YINI LOBISI YARATILDI!** 🏆\n\n"
         f"Ushbu o'yinda faqat Mini App'da Turnirlar bo'limida ro'yxatdan o'tgan o'yinchilar qatnasha oladi.\n"
         f"⏳ O'yin boshlanishiga **120 soniya** qoldi.\n\n"
-        f"👥 **O'yinchilar ro'yxati (1)**:\n1. {name}"
+        f"👥 **O'yinchilar ro'yxati (1)**:\n1. {player.name_escaped}"
     )
     lobby_msg = await message.answer(
         lobby_text,
@@ -497,7 +561,7 @@ async def cb_replay_newgame(cb: types.CallbackQuery, bot: Bot):
             f"🎮 **Игра Мафия Darktown**\n\n"
             f"Создана новая игра! Игроки собираются. До начала осталось **120 секунд**!\n\n"
             f"👥 **Список игроков (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {player.name_escaped}\n\n"
             f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
         )
     elif lang == "en":
@@ -505,7 +569,7 @@ async def cb_replay_newgame(cb: types.CallbackQuery, bot: Bot):
             f"🎮 **Darktown Mafia Game**\n\n"
             f"New game created! Players are gathering. **120 seconds** remaining!\n\n"
             f"👥 **Player List (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {player.name_escaped}\n\n"
             f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
         )
     elif lang == "kz":
@@ -513,7 +577,7 @@ async def cb_replay_newgame(cb: types.CallbackQuery, bot: Bot):
             f"🎮 **Darktown Мафия Ойыны**\n\n"
             f"Жаңа ойын құрылды! Ойыншылар жиналуда. Ойынның басталуына **120 секунд** қалды!\n\n"
             f"👥 **Ойыншылар тізімі (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {player.name_escaped}\n\n"
             f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
         )
     else:
@@ -521,7 +585,7 @@ async def cb_replay_newgame(cb: types.CallbackQuery, bot: Bot):
             f"🎮 **Darktown Mafiya O'yini**\n\n"
             f"Yangi o'yin yaratildi! Ishtirokchilar yig'ilmoqda. Kirish tugashiga **120 soniya** qoldi!\n\n"
             f"👥 **O'yinchilar ro'yxati (1)**:\n"
-            f"1. {name}\n\n"
+            f"1. {player.name_escaped}\n\n"
             f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
         )
         
@@ -564,6 +628,8 @@ async def cmd_leave(message: types.Message):
         return
         
     if game.phase == "lobby":
+        player = game.players[user_id]
+        esc_name = player.name_escaped
         del game.players[user_id]
         if not game.players:
             game_manager.remove_game(chat_id)
@@ -587,7 +653,7 @@ async def cmd_leave(message: types.Message):
                 f"{players_list}\n\n"
                 f"⚠️ **ВНИМАНИЕ**: Перед тем как присоединиться к игре, убедитесь, что вы запустили бота в личных сообщениях с помощью `/start`!"
             )
-            leave_confirm = f"🚶 **{message.from_user.full_name}** вышел из лобби."
+            leave_confirm = f"🚶 **{esc_name}** вышел из лобби."
         elif lang == "en":
             lobby_text = (
                 f"🎮 **Darktown Mafia Game**\n\n"
@@ -596,16 +662,16 @@ async def cmd_leave(message: types.Message):
                 f"{players_list}\n\n"
                 f"⚠️ **ATTENTION**: Before joining the game, make sure you have started the bot in PM using `/start`!"
             )
-            leave_confirm = f"🚶 **{message.from_user.full_name}** left the lobby."
+            leave_confirm = f"🚶 **{esc_name}** left the lobby."
         elif lang == "kz":
             lobby_text = (
                 f"🎮 **Darktown Мафия Ойыны**\n\n"
                 f"Жаңа ойын құрылды! Ойыншылар жиналуда.\n\n"
-                f"👥 **Ойыншыlar тізімі ({len(game.players)})**:\n"
+                f"👥 **Ойыншылар тізімі ({len(game.players)})**:\n"
                 f"{players_list}\n\n"
-                f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске qosqańyzǵa kóz jetkizińiz!"
+                f"⚠️ **НАЗАР АУДАРЫҢЫЗ**: Ойынға қосылмас бұрын, ботты жеке хабарламаларда `/start` арқылы іске қосқаныңызға көз жеткізіңіз!"
             )
-            leave_confirm = f"🚶 **{message.from_user.full_name}** лоббиден шықты."
+            leave_confirm = f"🚶 **{esc_name}** лоббиден шықты."
         else:
             lobby_text = (
                 f"🎮 **Darktown Mafiya O'yini**\n\n"
@@ -614,7 +680,7 @@ async def cmd_leave(message: types.Message):
                 f"{players_list}\n\n"
                 f"⚠️ **DIQQAT**: O'yinga qo'shilishdan oldin botga shaxsiy xabar yuborib `/start` ni bosganingizga ishonch hosil qiling!"
             )
-            leave_confirm = f"🚶 **{message.from_user.full_name}** lobby'dan chiqdi."
+            leave_confirm = f"🚶 **{esc_name}** lobby'dan chiqdi."
 
         try:
             await message.bot.edit_message_text(
@@ -925,6 +991,8 @@ async def cmd_groupboard(message: types.Message):
         else:
             text += f"{medal} **{escaped_name}**{username_str}: **{played}** tadan **{won}** ta g'alaba\n"
             
+    await message.answer(text, parse_mode="Markdown")
+            
 async def is_user_group_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     if ADMIN_ID and user_id == ADMIN_ID:
         return True
@@ -1183,6 +1251,32 @@ async def cmd_topgroups(message: types.Message):
         
     await message.answer(text, parse_mode="Markdown")
 
+@router.message(Command("quests", "vazifalar"))
+async def cmd_group_quests(message: types.Message):
+    user_id = message.from_user.id
+    lang = await db.get_group_language(message.chat.id)
+    user_quests = await db.get_daily_quests(user_id)
+    
+    title = "📜 **Bugungi Kunlik Vazifalaringiz**:\n\n"
+    if lang == "ru":
+        title = "📜 **Ваши ежедневные задания на сегодня**:\n\n"
+    elif lang == "en":
+        title = "📜 **Your Daily Quests for Today**:\n\n"
+    elif lang == "kz":
+        title = "📜 **Бүгінгі күнделікті тапсырмаларыңыз**:\n\n"
+        
+    text = title
+    if not user_quests:
+        text += "Hozircha vazifalar mavjud emas."
+    else:
+        for q in user_quests:
+            status = "✅ Bajarildi" if q.get("completed") else f"⏳ {q.get('progress', 0)}/{q.get('target', 1)}"
+            name = q.get(f"name_{lang}", q.get("name_uz", "Vazifa"))
+            reward = q.get("reward", 50)
+            text += f"• **{name}**: {status} (+{reward} 🪙)\n"
+            
+    await message.answer(text, parse_mode="Markdown")
+
 # Enforce group chat rules (mute on night phase, silence dead players)
 @router.message()
 async def handle_group_chat_rules(message: types.Message, bot: Bot):
@@ -1198,7 +1292,15 @@ async def handle_group_chat_rules(message: types.Message, bot: Bot):
     user_id = message.from_user.id
     player = game.players.get(user_id)
     
-    # 1. If player is dead, delete their message (dead players don't talk)
+    # 1. If phase is night, delete all players' messages (city is asleep)
+    if game.phase == "night":
+        try:
+            await bot.delete_message(chat_id, message.message_id)
+        except Exception:
+            pass
+        return
+
+    # 2. If player is dead, delete their message (dead players don't talk)
     if player and not player.is_alive:
         try:
             await bot.delete_message(chat_id, message.message_id)
@@ -1206,18 +1308,14 @@ async def handle_group_chat_rules(message: types.Message, bot: Bot):
             pass
         return
         
-    # 2. If user is NOT in the game (spectator), delete their message to prevent game disruption
+    # 3. If user is NOT in the game (spectator):
+    # If spectator is a group admin/creator -> allow them to chat/manage (Admin Immunity)
+    # If spectator is normal user -> delete their message to prevent game disruption
     if not player:
-        try:
-            await bot.delete_message(chat_id, message.message_id)
-        except Exception:
-            pass
-        return
-        
-    # 3. If phase is night, delete players' messages (city is asleep)
-    if game.phase == "night":
-        try:
-            await bot.delete_message(chat_id, message.message_id)
-        except Exception:
-            pass
+        is_admin = await is_user_group_admin(bot, chat_id, user_id)
+        if not is_admin:
+            try:
+                await bot.delete_message(chat_id, message.message_id)
+            except Exception:
+                pass
         return

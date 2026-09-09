@@ -247,6 +247,33 @@ async def cmd_profile(message: types.Message):
         
     await message.answer(profile_text + stats_text, reply_markup=get_start_keyboard(user_id, bot_user, lang), parse_mode="Markdown")
 
+@router.message(Command("quests", "vazifalar"))
+async def cmd_quests_pm(message: types.Message):
+    user_id = message.from_user.id
+    user = await db.get_user(user_id, message.from_user.username, message.from_user.full_name)
+    lang = user.get('language', 'uz')
+    user_quests = await db.get_daily_quests(user_id)
+    
+    title = "📜 **Bugungi Kunlik Vazifalaringiz**:\n\n"
+    if lang == "ru":
+        title = "📜 **Ваши ежедневные задания на сегодня**:\n\n"
+    elif lang == "en":
+        title = "📜 **Your Daily Quests for Today**:\n\n"
+    elif lang == "kz":
+        title = "📜 **Бүгінгі күнделікті тапсырмаларыңыз**:\n\n"
+        
+    text = title
+    if not user_quests:
+        text += "Hozircha vazifalar mavjud emas."
+    else:
+        for q in user_quests:
+            status = "✅ Bajarildi" if q.get("completed") else f"⏳ {q.get('progress', 0)}/{q.get('target', 1)}"
+            name = q.get(f"name_{lang}", q.get("name_uz", "Vazifa"))
+            reward = q.get("reward", 50)
+            text += f"• **{name}**: {status} (+{reward} 🪙)\n"
+            
+    await message.answer(text, parse_mode="Markdown")
+
 SHOP_ITEMS = {
     "booster_active": {
         "name_uz": "🎭 Faol Rol Busteri",
