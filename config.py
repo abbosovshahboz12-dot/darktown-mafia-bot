@@ -17,7 +17,7 @@ REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@DarkTownuz")
 # ==========================================
 # 1-bosqichda (MVP) faqat asosiy bot, yengil do'kon va referral ishlaydi.
 # Kengayish davrida quyidagilarni True qilib bitta-bitta yoqish mumkin:
-FEATURE_WEBAPP = os.getenv("FEATURE_WEBAPP", "False").lower() in ("true", "1", "yes")
+FEATURE_WEBAPP = os.getenv("FEATURE_WEBAPP", "True").lower() in ("true", "1", "yes")
 FEATURE_SHOP = os.getenv("FEATURE_SHOP", "True").lower() in ("true", "1", "yes")
 FEATURE_REFERRAL = os.getenv("FEATURE_REFERRAL", "True").lower() in ("true", "1", "yes")
 FEATURE_LEADERBOARD = os.getenv("FEATURE_LEADERBOARD", "True").lower() in ("true", "1", "yes")
