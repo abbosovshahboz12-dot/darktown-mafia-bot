@@ -1,17 +1,17 @@
 /* CSS Reset & Vars */
 :root {
-    --bg-color: #0d071b;
-    --card-bg: rgba(255, 255, 255, 0.03);
-    --card-border: rgba(255, 255, 255, 0.07);
-    --primary: #9d4edd;
-    --primary-glow: rgba(157, 78, 221, 0.4);
-    --secondary: #e0aaff;
-    --accent: #ffd700;
-    --accent-glow: rgba(255, 215, 0, 0.3);
-    --text-color: #f1ecf7;
-    --text-muted: #a395b8;
+    --bg-color: #08040f;
+    --card-bg: rgba(22, 14, 38, 0.65);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --primary: #00f2fe;
+    --primary-glow: rgba(0, 242, 254, 0.35);
+    --secondary: #a78bfa;
+    --accent: #ffc439;
+    --accent-glow: rgba(255, 196, 57, 0.3);
+    --text-color: #f8fafc;
+    --text-muted: #94a3b8;
     --success: #00f5d4;
-    --error: #ff5400;
+    --error: #ff3b30;
     --font-family: 'Outfit', sans-serif;
     --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -42,7 +42,9 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
-    background: radial-gradient(circle at 50% -20%, #240046 0%, var(--bg-color) 70%);
+    background: radial-gradient(circle at 10% 10%, rgba(0, 242, 254, 0.07) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(224, 86, 136, 0.06) 0%, transparent 40%),
+                radial-gradient(circle at 50% 0%, #160829 0%, var(--bg-color) 75%);
     overflow: hidden;
 }
 
@@ -1197,31 +1199,35 @@ body {
 /* Ambient Background Glows */
 .bg-glow {
     position: absolute;
-    width: 250px;
-    height: 250px;
     border-radius: 50%;
-    filter: blur(100px);
+    filter: blur(120px);
     z-index: 0;
     pointer-events: none;
-    opacity: 0.15;
-    animation: glow-pulse 10s infinite alternate ease-in-out;
+    will-change: transform, opacity;
+    animation: glow-pulse 12s infinite alternate ease-in-out;
 }
 .bg-glow-1 {
-    top: 10%;
-    left: -50px;
-    background: #00f2fe;
+    top: 5%;
+    left: -70px;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(0, 242, 254, 0.2) 0%, transparent 70%);
+    opacity: 0.14;
 }
 .bg-glow-2 {
-    bottom: 20%;
-    right: -50px;
-    background: #9d4edd;
-    animation-delay: 5s;
+    bottom: 12%;
+    right: -70px;
+    width: 340px;
+    height: 340px;
+    background: radial-gradient(circle, rgba(224, 86, 136, 0.18) 0%, transparent 70%);
+    opacity: 0.12;
+    animation-delay: 6s;
 }
 
 @keyframes glow-pulse {
-    0% { transform: scale(1) translate(0, 0); opacity: 0.12; }
-    50% { transform: scale(1.2) translate(20px, -20px); opacity: 0.18; }
-    100% { transform: scale(0.9) translate(-10px, 10px); opacity: 0.12; }
+    0% { transform: scale(1) translate3d(0, 0, 0); opacity: 0.10; }
+    50% { transform: scale(1.15) translate3d(15px, -15px, 0); opacity: 0.16; }
+    100% { transform: scale(0.92) translate3d(-10px, 10px, 0); opacity: 0.10; }
 }
 
 /* Floating Ambient Particles */
