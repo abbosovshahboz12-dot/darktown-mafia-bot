@@ -325,9 +325,6 @@ async function loadProfile() {
         if (document.getElementById('user-rep-display')) {
             document.getElementById('user-rep-display').innerText = (data.user.rating || data.user.xp || 0).toLocaleString();
         }
-        if (document.getElementById('user-clan-display')) {
-            document.getElementById('user-clan-display').innerText = data.user.clan_name || "DARK TOWN";
-        }
         
         // Avatar letter
         const firstLetter = (data.user.first_name || "M").charAt(0).toUpperCase();
@@ -396,11 +393,54 @@ async function loadProfile() {
         const winRate = totalPlayed > 0 ? ((totalWon / totalPlayed) * 100).toFixed(1) : 0;
         document.getElementById('stats-rate').innerText = `${winRate}%`;
         
-        // Shield active check
+        // Dynamic Mafia Rank based on Level / Wins
+        const userLevel = data.user.level || 1;
+        let mafiaTitle = "ASSOCIATE";
+        if (userLevel >= 30 || totalWon >= 100) {
+            mafiaTitle = "GODFATHER (DON)";
+        } else if (userLevel >= 20 || totalWon >= 50) {
+            mafiaTitle = "UNDERBOSS";
+        } else if (userLevel >= 10 || totalWon >= 20) {
+            mafiaTitle = "CAPO";
+        } else if (userLevel >= 5 || totalWon >= 5) {
+            mafiaTitle = "SOLDATO";
+        } else {
+            mafiaTitle = "ASSOCIATE";
+        }
+        if (document.getElementById('user-role-title')) {
+            document.getElementById('user-role-title').innerText = mafiaTitle;
+        }
+
+        // Side Widget: Clan Information
+        if (document.getElementById('user-clan-display')) {
+            document.getElementById('user-clan-display').innerText = data.clan ? (data.clan.name || data.clan.clan_name) : "Klansiz";
+        }
+        if (document.getElementById('user-clan-role-txt')) {
+            const roleTxt = data.clan ? (data.clan.user_role === 'leader' ? "Lider 👑" : (data.clan.user_role === 'elder' ? "Capo ⚔️" : "A'zo")) : "Klansiz";
+            document.getElementById('user-clan-role-txt').innerText = roleTxt;
+        }
+        if (document.getElementById('side-clan-bar')) {
+            const clanLvl = data.clan ? (data.clan.level || 1) : 0;
+            const clanPercent = data.clan ? Math.min(clanLvl * 20, 100) : 0;
+            document.getElementById('side-clan-bar').style.width = `${clanPercent}%`;
+        }
+
+        // Shield active check & Side Widget
         const shieldActive = data.user.shield_active === 1;
         document.getElementById('shield-status').innerText = shieldActive ? t("lbl_shield_active") : t("lbl_shield_inactive");
         document.getElementById('shield-status').style.color = shieldActive ? "var(--success)" : "var(--text-muted)";
         
+        const shieldHeroEl = document.getElementById('shield-hero-status');
+        const shieldBarEl = document.getElementById('side-shield-bar');
+        if (shieldHeroEl) {
+            shieldHeroEl.innerText = shieldActive ? (t("lbl_shield_active") || "Aktiv 🛡️") : (t("lbl_shield_inactive") || "Nofaol");
+            shieldHeroEl.style.color = shieldActive ? "var(--success)" : "var(--text-muted)";
+        }
+        if (shieldBarEl) {
+            shieldBarEl.style.width = shieldActive ? "100%" : "0%";
+            shieldBarEl.style.background = shieldActive ? "linear-gradient(90deg, #10b981, #34d399)" : "rgba(255,255,255,0.1)";
+        }
+
         // Render inventory
         renderInventory(data.inventory, shieldActive);
         
@@ -2479,6 +2519,40 @@ function updateLang(lang) {
     if (questsTitleEl) questsTitleEl.innerText = t("lbl_quests_title");
     const historyTitleEl = document.getElementById('lbl-history-title');
     if (historyTitleEl) historyTitleEl.innerText = t("lbl_history_title");
+
+    // Noir Header & Top Pills
+    const pCoins = document.getElementById('lbl-pill-coins');
+    if (pCoins) pCoins.innerText = currentLang === 'ru' ? "МОНЕТЫ" : currentLang === 'en' ? "COINS" : currentLang === 'kz' ? "ТИЫНДАР" : "TANGALAR";
+    const pXp = document.getElementById('lbl-pill-xp');
+    if (pXp) pXp.innerText = currentLang === 'ru' ? "ОПЫТ (XP)" : currentLang === 'en' ? "XP (EXP)" : currentLang === 'kz' ? "ТӘЖІРИБЕ (XP)" : "TAJRIBA (XP)";
+    const pStreak = document.getElementById('lbl-pill-streak');
+    if (pStreak) pStreak.innerText = currentLang === 'ru' ? "СЕРИЯ" : currentLang === 'en' ? "STREAK" : currentLang === 'kz' ? "СЕРИЯ" : "STREAK";
+
+    // Noir Hero Metrics
+    const hLevel = document.getElementById('lbl-hero-level');
+    if (hLevel) hLevel.innerText = currentLang === 'ru' ? "УРОВЕНЬ" : currentLang === 'en' ? "LEVEL" : currentLang === 'kz' ? "ДЕҢГЕЙ" : "DARAJA";
+    const hRep = document.getElementById('lbl-hero-rep');
+    if (hRep) hRep.innerText = currentLang === 'ru' ? "РЕЙТИНГ" : currentLang === 'en' ? "RATING" : currentLang === 'kz' ? "РЕЙТИНГ" : "REYTING";
+    const hClan = document.getElementById('lbl-hero-clan');
+    if (hClan) hClan.innerText = currentLang === 'ru' ? "КЛАН" : currentLang === 'en' ? "CLAN" : currentLang === 'kz' ? "КЛАН" : "KLAN";
+
+    // Side Widgets
+    const sClanTitle = document.getElementById('lbl-side-clan-title');
+    if (sClanTitle) sClanTitle.innerText = currentLang === 'ru' ? "СИНДИКАТ (КЛАН)" : currentLang === 'en' ? "SYNDICATE (CLAN)" : currentLang === 'kz' ? "СИНДИКАТ (КЛАН)" : "SINDIKAT (KLAN)";
+    const sShieldTitle = document.getElementById('lbl-side-shield-title');
+    if (sShieldTitle) sShieldTitle.innerText = currentLang === 'ru' ? "ЩИТ ЗАЩИТЫ" : currentLang === 'en' ? "SHIELD DEFENSE" : currentLang === 'kz' ? "ҚОРҒАНЫС ҚАЛҚАНЫ" : "HIMOYA QALQONI";
+    const sRank = document.getElementById('lbl-side-rank');
+    if (sRank) sRank.innerText = currentLang === 'ru' ? "СТАТУС:" : currentLang === 'en' ? "RANK:" : currentLang === 'kz' ? "МӘРТЕБЕ:" : "MAQOM:";
+
+    // Tactical Tiles
+    const tTasks = document.getElementById('lbl-tile-tasks');
+    if (tTasks) tTasks.innerText = currentLang === 'ru' ? "КВЕСТЫ" : currentLang === 'en' ? "QUESTS" : currentLang === 'kz' ? "ТАПСЫРМАЛАР" : "KVESTLAR";
+    const tRecruit = document.getElementById('lbl-tile-recruit');
+    if (tRecruit) tRecruit.innerText = currentLang === 'ru' ? "РЕКРУТ" : currentLang === 'en' ? "RECRUIT" : currentLang === 'kz' ? "РЕКРУТ" : "REKRUT";
+    const tArena = document.getElementById('lbl-tile-arena');
+    if (tArena) tArena.innerText = currentLang === 'ru' ? "АРЕНА" : currentLang === 'en' ? "ARENA" : currentLang === 'kz' ? "АРЕНА" : "ARENA";
+    const tSyndicate = document.getElementById('lbl-tile-syndicate');
+    if (tSyndicate) tSyndicate.innerText = currentLang === 'ru' ? "КЛАНЫ" : currentLang === 'en' ? "CLANS" : currentLang === 'kz' ? "КЛАНДАР" : "KLANLAR";
     
     // Game Arena labels
     const playersTitleEl = document.getElementById('lbl-players-title');

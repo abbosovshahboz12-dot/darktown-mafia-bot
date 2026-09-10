@@ -149,6 +149,7 @@ async def get_profile_handler(request):
                 pass
         user['can_claim_daily'] = can_claim_daily
         
+        clan = await db.get_user_clan(user_id)
         is_admin = (user_id == ADMIN_ID)
         
         return web.json_response({
@@ -156,6 +157,7 @@ async def get_profile_handler(request):
             "stats": stats,
             "inventory": inventory,
             "achievements": achievements,
+            "clan": clan,
             "isAdmin": is_admin
         })
     except Exception as e:
