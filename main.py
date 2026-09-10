@@ -1,3 +1,11 @@
+"""
+Project:       DarkTown Mafia Engine
+Module:        GatewayServer & BotCore
+Author:        DarkTown Interactive Studios
+Copyright:     (c) 2026 DarkTown Interactive. All rights reserved.
+License:       Proprietary
+"""
+
 import asyncio
 import logging
 import os

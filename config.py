@@ -1,3 +1,11 @@
+"""
+Project:       DarkTown Mafia Engine
+Module:        Configuration & FeatureFlags
+Author:        DarkTown Interactive Studios
+Copyright:     (c) 2026 DarkTown Interactive. All rights reserved.
+License:       Proprietary
+"""
+
 import os
 from dotenv import load_dotenv
 

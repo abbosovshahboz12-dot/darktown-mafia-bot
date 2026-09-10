@@ -1,3 +1,11 @@
+"""
+Project:       DarkTown Mafia Engine
+Module:        GroupMatchHandlers & GameLifecycle
+Author:        DarkTown Interactive Studios
+Copyright:     (c) 2026 DarkTown Interactive. All rights reserved.
+License:       Proprietary
+"""
+
 import asyncio
 import logging
 from aiogram import Router, F, Bot, types
@@ -762,7 +770,7 @@ async def vote_callback(cb: types.CallbackQuery, bot: Bot):
         
     await cb.answer("Ovozingiz qabul qilindi!")
     
-    # Edit the voting message to show live vote counts (Design Aesthetic #3: Dynamic UI)
+    # Update live voting scoreboard
     alive = game.get_alive_players()
     vote_counts = {}
     for target in game.votes.values():

@@ -1,3 +1,12 @@
+/**
+ * Project:       DarkTown Mafia Online WebApp
+ * Module:        ClientCoreEngine
+ * Author:        DarkTown Interactive Engineering
+ * Version:       1.4.2-prod
+ * Copyright:     (c) 2026 DarkTown Interactive Studios. All rights reserved.
+ * License:       Proprietary
+ */
+
 // Global Error Handler
 window.onerror = function(message, source, lineno, colno, error) {
     console.error("[DarkTown WebApp Error]:", message, "at", source, ":", lineno, error);

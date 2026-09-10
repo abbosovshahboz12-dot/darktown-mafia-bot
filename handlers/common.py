@@ -1,3 +1,11 @@
+"""
+Project:       DarkTown Mafia Engine
+Module:        CommonHandlers & Navigation
+Author:        DarkTown Interactive Studios
+Copyright:     (c) 2026 DarkTown Interactive. All rights reserved.
+License:       Proprietary
+"""
+
 import logging
 import csv
 import io

@@ -1,3 +1,11 @@
+"""
+Project:       DarkTown Mafia Engine
+Module:        PrivateChatHandlers & NightActions
+Author:        DarkTown Interactive Studios
+Copyright:     (c) 2026 DarkTown Interactive. All rights reserved.
+License:       Proprietary
+"""
+
 import logging
 from aiogram import Router, F, Bot, types
 from game.manager import game_manager

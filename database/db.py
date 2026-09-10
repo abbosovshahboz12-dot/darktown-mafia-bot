@@ -1,3 +1,11 @@
+"""
+Project:       DarkTown Mafia Engine
+Module:        DatabaseStorage & AsyncPersistence
+Author:        DarkTown Interactive Studios
+Copyright:     (c) 2026 DarkTown Interactive. All rights reserved.
+License:       Proprietary
+"""
+
 import aiosqlite
 import os
 import math
