@@ -411,18 +411,23 @@ async function loadProfile() {
             document.getElementById('user-role-title').innerText = mafiaTitle;
         }
 
-        // Side Widget: Clan Information
-        if (document.getElementById('user-clan-display')) {
-            document.getElementById('user-clan-display').innerText = data.clan ? (data.clan.name || data.clan.clan_name) : "Klansiz";
+        // Hero Metric: Wins
+        if (document.getElementById('user-wins-display')) {
+            const winsSuffix = t("lbl_stat_won_suffix") || "ta";
+            document.getElementById('user-wins-display').innerText = `${totalWon} ${winsSuffix}`;
         }
-        if (document.getElementById('user-clan-role-txt')) {
-            const roleTxt = data.clan ? (data.clan.user_role === 'leader' ? "Lider 👑" : (data.clan.user_role === 'elder' ? "Capo ⚔️" : "A'zo")) : "Klansiz";
-            document.getElementById('user-clan-role-txt').innerText = roleTxt;
+
+        // Side Widget: Daily Streak & Claim status
+        const streakDays = data.user.streak_days || 0;
+        const streakHeroDays = document.getElementById('streak-hero-days');
+        const streakBar = document.getElementById('side-streak-bar');
+        if (streakHeroDays) {
+            const dayLabel = currentLang === 'ru' ? `${(streakDays % 7) + 1}-й день` : currentLang === 'en' ? `Day ${(streakDays % 7) + 1}` : `${(streakDays % 7) + 1}-kun`;
+            streakHeroDays.innerText = dayLabel;
         }
-        if (document.getElementById('side-clan-bar')) {
-            const clanLvl = data.clan ? (data.clan.level || 1) : 0;
-            const clanPercent = data.clan ? Math.min(clanLvl * 20, 100) : 0;
-            document.getElementById('side-clan-bar').style.width = `${clanPercent}%`;
+        if (streakBar) {
+            const streakPercent = Math.min(((streakDays % 7) + 1) / 7 * 100, 100);
+            streakBar.style.width = `${streakPercent}%`;
         }
 
         // Shield active check & Side Widget
@@ -2533,16 +2538,16 @@ function updateLang(lang) {
     if (hLevel) hLevel.innerText = currentLang === 'ru' ? "УРОВЕНЬ" : currentLang === 'en' ? "LEVEL" : currentLang === 'kz' ? "ДЕҢГЕЙ" : "DARAJA";
     const hRep = document.getElementById('lbl-hero-rep');
     if (hRep) hRep.innerText = currentLang === 'ru' ? "РЕЙТИНГ" : currentLang === 'en' ? "RATING" : currentLang === 'kz' ? "РЕЙТИНГ" : "REYTING";
-    const hClan = document.getElementById('lbl-hero-clan');
-    if (hClan) hClan.innerText = currentLang === 'ru' ? "КЛАН" : currentLang === 'en' ? "CLAN" : currentLang === 'kz' ? "КЛАН" : "KLAN";
+    const hWins = document.getElementById('lbl-hero-wins');
+    if (hWins) hWins.innerText = currentLang === 'ru' ? "ПОБЕДЫ" : currentLang === 'en' ? "WINS" : currentLang === 'kz' ? "ЖЕҢІСТЕР" : "G'ALABA";
 
     // Side Widgets
-    const sClanTitle = document.getElementById('lbl-side-clan-title');
-    if (sClanTitle) sClanTitle.innerText = currentLang === 'ru' ? "СИНДИКАТ (КЛАН)" : currentLang === 'en' ? "SYNDICATE (CLAN)" : currentLang === 'kz' ? "СИНДИКАТ (КЛАН)" : "SINDIKAT (KLAN)";
     const sShieldTitle = document.getElementById('lbl-side-shield-title');
     if (sShieldTitle) sShieldTitle.innerText = currentLang === 'ru' ? "ЩИТ ЗАЩИТЫ" : currentLang === 'en' ? "SHIELD DEFENSE" : currentLang === 'kz' ? "ҚОРҒАНЫС ҚАЛҚАНЫ" : "HIMOYA QALQONI";
-    const sRank = document.getElementById('lbl-side-rank');
-    if (sRank) sRank.innerText = currentLang === 'ru' ? "СТАТУС:" : currentLang === 'en' ? "RANK:" : currentLang === 'kz' ? "МӘРТЕБЕ:" : "MAQOM:";
+    const sShieldStatus = document.getElementById('lbl-side-shield-status');
+    if (sShieldStatus) sShieldStatus.innerText = currentLang === 'ru' ? "СТАТУС:" : currentLang === 'en' ? "STATUS:" : currentLang === 'kz' ? "КҮЙІ:" : "HOLAT:";
+    const sStreakTitle = document.getElementById('lbl-side-streak-title');
+    if (sStreakTitle) sStreakTitle.innerText = currentLang === 'ru' ? "ЕЖЕДНЕВНЫЙ БОНУС" : currentLang === 'en' ? "DAILY BONUS" : currentLang === 'kz' ? "КҮНДЕЛІКТІ БОНУС" : "KUNLIK BONUS";
 
     // Tactical Tiles
     const tTasks = document.getElementById('lbl-tile-tasks');
@@ -2551,8 +2556,8 @@ function updateLang(lang) {
     if (tRecruit) tRecruit.innerText = currentLang === 'ru' ? "РЕКРУТ" : currentLang === 'en' ? "RECRUIT" : currentLang === 'kz' ? "РЕКРУТ" : "REKRUT";
     const tArena = document.getElementById('lbl-tile-arena');
     if (tArena) tArena.innerText = currentLang === 'ru' ? "АРЕНА" : currentLang === 'en' ? "ARENA" : currentLang === 'kz' ? "АРЕНА" : "ARENA";
-    const tSyndicate = document.getElementById('lbl-tile-syndicate');
-    if (tSyndicate) tSyndicate.innerText = currentLang === 'ru' ? "КЛАНЫ" : currentLang === 'en' ? "CLANS" : currentLang === 'kz' ? "КЛАНДАР" : "KLANLAR";
+    const tShop = document.getElementById('lbl-tile-shop');
+    if (tShop) tShop.innerText = currentLang === 'ru' ? "МАГАЗИН" : currentLang === 'en' ? "SHOP" : currentLang === 'kz' ? "ДҮКЕН" : "DO'KON";
     
     // Game Arena labels
     const playersTitleEl = document.getElementById('lbl-players-title');
@@ -3000,6 +3005,8 @@ async function handleClaimDailyStreak() {
 
 safeAddListener('daily-claim-card', 'click', handleClaimDailyStreak);
 safeAddListener('btn-claim-streak', 'click', handleClaimDailyStreak);
+safeAddListener('hero-daily-card', 'click', handleClaimDailyStreak);
+safeAddListener('btn-hero-claim', 'click', handleClaimDailyStreak);
 
 safeAddListener('btn-copy-ref', 'click', () => {
     const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
@@ -3023,8 +3030,8 @@ safeAddListener('tile-territory', 'click', () => {
     switchTab('match');
 });
 
-safeAddListener('tile-syndicate', 'click', () => {
-    switchTab('clans');
+safeAddListener('tile-shop-quick', 'click', () => {
+    switchTab('shop');
 });
 
 safeAddListener('btn-send-ghost', 'click', sendGhostChatMessage);

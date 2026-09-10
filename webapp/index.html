@@ -179,47 +179,47 @@
                                 <span class="c-m-val text-gold" id="user-rep-display">0</span>
                             </div>
                             <div class="c-metric-row">
-                                <span class="c-m-label" id="lbl-hero-clan">KLAN</span>
-                                <span class="c-m-val text-cyan" id="user-clan-display">Klansiz</span>
+                                <span class="c-m-label" id="lbl-hero-wins">G'ALABA</span>
+                                <span class="c-m-val text-cyan" id="user-wins-display">0 ta</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- RIGHT: Syndicate & Shield Widgets -->
+                    <!-- RIGHT: Shield & Daily Streak Widgets -->
                     <div class="noir-side-widgets">
-                        <!-- Clan / Syndicate Card -->
-                        <div class="widget-noir-card" onclick="switchTab('clans')">
-                            <div class="widget-header-row">
-                                <span class="widget-icon-pill">🏛️</span>
-                                <span class="widget-title" id="lbl-side-clan-title">SINDIKAT (KLAN)</span>
-                            </div>
-                            <div class="widget-badges-row">
-                                <span>👑</span>
-                                <span>🛡️</span>
-                                <span>⚔️</span>
-                                <span>🏛️</span>
-                            </div>
-                            <div class="widget-bar-wrap">
-                                <div class="widget-bar-fill cyan-fill" id="side-clan-bar" style="width: 50%;"></div>
-                            </div>
-                            <div class="widget-footer-row">
-                                <span class="rank-txt"><span id="lbl-side-rank">MAQOM:</span> <strong id="user-clan-role-txt">A'zo</strong></span>
-                                <span class="arrow-right">&rsaquo;</span>
-                            </div>
-                        </div>
-
                         <!-- Shield & Protection Widget -->
-                        <div class="widget-noir-card streak-widget" onclick="switchTab('shop')">
+                        <div class="widget-noir-card" onclick="switchTab('shop')">
                             <div class="widget-header-row">
                                 <span class="widget-icon-pill">🛡️</span>
                                 <span class="widget-title" id="lbl-side-shield-title">HIMOYA QALQONI</span>
                             </div>
+                            <div class="widget-badges-row">
+                                <span>🛡️</span>
+                                <span>⚡</span>
+                                <span>👑</span>
+                                <span>✨</span>
+                            </div>
                             <div class="widget-bar-wrap">
-                                <div class="widget-bar-fill dual-gradient-fill" id="side-shield-bar" style="width: 0%;"></div>
+                                <div class="widget-bar-fill cyan-fill" id="side-shield-bar" style="width: 0%;"></div>
+                            </div>
+                            <div class="widget-footer-row">
+                                <span class="rank-txt"><span id="lbl-side-shield-status">HOLAT:</span> <strong id="shield-hero-status">Nofaol</strong></span>
+                                <span class="arrow-right">&rsaquo;</span>
+                            </div>
+                        </div>
+
+                        <!-- Daily Streak Widget -->
+                        <div class="widget-noir-card streak-widget" id="hero-daily-card">
+                            <div class="widget-header-row">
+                                <span class="widget-icon-pill">🔥</span>
+                                <span class="widget-title" id="lbl-side-streak-title">KUNLIK BONUS</span>
+                            </div>
+                            <div class="widget-bar-wrap">
+                                <div class="widget-bar-fill dual-gradient-fill" id="side-streak-bar" style="width: 20%;"></div>
                             </div>
                             <div class="widget-streak-action">
-                                <span id="shield-hero-status" style="font-weight:700; color:#94a3b8;">Nofaol</span>
-                                <button class="btn-claim-mini" id="lbl-btn-shop-shield">Do'kon 🛒</button>
+                                <span id="streak-hero-days" style="font-weight:700; color:#ffc439;">1-kun</span>
+                                <button class="btn-claim-mini" id="btn-hero-claim">Olish ✨</button>
                             </div>
                         </div>
                     </div>
@@ -240,9 +240,9 @@
                         <div class="tile-icon">🎲</div>
                         <div class="tile-title" id="lbl-tile-arena">ARENA</div>
                     </div>
-                    <div class="noir-tile" id="tile-syndicate">
-                        <div class="tile-icon">🏛️</div>
-                        <div class="tile-title" id="lbl-tile-syndicate">KLANLAR</div>
+                    <div class="noir-tile" id="tile-shop-quick" onclick="switchTab('shop')">
+                        <div class="tile-icon">🛒</div>
+                        <div class="tile-title" id="lbl-tile-shop">DO'KON</div>
                     </div>
                 </div>
 
