@@ -182,22 +182,8 @@ navItems.forEach(item => {
     });
 });
 
-// Intro Splash Screen and Daily Mystery Crate
+// Daily Mystery Crate
 let hasShownMysteryCrateThisSession = false;
-
-function dismissSplashScreen() {
-    const splash = document.getElementById('splash-screen');
-    const bar = document.getElementById('splash-progress-bar');
-    if (!splash) return;
-    if (bar) bar.style.width = '100%';
-    setTimeout(() => {
-        splash.style.opacity = '0';
-        splash.style.visibility = 'hidden';
-        setTimeout(() => {
-            splash.style.display = 'none';
-        }, 600);
-    }, 450);
-}
 
 function checkAndTriggerMysteryCrate(user) {
     if (hasShownMysteryCrateThisSession) return;
@@ -300,13 +286,11 @@ async function loadProfile() {
         
         const data = await response.json();
         if (data.banned) {
-            dismissSplashScreen();
             document.getElementById('banned-overlay').style.display = 'flex';
             document.querySelector('.app-container').style.display = 'none';
             return;
         }
         if (data.maintenance) {
-            dismissSplashScreen();
             document.getElementById('maintenance-overlay').style.display = 'flex';
             document.querySelector('.app-container').style.display = 'none';
             return;
@@ -432,14 +416,16 @@ async function loadProfile() {
         updateLang(data.user.language || 'uz');
         updateDailyClaimTimer(data.user.last_daily_claim);
         renderAchievements(data.achievements);
-        loadDailyQuests();
-        loadGameHistory();
         
-        dismissSplashScreen();
         checkAndTriggerMysteryCrate(data.user);
+        
+        // Background load non-critical profile tab data
+        setTimeout(() => {
+            loadDailyQuests();
+            loadGameHistory();
+        }, 50);
     } catch (e) {
         console.error(e);
-        dismissSplashScreen();
     }
 }
 
@@ -742,16 +728,30 @@ function renderCalculatorGuide() {
 loadProfile();
 loadActiveGame();
 
-// Poll active game status every 6 seconds to optimize server performance
-setInterval(loadActiveGame, 6000);
+// Smart adaptive polling for active game status
+let activeGamePollTimer = null;
+function scheduleNextGamePoll(delayMs) {
+    if (activeGamePollTimer) clearTimeout(activeGamePollTimer);
+    activeGamePollTimer = setTimeout(loadActiveGame, delayMs);
+}
 
 // Active Game Arena Actions
 async function loadActiveGame() {
     try {
         const response = await apiFetch(`/api/game/status?user_id=${userId}`);
-        if (!response.ok) throw new Error("Game status fetch failed");
+        if (!response.ok) {
+            scheduleNextGamePoll(15000);
+            throw new Error("Game status fetch failed");
+        }
         
         const data = await response.json();
+        
+        // Schedule next poll based on game state
+        if (data.inGame) {
+            scheduleNextGamePoll(4000);
+        } else {
+            scheduleNextGamePoll(currentActiveTab === 'match' ? 5000 : 15000);
+        }
         
         // Track and show game phase transitions
         if (data.inGame && data.phase !== "lobby") {

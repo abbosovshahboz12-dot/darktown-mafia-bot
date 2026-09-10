@@ -131,7 +131,7 @@ async def get_profile_handler(request):
         if MAINTENANCE_MODE and user_id != ADMIN_ID:
             return web.json_response({"maintenance": True})
             
-        user = await db.get_user(user_id, username, first_name)
+        user, stats, inventory, achievements = await db.get_full_profile_data(user_id, username, first_name)
         
         # Check if user is banned
         if user.get('banned', 0) == 1:
@@ -148,10 +148,6 @@ async def get_profile_handler(request):
             except Exception:
                 pass
         user['can_claim_daily'] = can_claim_daily
-        
-        stats = await db.get_user_stats(user_id)
-        inventory = await db.get_inventory(user_id)
-        achievements = await db.get_user_achievements(user_id)
         
         is_admin = (user_id == ADMIN_ID)
         
@@ -1787,9 +1783,16 @@ async def battle_pass_handler(request):
         logging.error(f"Error in battle_pass_handler: {e}")
         return web.json_response({"error": "Ichki server xatosi"}, status=500)
 
+@web.middleware
+async def static_cache_middleware(request, handler):
+    response = await handler(request)
+    if request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=86400"
+    return response
+
 # Setup Web Server Routing
 def setup_web_server():
-    app = web.Application()
+    app = web.Application(middlewares=[static_cache_middleware])
     
     # API endpoints
     app.router.add_get("/api/profile", get_profile_handler)

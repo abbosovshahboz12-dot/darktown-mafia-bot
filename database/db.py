@@ -19,6 +19,8 @@ async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("PRAGMA journal_mode=WAL")
         await db.execute("PRAGMA synchronous=NORMAL")
+        await db.execute("PRAGMA cache_size=-64000")
+        await db.execute("PRAGMA temp_store=MEMORY")
         # Users table
         await db.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -277,7 +279,21 @@ async def init_db():
                 await db.execute(f"ALTER TABLE group_settings ADD COLUMN {col_name} {col_type}")
             except Exception:
                 pass
-            
+
+        # Performance Indexes for Fast Lookups
+        for idx_sql in [
+            "CREATE INDEX IF NOT EXISTS idx_game_history_user ON game_history(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_stats_user ON stats(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_inventory_user ON inventory(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_achievements_user ON user_achievements(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_rooms_owner ON rooms(owner_id)",
+            "CREATE INDEX IF NOT EXISTS idx_room_players_user ON room_players(user_id)"
+        ]:
+            try:
+                await db.execute(idx_sql)
+            except Exception:
+                pass
+
         await db.commit()
 
 async def get_user(user_id: int, username: str = None, first_name: str = None):
@@ -320,6 +336,61 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
                 res = dict(row2) if row2 else {}
                 res['is_new'] = True
                 return res
+
+async def get_full_profile_data(user_id: int, username: str = None, first_name: str = None):
+    """Fetches user, stats, inventory, and achievements in a single database connection."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 1. Fetch or create user
+        async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            if row:
+                user_dict = dict(row)
+                is_vip = user_dict.get('is_vip', 0) or 0
+                vip_expires_at = user_dict.get('vip_expires_at')
+                if is_vip == 1 and vip_expires_at:
+                    try:
+                        expiry = datetime.strptime(vip_expires_at, "%Y-%m-%d %H:%M:%S")
+                        if datetime.now() > expiry:
+                            await db.execute("UPDATE users SET is_vip = 0 WHERE user_id = ?", (user_id,))
+                            await db.commit()
+                            user_dict['is_vip'] = 0
+                    except Exception:
+                        pass
+                # Update last active time & metadata
+                await db.execute(
+                    "UPDATE users SET username = ?, first_name = ?, last_active = ? WHERE user_id = ?",
+                    (username or user_dict.get('username'), first_name or user_dict.get('first_name'), now_str, user_id)
+                )
+                await db.commit()
+            else:
+                await db.execute(
+                    "INSERT INTO users (user_id, username, first_name, xp, level, coins, created_at, last_active) VALUES (?, ?, ?, 0, 1, 100, ?, ?)",
+                    (user_id, username or f"User{user_id}", first_name or "Mafiozi", now_str, now_str)
+                )
+                await db.commit()
+                async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor_new:
+                    row_new = await cursor_new.fetchone()
+                    user_dict = dict(row_new) if row_new else {}
+
+        # 2. Fetch stats
+        async with db.execute("SELECT role, games_played, games_won FROM stats WHERE user_id = ?", (user_id,)) as cursor:
+            stats_rows = await cursor.fetchall()
+            stats = [dict(r) for r in stats_rows]
+
+        # 3. Fetch inventory
+        async with db.execute("SELECT item_key, quantity FROM inventory WHERE user_id = ?", (user_id,)) as cursor:
+            inv_rows = await cursor.fetchall()
+            inventory = {r['item_key']: r['quantity'] for r in inv_rows}
+
+        # 4. Fetch achievements
+        async with db.execute("SELECT achievement_key FROM user_achievements WHERE user_id = ?", (user_id,)) as cursor:
+            ach_rows = await cursor.fetchall()
+            achievements = [r['achievement_key'] for r in ach_rows]
+
+        return user_dict, stats, inventory, achievements
 
 async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
     # Sanitize inputs to prevent overflow/unreasonable values

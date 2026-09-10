@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Darktown Mafia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <!-- Telegram WebApp SDK -->
@@ -11,22 +13,6 @@
     <link rel="stylesheet" href="/static/style.css?v=15">
 </head>
 <body>
-    <!-- Cyberpunk Intro Splash Screen -->
-    <div id="splash-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#090412; z-index:99998; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity 0.6s ease, visibility 0.6s ease; font-family:'Outfit', sans-serif;">
-        <div style="position:relative; display:flex; flex-direction:column; align-items:center; margin-bottom:28px;">
-            <div style="position:absolute; width:140px; height:140px; background:radial-gradient(circle, rgba(0,242,254,0.4) 0%, rgba(157,78,221,0.2) 60%, transparent 80%); border-radius:50%; filter:blur(20px); animation:splashPulse 2s infinite alternate;"></div>
-            <div style="font-size:68px; z-index:2; filter:drop-shadow(0 0 25px #00f2fe); animation:splashFloat 2.5s ease-in-out infinite;">🕵️‍♂️</div>
-            <div style="font-size:32px; font-weight:800; color:#fff; letter-spacing:4px; margin-top:12px; text-shadow:0 0 20px rgba(0,242,254,0.8), 0 0 40px rgba(157,78,221,0.6); z-index:2;">DARKTOWN</div>
-            <div style="font-size:11px; font-weight:600; color:#00f2fe; letter-spacing:3px; text-transform:uppercase; margin-top:4px; opacity:0.85; z-index:2;">Underworld Syndicate</div>
-        </div>
-        
-        <!-- Cyberpunk Loading Bar -->
-        <div style="width:180px; height:4px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; position:relative; box-shadow:0 0 10px rgba(0,242,254,0.2);">
-            <div id="splash-progress-bar" style="width:30%; height:100%; background:linear-gradient(90deg, #00f2fe, #9d4edd, #ffc439); border-radius:4px; transition:width 0.4s ease;"></div>
-        </div>
-        <div id="splash-loading-text" style="font-size:10px; color:#94a3b8; letter-spacing:2px; text-transform:uppercase; margin-top:10px;">Yuklanmoqda...</div>
-    </div>
-
     <!-- Banned Overlay Screen -->
     <div id="banned-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0d071b; color:#fff; z-index:99999; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; font-family:'Outfit', sans-serif;">
         <span style="font-size:4rem; margin-bottom:20px;">🚫</span>
