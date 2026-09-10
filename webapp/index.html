@@ -43,20 +43,42 @@
             <div class="particle p-5"></div>
         </div>
         
+        <!-- Ambient Background Glow Accents (Left Cyan, Right Magenta) -->
+        <div class="ambient-glow-left"></div>
+        <div class="ambient-glow-right"></div>
+        
         <!-- Header -->
-        <header class="app-header">
-            <div class="logo">
-                <span class="logo-icon">🕵️‍♂️</span>
-                <span class="logo-text">DARKTOWN</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div class="balance-badge">
-                    <span class="coin-icon">🪙</span>
-                    <span id="user-coins">0</span>
-                </div>
-                <button id="btn-hamburger" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; font-size: 18px; font-weight: bold;">☰</button>
+        <header class="app-header-noir">
+            <div class="noir-brand-title">Syndicate Noir</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button id="btn-hamburger" class="btn-noir-menu" title="Sozlamalar">☰</button>
             </div>
         </header>
+
+        <!-- Top Currency & Resource Pill Bar -->
+        <div class="currency-pill-bar">
+            <div class="curr-pill-col">
+                <span class="curr-pill-icon">🪙</span>
+                <div class="curr-pill-details">
+                    <span class="curr-pill-label">GOLD COINS</span>
+                    <span class="curr-pill-val" id="user-coins">0</span>
+                </div>
+            </div>
+            <div class="curr-pill-col">
+                <span class="curr-pill-icon">💵</span>
+                <div class="curr-pill-details">
+                    <span class="curr-pill-label">STARS</span>
+                    <span class="curr-pill-val" id="user-stars-display">150</span>
+                </div>
+            </div>
+            <div class="curr-pill-col">
+                <span class="curr-pill-icon">💎</span>
+                <div class="curr-pill-details">
+                    <span class="curr-pill-label">DIAMONDS</span>
+                    <span class="curr-pill-val" id="user-diamonds-display">5,420</span>
+                </div>
+            </div>
+        </div>
 
         <!-- Hamburger Menu Drawer Modal -->
         <div id="modal-hamburger" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:20000; flex-direction:column; padding:20px; box-sizing:border-box;">
@@ -125,104 +147,159 @@
         <!-- Main Content Area -->
         <main class="app-content">
             
-            <!-- 1. Profile Tab -->
+            <!-- 1. Profile / Home Tab -->
             <section id="tab-profile" class="tab-content active">
-                <div class="profile-card">
-                    <div class="profile-avatar-container">
-                        <div class="profile-avatar" id="user-avatar">M</div>
-                        <div class="level-badge" id="user-level">Lvl 1</div>
-                    </div>
-                    <h2 class="profile-name" id="user-name">Mafiozi</h2>
-                    <p class="profile-username" id="user-username">@username</p>
+                
+                <!-- ASYMMETRIC NOIR SPLIT HERO -->
+                <div class="noir-split-grid">
                     
-                    <!-- XP Progress -->
-                    <div class="xp-container">
-                        <div class="xp-labels">
-                            <span id="lbl-xp-title">Tajriba (XP)</span>
-                            <span id="xp-text">0 / 500</span>
+                    <!-- LEFT: Character Hero Card -->
+                    <div class="character-hero-card">
+                        <div class="character-avatar-wrap">
+                            <div class="avatar-portrait-char" id="user-avatar">V</div>
+                            <div class="avatar-glow-base"></div>
                         </div>
-                        <div class="xp-bar-bg">
-                            <div class="xp-bar-fill" id="xp-fill" style="width: 0%"></div>
+                        <h1 class="character-name" id="user-name">VINCENT</h1>
+                        <div class="character-role-sub" id="user-role-title">CRIME LORD</div>
+                        <span id="user-username" style="display:none;">@username</span>
+                        
+                        <!-- Cyan Glowing Progress Bar -->
+                        <div class="character-xp-bar">
+                            <div class="character-xp-fill" id="xp-fill" style="width: 45%;"></div>
                         </div>
+                        <span id="xp-text" style="display:none;">0 / 500 XP</span>
+
+                        <div class="character-metrics">
+                            <div class="c-metric-row">
+                                <span class="c-m-label">LEVEL</span>
+                                <span class="c-m-val" id="user-level">45</span>
+                            </div>
+                            <div class="c-metric-row">
+                                <span class="c-m-label">REPUTATION</span>
+                                <span class="c-m-val text-gold" id="user-rep-display">9,800</span>
+                            </div>
+                            <div class="c-metric-row">
+                                <span class="c-m-label">FAMILY</span>
+                                <span class="c-m-val text-cyan" id="user-clan-display">THE BLACK ROSE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Family & Streak Widgets -->
+                    <div class="noir-side-widgets">
+                        <!-- Family Influence Card -->
+                        <div class="widget-noir-card" onclick="switchTab('clans')">
+                            <div class="widget-header-row">
+                                <span class="widget-icon-pill">👥</span>
+                                <span class="widget-title">FAMILY INFLUENCE</span>
+                            </div>
+                            <div class="widget-badges-row">
+                                <span>👑</span>
+                                <span>🛡️</span>
+                                <span>✨</span>
+                                <span>🏛️</span>
+                            </div>
+                            <div class="widget-bar-wrap">
+                                <div class="widget-bar-fill cyan-fill" style="width: 78%;"></div>
+                            </div>
+                            <div class="widget-footer-row">
+                                <span class="rank-txt">RANK: <strong>CAPO</strong></span>
+                                <span class="arrow-right">&rsaquo;</span>
+                            </div>
+                        </div>
+
+                        <!-- Streak / Daily Bonus Widget -->
+                        <div class="widget-noir-card streak-widget" id="daily-claim-card">
+                            <div class="widget-title-small">FAMILY INFLUENCE</div>
+                            <div class="widget-bar-wrap">
+                                <div class="widget-bar-fill dual-gradient-fill" style="width: 65%;"></div>
+                            </div>
+                            <div class="widget-streak-action">
+                                <span id="lbl-daily-claim-time">Kunlik Sovg'a</span>
+                                <button class="btn-claim-mini">Olish ✨</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 4-SQUARE TACTICAL ACTION TILES -->
+                <div class="noir-quick-tiles">
+                    <div class="noir-tile" id="tile-tasks">
+                        <div class="tile-icon">📋</div>
+                        <div class="tile-title">TASKS</div>
+                    </div>
+                    <div class="noir-tile" id="tile-recruit">
+                        <div class="tile-icon">👤</div>
+                        <div class="tile-title">RECRUIT</div>
+                    </div>
+                    <div class="noir-tile" id="tile-territory">
+                        <div class="tile-icon">📍</div>
+                        <div class="tile-title">TERRITORY</div>
+                    </div>
+                    <div class="noir-tile" id="tile-syndicate">
+                        <div class="tile-icon">🏛️</div>
+                        <div class="tile-title">SYNDICATE</div>
                     </div>
                 </div>
 
                 <!-- 7-Day Daily Streak Card -->
-                <div class="streak-card" style="background:linear-gradient(135deg, rgba(255,196,57,0.1) 0%, rgba(157,78,221,0.1) 100%); border:1px solid rgba(255,196,57,0.3); border-radius:16px; padding:16px; margin-top:20px; margin-bottom:12px;">
+                <div class="streak-card" style="background:var(--card-bg); border:1px solid var(--card-border-subtle); border-radius:16px; padding:16px; margin-top:20px; margin-bottom:12px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <div>
-                            <span style="font-size:14px; font-weight:bold; color:#ffc439;" id="lbl-streak-title">🔥 7-Kunlik Bonus Streak</span>
-                            <div style="font-size:11px; color:#cbd5e1; margin-top:2px;" id="lbl-streak-subtitle">Har kuni o'yinga kiring va bonuslarga erishing!</div>
+                            <span style="font-size:14px; font-weight:bold; color:var(--gold);" id="lbl-streak-title">🔥 7-Kunlik Bonus Streak</span>
+                            <div style="font-size:11px; color:#94a3b8; margin-top:2px;" id="lbl-streak-subtitle">Har kuni o'yinga kiring va bonuslarga erishing!</div>
                         </div>
-                        <button class="btn btn-primary btn-sm" id="btn-claim-streak" style="padding:6px 12px; font-size:11px; height:auto; width:auto; background:#ffc439; color:#000; font-weight:bold; cursor:pointer;">Hozir Olish</button>
+                        <button class="btn btn-primary btn-sm" id="btn-claim-streak" style="padding:6px 12px; font-size:11px; height:auto; width:auto; cursor:pointer;">Hozir Olish</button>
                     </div>
 
                     <!-- 7 Days Grid -->
                     <div id="streak-days-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; text-align:center;">
-                        <div class="streak-day-box" id="sday-1" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                        <div class="streak-day-box" id="sday-1" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:8px 2px; border-radius:8px;">
                             <div style="font-size:9px; color:#94a3b8;" id="lbl-sday-title-1">1-kun</div>
                             <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">10 🪙</div>
                         </div>
-                        <div class="streak-day-box" id="sday-2" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                        <div class="streak-day-box" id="sday-2" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:8px 2px; border-radius:8px;">
                             <div style="font-size:9px; color:#94a3b8;" id="lbl-sday-title-2">2-kun</div>
                             <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">20 🪙</div>
                         </div>
-                        <div class="streak-day-box" id="sday-3" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                        <div class="streak-day-box" id="sday-3" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:8px 2px; border-radius:8px;">
                             <div style="font-size:9px; color:#94a3b8;" id="lbl-sday-title-3">3-kun</div>
                             <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">30 🪙</div>
                         </div>
-                        <div class="streak-day-box" id="sday-4" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                        <div class="streak-day-box" id="sday-4" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:8px 2px; border-radius:8px;">
                             <div style="font-size:9px; color:#94a3b8;" id="lbl-sday-title-4">4-kun</div>
                             <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">50 🪙</div>
                         </div>
-                        <div class="streak-day-box" id="sday-5" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                        <div class="streak-day-box" id="sday-5" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:8px 2px; border-radius:8px;">
                             <div style="font-size:9px; color:#94a3b8;" id="lbl-sday-title-5">5-kun</div>
                             <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">75 🪙</div>
                         </div>
-                        <div class="streak-day-box" id="sday-6" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:8px 2px; border-radius:8px;">
+                        <div class="streak-day-box" id="sday-6" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:8px 2px; border-radius:8px;">
                             <div style="font-size:9px; color:#94a3b8;" id="lbl-sday-title-6">6-kun</div>
                             <div style="font-size:11px; font-weight:bold; color:#ffc439; margin-top:3px;">100 🪙</div>
                         </div>
-                        <div class="streak-day-box" id="sday-7" style="background:rgba(255,196,57,0.2); border:1px solid #ffc439; padding:8px 2px; border-radius:8px;">
-                            <div style="font-size:9px; color:#ffc439; font-weight:bold;" id="lbl-sday-title-7">7-kun</div>
-                            <div style="font-size:11px; font-weight:bold; color:#00f2fe; margin-top:3px;">200 🪙</div>
+                        <div class="streak-day-box" id="sday-7" style="background:rgba(230,202,101,0.15); border:1px solid var(--gold); padding:8px 2px; border-radius:8px;">
+                            <div style="font-size:9px; color:var(--gold); font-weight:bold;" id="lbl-sday-title-7">7-kun</div>
+                            <div style="font-size:11px; font-weight:bold; color:#38bdf8; margin-top:3px;">200 🪙</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Daily Claim & Language settings -->
-                <div class="profile-actions-grid" style="display:grid; grid-template-columns: 1fr; gap:12px; margin-bottom:20px;">
-                    <div class="action-card" id="daily-claim-card" style="cursor:pointer; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:12px; text-align:center;">
-                        <div style="font-size:24px;">🎁</div>
-                        <div id="lbl-daily-claim" style="font-size:13px; font-weight:bold; margin-top:5px; color:#ffc439;">Kunlik Bonus</div>
-                        <div id="lbl-daily-claim-time" style="font-size:10px; color:#94a3b8;">Hozir olish</div>
-                    </div>
-                    <div class="action-card" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:12px; text-align:center; position:relative;">
-                        <div style="font-size:24px;">🌐</div>
-                        <div style="font-size:13px; font-weight:bold; margin-top:5px; color:#00f2fe;" id="lbl-profile-lang">Til: O'zbekcha</div>
-                        <select id="select-lang" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;">
-                            <option value="uz">O'zbekcha</option>
-                            <option value="ru">Русский</option>
-                            <option value="en">English</option>
-                            <option value="kz">Қазақша</option>
-                        </select>
-                    </div>
+                <!-- Language Selector -->
+                <div class="action-card" style="background:var(--card-bg); border:1px solid var(--card-border-subtle); padding:12px; border-radius:12px; text-align:center; position:relative; margin-bottom:15px;">
+                    <div style="font-size:20px;">🌐</div>
+                    <div style="font-size:13px; font-weight:bold; margin-top:3px; color:#38bdf8;" id="lbl-profile-lang">Til: O'zbekcha</div>
+                    <select id="select-lang" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+                        <option value="uz">O'zbekcha</option>
+                        <option value="ru">Русский</option>
+                        <option value="en">English</option>
+                        <option value="kz">Қазақша</option>
+                    </select>
                 </div>
 
-                <!-- Referral Card -->
-                <div class="referral-card" style="background:linear-gradient(135deg, rgba(79,172,254,0.1) 0%, rgba(0,242,254,0.1) 100%); border:1px solid rgba(0,242,254,0.2); padding:16px; border-radius:12px; margin-bottom:20px; text-align:center;">
-                    <div style="font-size:18px; font-weight:bold; margin-bottom:4px;" id="lbl-ref-title">👥 Taklifnoma Tizimi</div>
-                    <div id="lbl-ref-desc" style="font-size:12px; color:#cbd5e1; margin-bottom:12px;">Do'stlaringizni taklif qiling va har biri uchun +50 tanga bonus oling!</div>
-                    <button class="btn btn-sm btn-primary" id="btn-copy-ref" style="width:100%;">Sizning Havolangizni Nusxalash</button>
-                </div>
-
-                <!-- VIP Custom Background Card (Hidden by default, shown for VIPs) -->
-                <div class="referral-card" id="vip-bg-card" style="display:none; background:linear-gradient(135deg, rgba(255,196,57,0.1) 0%, rgba(255,196,57,0.05) 100%); border:1px solid rgba(255,196,57,0.3); padding:16px; border-radius:12px; margin-bottom:20px; text-align:center;">
-                    <div style="font-size:16px; font-weight:bold; margin-bottom:4px; color:#ffc439;" id="lbl-vip-bg-title">👑 VIP Shaxsiy Orqa Fon</div>
-                    <div style="font-size:12px; color:#cbd5e1; margin-bottom:12px;" id="lbl-vip-bg-desc">Mini App foniga qo'yish uchun rasm URL havolasini kiriting:</div>
-                    <input type="text" id="vip-bg-url" placeholder="https://example.com/rasm.jpg" style="width:100%; box-sizing:border-box; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:13px; padding:10px; margin-bottom:10px; text-align:center;">
-                    <button class="btn btn-sm btn-primary" id="btn-save-vip-bg" style="width:100%; background:#ffc439; color:#000;">Fonga o'rnatish</button>
-                </div>
+                <!-- Hidden referral trigger for JS -->
+                <button id="btn-copy-ref" style="display:none;"></button>
 
                 <!-- Achievements -->
                 <div class="section-title" id="lbl-achievements-title">Erishilgan Yutuqlar</div>

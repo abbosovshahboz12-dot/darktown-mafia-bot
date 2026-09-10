@@ -309,18 +309,26 @@ async function loadProfile() {
         }
         
         // Render profile details
-        document.getElementById('user-name').innerText = data.user.first_name || userFirstName;
+        document.getElementById('user-name').innerText = (data.user.first_name || userFirstName).toUpperCase();
         document.getElementById('user-username').innerText = data.user.username ? `@${data.user.username}` : userUsername;
-        document.getElementById('user-coins').innerText = data.user.coins;
-        document.getElementById('user-level').innerText = `Lvl ${data.user.level}`;
+        document.getElementById('user-coins').innerText = (data.user.coins || 0).toLocaleString();
+        if (document.getElementById('user-level')) {
+            document.getElementById('user-level').innerText = data.user.level || 1;
+        }
+        if (document.getElementById('user-rep-display')) {
+            document.getElementById('user-rep-display').innerText = (data.user.rating || data.user.xp || 0).toLocaleString();
+        }
+        if (document.getElementById('user-clan-display')) {
+            document.getElementById('user-clan-display').innerText = data.user.clan_name || "DARK TOWN";
+        }
         
         // Avatar letter
         const firstLetter = (data.user.first_name || "M").charAt(0).toUpperCase();
         document.getElementById('user-avatar').innerText = firstLetter;
         
         // XP progress
-        const xp = data.user.xp;
-        const xpNeeded = data.user.level * 500;
+        const xp = data.user.xp || 0;
+        const xpNeeded = (data.user.level || 1) * 500;
         const xpPercent = Math.min((xp / xpNeeded) * 100, 100);
         document.getElementById('xp-text').innerText = `${xp} / ${xpNeeded} XP`;
         document.getElementById('xp-fill').style.width = `${xpPercent}%`;
@@ -396,9 +404,9 @@ async function loadProfile() {
         const bgInputEl = document.getElementById('vip-bg-url');
         
         if (isVip) {
-            avatarEl.style.border = '3px solid #ffc439';
+            avatarEl.style.borderColor = '#ffc439';
             avatarEl.style.boxShadow = '0 0 15px rgba(255, 196, 57, 0.6)';
-            bgCardEl.style.display = 'block';
+            if (bgCardEl) bgCardEl.style.display = 'block';
             if (data.user.custom_bg) {
                 bgInputEl.value = data.user.custom_bg;
                 document.body.style.backgroundImage = `url(${data.user.custom_bg})`;
@@ -406,9 +414,9 @@ async function loadProfile() {
                 document.body.style.backgroundPosition = 'center';
             }
         } else {
-            avatarEl.style.border = 'none';
-            avatarEl.style.boxShadow = 'none';
-            bgCardEl.style.display = 'none';
+            avatarEl.style.borderColor = '';
+            avatarEl.style.boxShadow = '';
+            if (bgCardEl) bgCardEl.style.display = 'none';
             document.body.style.backgroundImage = '';
         }
         
@@ -2915,6 +2923,27 @@ safeAddListener('btn-claim-streak', 'click', handleClaimDailyStreak);
 safeAddListener('btn-copy-ref', 'click', () => {
     const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
     copyTextToClipboard(link, t("msg_copied"));
+});
+
+// Tactical Quick Tiles Event Listeners
+safeAddListener('tile-tasks', 'click', () => {
+    const questsSection = document.getElementById('quests-container') || document.getElementById('lbl-quests-title');
+    if (questsSection) {
+        questsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+});
+
+safeAddListener('tile-recruit', 'click', () => {
+    const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
+    copyTextToClipboard(link, t("msg_copied") || "Referral havolasi nusxalandi!");
+});
+
+safeAddListener('tile-territory', 'click', () => {
+    switchTab('match');
+});
+
+safeAddListener('tile-syndicate', 'click', () => {
+    switchTab('clans');
 });
 
 safeAddListener('btn-send-ghost', 'click', sendGhostChatMessage);
