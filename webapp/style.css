@@ -1,18 +1,18 @@
-/* CSS Reset & Vars — Obsidian & Pure Gold Syndicate (AAA Luxury Theme) */
+/* CSS Reset & Vars — Midnight Slate & Pure Gold Syndicate (AAA Balanced Luxury) */
 :root {
-    --bg-color: #07070a;
-    --bg-surface: #0e0e14;
-    --card-bg: rgba(16, 16, 23, 0.78);
-    --card-border: rgba(226, 192, 98, 0.18);
-    --card-border-subtle: rgba(255, 255, 255, 0.08);
+    --bg-color: #0b0e17;
+    --bg-surface: #121829;
+    --card-bg: rgba(18, 24, 40, 0.85);
+    --card-border: rgba(226, 192, 98, 0.24);
+    --card-border-subtle: rgba(255, 255, 255, 0.12);
     --primary: #e6ca65;
-    --primary-glow: rgba(230, 202, 101, 0.25);
+    --primary-glow: rgba(230, 202, 101, 0.28);
     --gold: #e6ca65;
-    --gold-glow: rgba(230, 202, 101, 0.35);
+    --gold-glow: rgba(230, 202, 101, 0.38);
     --gold-gradient: linear-gradient(135deg, #fef08a 0%, #d4af37 50%, #aa771c 100%);
     --secondary: #94a3b8;
     --accent: #f59e0b;
-    --accent-glow: rgba(245, 158, 11, 0.25);
+    --accent-glow: rgba(245, 158, 11, 0.28);
     --text-color: #f8fafc;
     --text-muted: #94a3b8;
     --success: #10b981;
@@ -55,9 +55,10 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
-    background: radial-gradient(circle at 50% 0%, rgba(230, 202, 101, 0.08) 0%, transparent 45%),
-                radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.03) 0%, transparent 40%),
-                #07070a;
+    background: radial-gradient(circle at 50% 0%, rgba(230, 202, 101, 0.12) 0%, transparent 48%),
+                radial-gradient(circle at 100% 30%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 0% 80%, rgba(168, 85, 247, 0.06) 0%, transparent 45%),
+                #0b0e17;
     overflow: hidden;
 }
 
@@ -68,10 +69,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(226, 192, 98, 0.12);
+    border-bottom: 1px solid rgba(226, 192, 98, 0.16);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    background-color: rgba(9, 9, 13, 0.85);
+    background-color: rgba(11, 14, 23, 0.88);
     z-index: 10;
 }
 
@@ -149,15 +150,15 @@ body {
 
 /* Profile Card */
 .profile-card {
-    background: linear-gradient(165deg, rgba(22, 20, 30, 0.88) 0%, rgba(10, 9, 14, 0.96) 100%);
+    background: linear-gradient(165deg, rgba(26, 34, 56, 0.92) 0%, rgba(14, 18, 30, 0.98) 100%);
     border: 1px solid var(--card-border);
-    border-top: 1px solid rgba(254, 240, 138, 0.28);
+    border-top: 1px solid rgba(254, 240, 138, 0.35);
     border-radius: 24px;
     padding: 24px;
     text-align: center;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     margin-bottom: 20px;
     position: relative;
     overflow: hidden;
@@ -170,7 +171,7 @@ body {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(230, 202, 101, 0.04) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(230, 202, 101, 0.06) 0%, transparent 60%);
     pointer-events: none;
 }
 
@@ -185,7 +186,7 @@ body {
     width: 100%;
     height: 100%;
     border-radius: 22px;
-    background: linear-gradient(145deg, #191824, #0b0a11);
+    background: linear-gradient(145deg, #1e263d, #0f1422);
     border: 2px solid var(--gold);
     display: flex;
     align-items: center;
@@ -193,7 +194,7 @@ body {
     font-size: 2.2rem;
     font-weight: 800;
     color: #fef08a;
-    box-shadow: 0 0 20px rgba(230, 202, 101, 0.28);
+    box-shadow: 0 0 22px rgba(230, 202, 101, 0.32);
 }
 
 .level-badge {
@@ -262,9 +263,9 @@ body {
 }
 
 .stat-box {
-    background: linear-gradient(165deg, rgba(20, 19, 28, 0.85) 0%, rgba(10, 9, 14, 0.92) 100%);
+    background: linear-gradient(165deg, rgba(22, 29, 48, 0.9) 0%, rgba(13, 17, 28, 0.95) 100%);
     border: 1px solid var(--card-border-subtle);
-    border-top: 1px solid rgba(254, 240, 138, 0.2);
+    border-top: 1px solid rgba(254, 240, 138, 0.25);
     border-radius: 18px;
     padding: 16px 8px;
     text-align: center;
@@ -597,7 +598,7 @@ body {
     left: 16px;
     right: 16px;
     height: 65px;
-    background: rgba(14, 13, 20, 0.9);
+    background: rgba(18, 24, 40, 0.94);
     border: 1px solid var(--card-border);
     border-radius: 35px;
     backdrop-filter: blur(20px);
@@ -607,7 +608,7 @@ body {
     align-items: center;
     padding: 0 12px;
     z-index: 10;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(254, 240, 138, 0.12);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(254, 240, 138, 0.16);
 }
 
 .nav-item {
@@ -1075,19 +1076,19 @@ body {
     margin-bottom: 25px;
 }
 .coin-package-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border-subtle);
     border-radius: 14px;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.25s ease;
     backdrop-filter: blur(10px);
 }
 .coin-package-card:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(0, 242, 254, 0.2);
+    background: rgba(26, 34, 56, 0.95);
+    border-color: var(--card-border);
     transform: translateY(-2px);
 }
 .coin-info-group {
