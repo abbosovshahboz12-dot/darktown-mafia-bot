@@ -182,6 +182,116 @@ navItems.forEach(item => {
     });
 });
 
+// Intro Splash Screen and Daily Mystery Crate
+let hasShownMysteryCrateThisSession = false;
+
+function dismissSplashScreen() {
+    const splash = document.getElementById('splash-screen');
+    const bar = document.getElementById('splash-progress-bar');
+    if (!splash) return;
+    if (bar) bar.style.width = '100%';
+    setTimeout(() => {
+        splash.style.opacity = '0';
+        splash.style.visibility = 'hidden';
+        setTimeout(() => {
+            splash.style.display = 'none';
+        }, 600);
+    }, 450);
+}
+
+function checkAndTriggerMysteryCrate(user) {
+    if (hasShownMysteryCrateThisSession) return;
+    if (!user) return;
+    
+    // Check if daily reward can be claimed
+    if (user.can_claim_daily) {
+        hasShownMysteryCrateThisSession = true;
+        setTimeout(() => {
+            const modal = document.getElementById('modal-mystery-crate');
+            if (modal) {
+                // Reset visual state
+                const crateBox = document.getElementById('crate-box-visual');
+                const rewardReveal = document.getElementById('crate-reward-reveal');
+                const btnOpen = document.getElementById('btn-open-crate');
+                const btnClose = document.getElementById('btn-close-crate');
+                
+                if (crateBox) {
+                    crateBox.style.display = 'flex';
+                    crateBox.classList.remove('crate-shaking');
+                }
+                if (rewardReveal) rewardReveal.style.display = 'none';
+                if (btnOpen) {
+                    btnOpen.style.display = 'block';
+                    btnOpen.disabled = false;
+                    btnOpen.innerText = t("btn_open_crate");
+                    btnOpen.onclick = handleOpenMysteryCrate;
+                }
+                if (btnClose) {
+                    btnClose.onclick = () => {
+                        modal.style.display = 'none';
+                    };
+                }
+                modal.style.display = 'flex';
+            }
+        }, 800);
+    }
+}
+
+async function handleOpenMysteryCrate() {
+    const btnOpen = document.getElementById('btn-open-crate');
+    const crateBox = document.getElementById('crate-box-visual');
+    const rewardReveal = document.getElementById('crate-reward-reveal');
+    const rewardTitle = document.getElementById('crate-reward-title');
+    const modal = document.getElementById('modal-mystery-crate');
+    
+    if (btnOpen) {
+        btnOpen.disabled = true;
+        btnOpen.innerText = "Ochilmoqda...";
+    }
+    if (crateBox) {
+        crateBox.classList.add('crate-shaking');
+    }
+    
+    try {
+        const response = await apiFetch('/api/daily-claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const resData = await response.json();
+        
+        setTimeout(() => {
+            if (crateBox) {
+                crateBox.classList.remove('crate-shaking');
+                crateBox.style.display = 'none';
+            }
+            if (rewardReveal) {
+                rewardReveal.style.display = 'block';
+                if (response.ok && resData.reward) {
+                    if (rewardTitle) rewardTitle.innerText = `+${resData.reward} 🪙 Dark Coins`;
+                } else {
+                    if (rewardTitle) rewardTitle.innerText = resData.message || resData.error || "Mukofot olindi!";
+                }
+            }
+            if (btnOpen) {
+                btnOpen.disabled = false;
+                btnOpen.innerText = t("btn_collect_reward");
+                btnOpen.onclick = () => {
+                    if (modal) modal.style.display = 'none';
+                    loadProfile();
+                };
+            }
+        }, 1200);
+    } catch (e) {
+        console.error("Failed to open crate:", e);
+        if (crateBox) crateBox.classList.remove('crate-shaking');
+        if (btnOpen) {
+            btnOpen.disabled = false;
+            btnOpen.innerText = t("btn_open_crate");
+        }
+    }
+}
+
 // Load Profile and Stats
 async function loadProfile() {
     try {
@@ -190,11 +300,13 @@ async function loadProfile() {
         
         const data = await response.json();
         if (data.banned) {
+            dismissSplashScreen();
             document.getElementById('banned-overlay').style.display = 'flex';
             document.querySelector('.app-container').style.display = 'none';
             return;
         }
         if (data.maintenance) {
+            dismissSplashScreen();
             document.getElementById('maintenance-overlay').style.display = 'flex';
             document.querySelector('.app-container').style.display = 'none';
             return;
@@ -323,8 +435,11 @@ async function loadProfile() {
         loadDailyQuests();
         loadGameHistory();
         
+        dismissSplashScreen();
+        checkAndTriggerMysteryCrate(data.user);
     } catch (e) {
         console.error(e);
+        dismissSplashScreen();
     }
 }
 
@@ -1862,7 +1977,7 @@ const LOCALES = {
         "calc_title": "🎮 Mafiya Balans Kalkulyatori",
         "calc_lbl_players": "O'yinchilar soni:",
         "calc_roles_distribution": "👥 Kutilayotgan rollar taqsimoti",
-        "calc_roles_guide": "🎭 Rol qoidalari va tavsiflari",
+        "calc_roles_guide": "🎭 Rollar qoidalari va tavsifi",
         "nav_profile": "Profil",
         "nav_shop": "Do'kon",
         "nav_leaderboard": "Reyting",
@@ -1870,24 +1985,29 @@ const LOCALES = {
         "nav_admin": "Admin",
         "lbl_shop": "Darktown Do'koni",
         "lbl_leaderboard_title": "Global Top O'yinchilar",
-        "shop_shield_name": "XP Qalqoni",
-        "shop_shield_desc": "Tunda o'ldirilganda XP va tangalarni himoyalaydi (1 martalik).",
+        "shop_shield_name": "XP Himoya Qalqoni",
+        "shop_shield_desc": "Tunda o'ldirilganda tajriba va tangalarni yo'qotishdan asraydi (1 martalik).",
         "shop_booster_name": "Faol Rol Busteri",
-        "shop_booster_desc": "Tinch aholi bo'lib qolmaslik va faol rol (Mafiya, Komissar, Shifokor, Telba) olish kafolati!",
+        "shop_booster_desc": "Tinch aholi emas, faol rol (Mafiya, Komissar, Shifokor, Manyak) olish kafolati!",
         "shop_fakedoc_name": "Soxta Hujjat",
-        "shop_fakedoc_desc": "Mafiya bo'lganingizda Komissar tekshirsa, sizni «Tinch aholi» qilib ko'rsatadi (1 martalik)!",
-        "coin_pack_desc": "Mini App do'koni uchun {count} tanga.",
+        "shop_fakedoc_desc": "Mafiya bo'lsangiz va Komissar tekshirganda, sizni «Tinch aholi» deb ko'rsatadi (1 martalik)!",
+        "coin_pack_desc": "Do'kon xaridlari uchun {count} tanga.",
         "btn_pay_stars": "⭐️ Telegram Stars",
         "btn_pay_card": "💳 Visa / PayPal",
         "lbl_hmenu_title": "⚙️ Menyu va Sozlamalar",
         "lbl_hmenu_clans": "Klanlar (Clans)",
-        "lbl_hmenu_rules": "O'yin Qoidalari",
+        "lbl_hmenu_rules": "O'yin qoidalari",
         "lbl_rules_modal_title": "O'yin Qoidalari",
         "lbl_hmenu_pass": "Mavsumiy Battle Pass",
         "lbl_hmenu_channel": "Rasmiy Kanal (@DarkTownuz)",
         "lbl_hmenu_shop": "Do'kon (Tangalar va Busterlar)",
         "lbl_hmenu_sound": "Ovoz effektlari",
         "lbl_party_title": "👥 Geymerlar Partiyasi",
+        "lbl_crate_header": "🎁 Kunlik Maxsus Sovg'a",
+        "lbl_crate_title": "Sirli Qutini Oching!",
+        "btn_open_crate": "Qutini Ochish ✨",
+        "btn_collect_reward": "Sovg'ani Olish 🎉",
+        "lbl_crate_reward_desc": "Hisobingizga muvaffaqiyatli qo'shildi!",
         "party_status_solo": "Yakka (Solo)",
         "party_info_solo": "Siz hozircha guruhda emassiz. Do'stlaringiz bilan birga o'ynash uchun partiya yarating.",
         "btn_create_party": "Partiya Yaratish",
@@ -1989,6 +2109,11 @@ const LOCALES = {
         "lbl_hmenu_shop": "Магазин (Монеты и Бустеры)",
         "lbl_hmenu_sound": "Звуковые эффекты",
         "lbl_party_title": "👥 Пати Игроков",
+        "lbl_crate_header": "🎁 Ежедневный Бонус",
+        "lbl_crate_title": "Откройте Тайный Кейс!",
+        "btn_open_crate": "Открыть Кейс ✨",
+        "btn_collect_reward": "Забрать Награду 🎉",
+        "lbl_crate_reward_desc": "Успешно зачислено на ваш баланс!",
         "party_status_solo": "Соло",
         "party_info_solo": "Вы пока не в пати. Создайте пати для совместной игры с друзьями.",
         "btn_create_party": "Создать пати",
@@ -2090,6 +2215,11 @@ const LOCALES = {
         "lbl_hmenu_shop": "Shop (Coins & Boosters)",
         "lbl_hmenu_sound": "Sound Effects",
         "lbl_party_title": "👥 Gamer Party",
+        "lbl_crate_header": "🎁 Daily Mystery Crate",
+        "lbl_crate_title": "Open Your Mystery Crate!",
+        "btn_open_crate": "Open Crate ✨",
+        "btn_collect_reward": "Collect Reward 🎉",
+        "lbl_crate_reward_desc": "Successfully credited to your balance!",
         "party_status_solo": "Solo",
         "party_info_solo": "You are not in a party. Create a party to play with friends.",
         "btn_create_party": "Create Party",
@@ -2191,6 +2321,11 @@ const LOCALES = {
         "lbl_hmenu_shop": "Дүкен (Монеталар мен Бустерлер)",
         "lbl_hmenu_sound": "Дыбыс әсерлері",
         "lbl_party_title": "👥 Ойыншылар Партиясы",
+        "lbl_crate_header": "🎁 Күнделікті Сыйлық",
+        "lbl_crate_title": "Құпия Қорапты Ашыңыз!",
+        "btn_open_crate": "Қорапты Ашу ✨",
+        "btn_collect_reward": "Сыйлықты Алу 🎉",
+        "lbl_crate_reward_desc": "Балансыңызға сәтті қосылды!",
         "party_status_solo": "Жалғыз (Solo)",
         "party_info_solo": "Сіз топта емессіз. Достарыңызбен ойнау үшін партия құрыңыз.",
         "btn_create_party": "Партия құру",
@@ -2467,12 +2602,20 @@ function updateLang(lang) {
     const calcDistLbl = document.getElementById('calc-roles-distribution');
     if (calcDistLbl) calcDistLbl.innerText = t("calc_roles_distribution");
     const calcGuideLbl = document.getElementById('calc-roles-guide');
-    if (calcGuideLbl) calcGuideLbl.innerText = t("calc_roles_guide");
-    
     // Update calculator roles & guide
     const sliderEl = document.getElementById('player-slider');
     if (sliderEl) updateCalculator(parseInt(sliderEl.value) || 5);
     renderCalculatorGuide();
+
+    // Mystery Crate labels
+    const crateHeaderEl = document.getElementById('lbl-crate-header');
+    if (crateHeaderEl) crateHeaderEl.innerText = t("lbl_crate_header");
+    const crateTitleEl = document.getElementById('lbl-crate-title');
+    if (crateTitleEl) crateTitleEl.innerText = t("lbl_crate_title");
+    const crateOpenBtn = document.getElementById('btn-open-crate');
+    if (crateOpenBtn && !crateOpenBtn.disabled) crateOpenBtn.innerText = t("btn_open_crate");
+    const crateRewardDesc = document.getElementById('lbl-crate-reward-desc');
+    if (crateRewardDesc) crateRewardDesc.innerText = t("lbl_crate_reward_desc");
 
     // Reload dynamic lists with current lang
     loadDailyQuests();

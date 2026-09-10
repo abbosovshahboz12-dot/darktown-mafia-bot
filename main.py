@@ -137,6 +137,18 @@ async def get_profile_handler(request):
         if user.get('banned', 0) == 1:
             return web.json_response({"banned": True})
             
+        # Check daily claim eligibility
+        last_claim_str = user.get('last_daily_claim')
+        can_claim_daily = True
+        if last_claim_str:
+            try:
+                last_claim = datetime.fromisoformat(last_claim_str)
+                if (datetime.now() - last_claim).total_seconds() < 86400:
+                    can_claim_daily = False
+            except Exception:
+                pass
+        user['can_claim_daily'] = can_claim_daily
+        
         stats = await db.get_user_stats(user_id)
         inventory = await db.get_inventory(user_id)
         achievements = await db.get_user_achievements(user_id)
