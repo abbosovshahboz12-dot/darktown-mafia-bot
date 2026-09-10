@@ -1789,7 +1789,9 @@ async def battle_pass_handler(request):
 async def static_cache_middleware(request, handler):
     response = await handler(request)
     if request.path.startswith("/static/"):
-        response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
     return response
 
 # Setup Web Server Routing
