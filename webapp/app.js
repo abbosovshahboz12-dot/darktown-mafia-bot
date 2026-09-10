@@ -147,6 +147,12 @@ function switchTab(tabName) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     
+    // Toggle Top Currency Pill Bar (Visible only on Profile/Home tab, hidden during Game/Arena)
+    const currencyBar = document.querySelector('.currency-pill-bar');
+    if (currencyBar) {
+        currencyBar.style.display = (tabName === 'profile') ? 'grid' : 'none';
+    }
+    
     // Close modals that might be open
     const hamburgerModal = document.getElementById('modal-hamburger');
     if (hamburgerModal) hamburgerModal.style.display = 'none';
