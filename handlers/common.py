@@ -183,7 +183,19 @@ async def cmd_start(message: types.Message):
         except Exception as e:
             logging.error(f"Error notifying inviter: {e}")
             
-    welcome_text = get_text(lang, "start_private", name=first_name)
+    is_new_user = user.get('is_new', False)
+    new_user_greeting = ""
+    if is_new_user:
+        if lang == "ru":
+            new_user_greeting = "🎉 **Добро пожаловать в город!** Вам начислен приветственный бонус **+100 Dark Coins**! 🪙\n\n"
+        elif lang == "en":
+            new_user_greeting = "🎉 **Welcome to DarkTown!** You have received a welcome gift of **+100 Dark Coins**! 🪙\n\n"
+        elif lang == "kz":
+            new_user_greeting = "🎉 **Қалаға қош келдіңіз!** Сізге алғашқы кіру үшін **+100 Dark Coins** берілді! 🪙\n\n"
+        else:
+            new_user_greeting = "🎉 **Shaharga xush kelibsiz!** Sizga birinchi kirishingiz uchun **+100 Dark Coins** taqdim etildi! 🪙\n\n"
+
+    welcome_text = new_user_greeting + get_text(lang, "start_private", name=first_name)
     
     shield_status = "🛡️ Active" if user['shield_active'] else "❌ Inactive"
     if lang == "uz":
@@ -211,7 +223,23 @@ async def cmd_start(message: types.Message):
             bonus_hint = "\n\n🎁 **Бонус**: Ресми арнамызға жазылып, **+100 Dark Coins** алыңыз!"
         status_text += bonus_hint
         
-    await message.answer(welcome_text + status_text, reply_markup=get_start_keyboard(user_id, bot_user, lang, bonus_claimed), parse_mode="Markdown")
+    full_caption = welcome_text + status_text
+    reply_kb = get_start_keyboard(user_id, bot_user, lang, bonus_claimed)
+    welcome_gif = "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzM2MWF6bWdkZno4bmx4d3V1MW01ajBhMmhrbjR5MGw4NGZ3MGNtaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKrE1xs1sA5yyZ2/giphy.gif"
+    
+    try:
+        await message.answer_animation(
+            animation=welcome_gif,
+            caption=full_caption,
+            reply_markup=reply_kb,
+            parse_mode="Markdown"
+        )
+    except Exception:
+        await message.answer(
+            full_caption,
+            reply_markup=reply_kb,
+            parse_mode="Markdown"
+        )
 
 @router.message(Command("profile", "profil"))
 async def cmd_profile(message: types.Message):

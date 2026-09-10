@@ -317,7 +317,9 @@ async def get_user(user_id: int, username: str = None, first_name: str = None):
             
             async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor2:
                 row2 = await cursor2.fetchone()
-                return dict(row2) if row2 else {}
+                res = dict(row2) if row2 else {}
+                res['is_new'] = True
+                return res
 
 async def add_xp_and_coins(user_id: int, xp_amount: int, coins_amount: int):
     # Sanitize inputs to prevent overflow/unreasonable values
