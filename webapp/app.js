@@ -312,6 +312,13 @@ async function loadProfile() {
         document.getElementById('user-name').innerText = (data.user.first_name || userFirstName).toUpperCase();
         document.getElementById('user-username').innerText = data.user.username ? `@${data.user.username}` : userUsername;
         document.getElementById('user-coins').innerText = (data.user.coins || 0).toLocaleString();
+        if (document.getElementById('user-xp-display')) {
+            document.getElementById('user-xp-display').innerText = (data.user.xp || 0).toLocaleString();
+        }
+        if (document.getElementById('user-streak-display')) {
+            const streak = data.user.streak_days || 0;
+            document.getElementById('user-streak-display').innerText = `${streak} ${t("lbl_days_unit") || "kun"}`;
+        }
         if (document.getElementById('user-level')) {
             document.getElementById('user-level').innerText = data.user.level || 1;
         }
