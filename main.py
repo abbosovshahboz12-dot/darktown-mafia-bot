@@ -1932,18 +1932,96 @@ async def main():
     
     # Set Telegram Bot Menu Button (Mini App or Commands based on FEATURE_WEBAPP)
     try:
-        from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
+        from aiogram.types import (
+            BotCommand, BotCommandScopeChat, BotCommandScopeDefault,
+            BotCommandScopeAllPrivateChats, BotCommandScopeAllGroupChats
+        )
         
-        default_commands = [
-            BotCommand(command="start", description="🚀 Botni ishga tushirish / Bosh menyu"),
+        # 1. Private chat commands (Uzbek default)
+        pv_commands_uz = [
+            BotCommand(command="start", description="🚀 Bosh menyu"),
             BotCommand(command="profile", description="👤 Shaxsiy profil va statistika"),
-            BotCommand(command="shop", description="🛒 Tangalar do'koni"),
-            BotCommand(command="top", description="🏆 Reyting jadvali"),
-            BotCommand(command="help", description="ℹ️ Yordam va o'yin qoidalari"),
+            BotCommand(command="shop", description="🛒 Tangalar va VIP do'koni"),
+            BotCommand(command="top", description="🏆 Global reyting jadvali"),
+            BotCommand(command="quests", description="📜 Kunlik vazifalar"),
             BotCommand(command="rules", description="📖 Mafiya o'yini qoidalari"),
+            BotCommand(command="help", description="ℹ️ Yordam va yo'riqnoma"),
             BotCommand(command="lang", description="🌐 Tilni o'zgartirish"),
         ]
-        await bot.set_my_commands(default_commands, scope=BotCommandScopeDefault())
+        # Private chat commands (Russian)
+        pv_commands_ru = [
+            BotCommand(command="start", description="🚀 Главное меню"),
+            BotCommand(command="profile", description="👤 Мой профиль и статистика"),
+            BotCommand(command="shop", description="🛒 Магазин монет и VIP"),
+            BotCommand(command="top", description="🏆 Глобальный рейтинг"),
+            BotCommand(command="quests", description="📜 Ежедневные задания"),
+            BotCommand(command="rules", description="📖 Правила игры в Мафию"),
+            BotCommand(command="help", description="ℹ️ Помощь и справка"),
+            BotCommand(command="lang", description="🌐 Сменить язык"),
+        ]
+        # Private chat commands (English)
+        pv_commands_en = [
+            BotCommand(command="start", description="🚀 Main menu"),
+            BotCommand(command="profile", description="👤 Profile & Stats"),
+            BotCommand(command="shop", description="🛒 Coin & VIP Shop"),
+            BotCommand(command="top", description="🏆 Global Leaderboard"),
+            BotCommand(command="quests", description="📜 Daily Quests"),
+            BotCommand(command="rules", description="📖 Mafia Game Rules"),
+            BotCommand(command="help", description="ℹ️ Help & Guide"),
+            BotCommand(command="lang", description="🌐 Change language"),
+        ]
+        
+        # 2. Group chat commands (Uzbek default)
+        grp_commands_uz = [
+            BotCommand(command="game", description="🎮 Yangi o'yin boshlash (Lobby)"),
+            BotCommand(command="stats", description="📊 Shaxsiy statistika"),
+            BotCommand(command="top", description="🏆 Guruh peshqadamlari"),
+            BotCommand(command="topgroups", description="🌐 Eng faol guruhlar"),
+            BotCommand(command="quests", description="📜 Kunlik vazifalar"),
+            BotCommand(command="rules", description="📖 Qoidalar va rollar"),
+            BotCommand(command="settings", description="⚙️ Guruh sozlamalari (Admin)"),
+            BotCommand(command="help", description="ℹ️ Yordam"),
+            BotCommand(command="lang", description="🌐 Tilni tanlash (Admin)"),
+        ]
+        # Group chat commands (Russian)
+        grp_commands_ru = [
+            BotCommand(command="game", description="🎮 Начать игру (Лобби)"),
+            BotCommand(command="stats", description="📊 Моя статистика"),
+            BotCommand(command="top", description="🏆 Топ игроков группы"),
+            BotCommand(command="topgroups", description="🌐 Топ активных групп"),
+            BotCommand(command="quests", description="📜 Ежедневные задания"),
+            BotCommand(command="rules", description="📖 Правила и роли"),
+            BotCommand(command="settings", description="⚙️ Настройки группы (Админ)"),
+            BotCommand(command="help", description="ℹ️ Помощь"),
+            BotCommand(command="lang", description="🌐 Выбрать язык (Админ)"),
+        ]
+        # Group chat commands (English)
+        grp_commands_en = [
+            BotCommand(command="game", description="🎮 Start game lobby"),
+            BotCommand(command="stats", description="📊 My stats"),
+            BotCommand(command="top", description="🏆 Group leaderboard"),
+            BotCommand(command="topgroups", description="🌐 Top active groups"),
+            BotCommand(command="quests", description="📜 Daily quests"),
+            BotCommand(command="rules", description="📖 Rules and roles"),
+            BotCommand(command="settings", description="⚙️ Group settings (Admin)"),
+            BotCommand(command="help", description="ℹ️ Help"),
+            BotCommand(command="lang", description="🌐 Select language (Admin)"),
+        ]
+        
+        # Register default fallback
+        await bot.set_my_commands(pv_commands_uz, scope=BotCommandScopeDefault())
+        
+        # Register Private Chat Scopes
+        await bot.set_my_commands(pv_commands_uz, scope=BotCommandScopeAllPrivateChats(), language_code="uz")
+        await bot.set_my_commands(pv_commands_ru, scope=BotCommandScopeAllPrivateChats(), language_code="ru")
+        await bot.set_my_commands(pv_commands_en, scope=BotCommandScopeAllPrivateChats(), language_code="en")
+        await bot.set_my_commands(pv_commands_uz, scope=BotCommandScopeAllPrivateChats())
+        
+        # Register Group Chat Scopes
+        await bot.set_my_commands(grp_commands_uz, scope=BotCommandScopeAllGroupChats(), language_code="uz")
+        await bot.set_my_commands(grp_commands_ru, scope=BotCommandScopeAllGroupChats(), language_code="ru")
+        await bot.set_my_commands(grp_commands_en, scope=BotCommandScopeAllGroupChats(), language_code="en")
+        await bot.set_my_commands(grp_commands_uz, scope=BotCommandScopeAllGroupChats())
         
         if ADMIN_ID:
             admin_commands = [
