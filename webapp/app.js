@@ -2012,6 +2012,7 @@ const LOCALES = {
         "lbl_no_inventory": "Inventar bo'sh.",
         "lbl_daily_claim": "Kunlik Bonus",
         "lbl_daily_claim_time": "Hozir olish",
+        "lbl_days_unit": "kun",
         "lbl_streak_title": "🔥 7-Kunlik Bonus Streak",
         "lbl_streak_subtitle": "Har kuni o'yinga kiring va bonuslarga erishing!",
         "btn_claim_streak": "Hozir Olish",
@@ -2118,6 +2119,7 @@ const LOCALES = {
         "lbl_no_inventory": "Инвентарь пуст.",
         "lbl_daily_claim": "Ежедневная Награда",
         "lbl_daily_claim_time": "Забрать",
+        "lbl_days_unit": "дн.",
         "lbl_streak_title": "🔥 7-Дневный Бонус Стрик",
         "lbl_streak_subtitle": "Заходите каждый день и получайте бонусы!",
         "btn_claim_streak": "Забрать",
@@ -2224,6 +2226,7 @@ const LOCALES = {
         "lbl_no_inventory": "Inventory is empty.",
         "lbl_daily_claim": "Daily Reward",
         "lbl_daily_claim_time": "Claim Now",
+        "lbl_days_unit": "days",
         "lbl_streak_title": "🔥 7-Day Bonus Streak",
         "lbl_streak_subtitle": "Log in daily and get bonus rewards!",
         "btn_claim_streak": "Claim Now",
@@ -2330,6 +2333,7 @@ const LOCALES = {
         "lbl_no_inventory": "Инвентарь бос.",
         "lbl_daily_claim": "Күнделікті Бонус",
         "lbl_daily_claim_time": "Қазір алу",
+        "lbl_days_unit": "күн",
         "lbl_streak_title": "🔥 7-Күндік Бонус Стрик",
         "lbl_streak_subtitle": "Күн сайын кіріп, бонустарға қол жеткізіңіз!",
         "btn_claim_streak": "Қазір Алу",
@@ -2564,6 +2568,19 @@ function updateLang(lang) {
     if (tArena) tArena.innerText = currentLang === 'ru' ? "АРЕНА" : currentLang === 'en' ? "ARENA" : currentLang === 'kz' ? "АРЕНА" : "ARENA";
     const tShop = document.getElementById('lbl-tile-shop');
     if (tShop) tShop.innerText = currentLang === 'ru' ? "МАГАЗИН" : currentLang === 'en' ? "SHOP" : currentLang === 'kz' ? "ДҮКЕН" : "DO'KON";
+
+    // Re-render dynamic streak labels with localized unit
+    const pStreakVal = document.getElementById('user-streak-display');
+    if (pStreakVal && userData && userData.user) {
+        const streak = userData.user.streak_days || 0;
+        pStreakVal.innerText = `${streak} ${t("lbl_days_unit")}`;
+    }
+    const streakHeroDays = document.getElementById('streak-hero-days');
+    if (streakHeroDays && userData && userData.user) {
+        const streakDays = userData.user.streak_days || 0;
+        const dayLabel = currentLang === 'ru' ? `${(streakDays % 7) + 1}-й день` : currentLang === 'en' ? `Day ${(streakDays % 7) + 1}` : currentLang === 'kz' ? `${(streakDays % 7) + 1}-күн` : `${(streakDays % 7) + 1}-kun`;
+        streakHeroDays.innerText = dayLabel;
+    }
     
     // Game Arena labels
     const playersTitleEl = document.getElementById('lbl-players-title');
