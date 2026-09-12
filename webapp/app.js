@@ -1155,7 +1155,7 @@ async function loadPartyStatus() {
 }
 
 async function createParty() {
-    alert("Partiya yaratish tugmasi bosildi! Yuborilayotgan User ID: " + userId);
+    triggerHaptic('medium');
     try {
         const response = await apiFetch('/api/party/create', {
             method: 'POST',
@@ -1164,19 +1164,21 @@ async function createParty() {
         });
         const data = await response.json();
         if (data.success) {
-            alert("Partiya muvaffaqiyatli yaratildi!");
+            triggerHaptic('success');
             loadPartyStatus();
         } else {
-            alert("Xatolik: " + data.error);
+            triggerHaptic('error');
+            alert("Xatolik: " + (data.error || "Partiya yaratib bo'lmadi"));
         }
     } catch(e) {
         console.error(e);
-        alert("API xatosi: " + e.message);
+        triggerHaptic('error');
     }
 }
 
 async function leaveParty() {
     if (!currentPartyId) return;
+    triggerHaptic('light');
     try {
         const response = await apiFetch('/api/party/leave', {
             method: 'POST',
@@ -1185,13 +1187,15 @@ async function leaveParty() {
         });
         const data = await response.json();
         if (data.success) {
+            triggerHaptic('success');
             loadPartyStatus();
         } else {
+            triggerHaptic('error');
             alert(data.error);
         }
     } catch(e) {
         console.error(e);
-        alert("API xatosi: " + e.message);
+        triggerHaptic('error');
     }
 }
 
@@ -1226,13 +1230,14 @@ function fallbackCopy(text, successMessage) {
 
 function copyPartyLink() {
     if (!currentPartyId) return;
+    triggerHaptic('selection');
     const link = `https://t.me/darktownuz_bot?start=${currentPartyId}`;
     copyTextToClipboard(link, "Taklif havolasi nusxalandi!");
 }
 
 // Matchmaking and Room custom creation
 async function autoMatchmaking() {
-    alert("Avto Matching tugmasi bosildi! Yuborilayotgan User ID: " + userId);
+    triggerHaptic('medium');
     try {
         // Query public rooms first
         const response = await apiFetch('/api/rooms/list');
@@ -1241,7 +1246,6 @@ async function autoMatchmaking() {
         if (data.rooms && data.rooms.length > 0) {
             // Join the first open public room
             const firstRoom = data.rooms[0];
-            alert("Ochiq xona topildi: #" + firstRoom.room_id + ". Qo'shilmoqda...");
             const joinRes = await apiFetch('/api/rooms/join', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1249,13 +1253,13 @@ async function autoMatchmaking() {
             });
             const joinData = await joinRes.json();
             if (joinData.success) {
+                triggerHaptic('success');
                 loadActiveGame();
                 return;
             }
         }
         
         // No open room found, automatically create one
-        alert("Ochiq xonalar yo'q. Yangi ochiq xona yaratilmoqda...");
         const createRes = await apiFetch('/api/rooms/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1263,22 +1267,30 @@ async function autoMatchmaking() {
         });
         const createData = await createRes.json();
         if (createData.success) {
-            alert("Yangi xona yaratildi: #" + createData.room_id);
+            triggerHaptic('success');
             loadActiveGame();
         } else {
-            alert("Xatolik: " + createData.error);
+            triggerHaptic('error');
+            alert("Xatolik: " + (createData.error || "Xona yaratib bo'lmadi"));
         }
     } catch(e) {
         console.error(e);
-        alert("API xatosi: " + e.message);
+        triggerHaptic('error');
     }
 }
 
 async function submitCreateRoom() {
+    triggerHaptic('medium');
     const isPrivate = document.getElementById('room-is-private').checked ? 1 : 0;
     const pinCode = document.getElementById('room-pin-code').value.trim();
     const dayLimit = parseInt(document.getElementById('room-day-limit').value) || 60;
     const nightLimit = parseInt(document.getElementById('room-night-limit').value) || 60;
+    
+    if (isPrivate && !pinCode) {
+        triggerHaptic('warning');
+        alert("Maxfiy xona uchun PIN-kod kiritishingiz kerak!");
+        return;
+    }
     
     try {
         const response = await apiFetch('/api/rooms/create', {
@@ -1288,13 +1300,16 @@ async function submitCreateRoom() {
         });
         const data = await response.json();
         if (data.success) {
+            triggerHaptic('success');
             document.getElementById('room-create-opts').style.display = 'none';
             loadActiveGame();
         } else {
+            triggerHaptic('error');
             alert(data.error);
         }
     } catch(e) {
         console.error(e);
+        triggerHaptic('error');
     }
 }
 

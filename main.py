@@ -1210,7 +1210,10 @@ async def create_room_handler(request):
             
         active_room = await db.get_active_room(user_id)
         if active_room:
-            return web.json_response({"error": "Siz allaqachon faol o'yin xonasidasiz!"}, status=400)
+            if active_room['status'] in ('lobby', 'finished'):
+                await db.leave_room(active_room['room_id'], user_id)
+            else:
+                return web.json_response({"error": "Siz allaqachon faol o'yin xonasidasiz!"}, status=400)
             
         party_row = await db.get_user_party(user_id)
         party_members = []
@@ -1220,10 +1223,13 @@ async def create_room_handler(request):
                 if m['user_id'] != user_id:
                     m_active = await db.get_active_room(m['user_id'])
                     if m_active:
-                        return web.json_response({"error": f"Partiya a'zosi {m['first_name']} boshqa o'yin xonasida!"}, status=400)
+                        if m_active['status'] in ('lobby', 'finished'):
+                            await db.leave_room(m_active['room_id'], m['user_id'])
+                        else:
+                            return web.json_response({"error": f"Partiya a'zosi {m['first_name']} boshqa faol o'yinda!"}, status=400)
                         
-        import uuid
-        room_id = str(uuid.uuid4().int)[:6]
+        import random
+        room_id = str(random.randint(100000, 999999))
         
         success = await db.create_room(room_id, user_id, is_private, pin_code, day_limit, night_limit)
         if success:
