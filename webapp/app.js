@@ -33,7 +33,22 @@ if (tg) {
     } catch(e) {
         console.error("tg expand/ready error:", e);
     }
+// Telegram Haptic Feedback Engine
+function triggerHaptic(type = 'light') {
+    if (!tg || !tg.HapticFeedback) return;
+    try {
+        if (type === 'light' || type === 'medium' || type === 'heavy' || type === 'rigid' || type === 'soft') {
+            tg.HapticFeedback.impactOccurred(type);
+        } else if (type === 'success' || type === 'warning' || type === 'error') {
+            tg.HapticFeedback.notificationOccurred(type);
+        } else if (type === 'selection') {
+            tg.HapticFeedback.selectionChanged();
+        }
+    } catch(e) {
+        // Haptic fails gracefully on unsupported platforms
+    }
 }
+window.triggerHaptic = triggerHaptic;
 
 // Global user state variables
 let userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : 12345678;
@@ -126,6 +141,7 @@ let currentActiveTab = 'profile';
 function switchTab(tabName) {
     if (!tabName) return;
     currentActiveTab = tabName;
+    triggerHaptic('light');
     
     // Update nav items
     const allNavItems = document.querySelectorAll('.nav-item');
@@ -332,9 +348,17 @@ async function loadProfile() {
             document.getElementById('user-rep-display').innerText = (data.user.rating || data.user.xp || 0).toLocaleString();
         }
         
-        // Avatar letter
-        const firstLetter = (data.user.first_name || "M").charAt(0).toUpperCase();
-        document.getElementById('user-avatar').innerText = firstLetter;
+        // Avatar letter or Telegram photo
+        const avatarEl = document.getElementById('user-avatar');
+        if (avatarEl) {
+            const tgPhoto = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.photo_url) ? tg.initDataUnsafe.user.photo_url : null;
+            if (tgPhoto) {
+                avatarEl.innerHTML = `<img src="${tgPhoto}" alt="Avatar" style="width:100%; height:100%; border-radius:18px; object-fit:cover; display:block;">`;
+            } else {
+                const firstLetter = (data.user.first_name || userFirstName || "M").charAt(0).toUpperCase();
+                avatarEl.innerText = firstLetter;
+            }
+        }
         
         // XP progress
         const xp = data.user.xp || 0;
@@ -3008,6 +3032,7 @@ async function handleClaimDailyStreak() {
         });
         const data = await response.json();
         if (data.success) {
+            triggerHaptic('success');
             let msg = `🎉 +${data.coins} Dark Coins!`;
             if (data.streak_info && data.streak_info.streak_day) {
                 msg += ` (${data.streak_info.streak_day}-kunlik streak!)`;
@@ -3019,6 +3044,7 @@ async function handleClaimDailyStreak() {
             alert(msg);
             loadProfile();
         } else {
+            triggerHaptic('warning');
             alert(`⚠️ ${data.error || 'Har 24 soatda faqat 1 marta olish mumkin!'}`);
         }
     } catch (err) {
@@ -3032,12 +3058,14 @@ safeAddListener('hero-daily-card', 'click', handleClaimDailyStreak);
 safeAddListener('btn-hero-claim', 'click', handleClaimDailyStreak);
 
 safeAddListener('btn-copy-ref', 'click', () => {
+    triggerHaptic('success');
     const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
     copyTextToClipboard(link, t("msg_copied"));
 });
 
 // Tactical Quick Tiles Event Listeners
 safeAddListener('tile-tasks', 'click', () => {
+    triggerHaptic('medium');
     const questsSection = document.getElementById('quests-container') || document.getElementById('lbl-quests-title');
     if (questsSection) {
         questsSection.scrollIntoView({ behavior: 'smooth' });
@@ -3045,15 +3073,18 @@ safeAddListener('tile-tasks', 'click', () => {
 });
 
 safeAddListener('tile-recruit', 'click', () => {
+    triggerHaptic('success');
     const link = `https://t.me/darktownuz_bot?start=ref_${userId}`;
     copyTextToClipboard(link, t("msg_copied") || "Referral havolasi nusxalandi!");
 });
 
 safeAddListener('tile-territory', 'click', () => {
+    triggerHaptic('medium');
     switchTab('match');
 });
 
 safeAddListener('tile-shop-quick', 'click', () => {
+    triggerHaptic('medium');
     switchTab('shop');
 });
 
