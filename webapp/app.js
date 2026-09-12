@@ -33,6 +33,7 @@ if (tg) {
     } catch(e) {
         console.error("tg expand/ready error:", e);
     }
+}
 // Telegram Haptic Feedback Engine
 function triggerHaptic(type = 'light') {
     if (!tg || !tg.HapticFeedback) return;
@@ -481,7 +482,6 @@ async function loadProfile() {
         
         // VIP Checks
         const isVip = data.user.is_vip === 1;
-        const avatarEl = document.getElementById('user-avatar');
         const bgCardEl = document.getElementById('vip-bg-card');
         const bgInputEl = document.getElementById('vip-bg-url');
         
