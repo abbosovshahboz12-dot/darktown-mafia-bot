@@ -177,7 +177,7 @@ async def lobby_timer(bot: Bot, game: Game):
     except asyncio.CancelledError:
         pass
 
-@router.message(Command("newgame"))
+@router.message(Command("game", "newgame", "play", "oyin", "startgame"))
 async def cmd_newgame(message: types.Message, bot: Bot):
     chat_id = message.chat.id
     lang = await db.get_group_language(chat_id)
@@ -965,7 +965,7 @@ async def cmd_forceclose(message: types.Message, bot: Bot):
     
     await message.answer("🚨 **O'yin majburan to'xtatildi!** Barcha cheklovlar bekor qilindi va guruh ochildi.")
 
-@router.message(Command("groupboard", "gtop"))
+@router.message(Command("top", "groupboard", "gtop", "reyting", "leaderboard"))
 async def cmd_groupboard(message: types.Message):
     chat_id = message.chat.id
     lang = await db.get_group_language(chat_id)
@@ -1018,6 +1018,47 @@ async def cmd_groupboard(message: types.Message):
             
     await message.answer(text, parse_mode="Markdown")
             
+@router.message(Command("stats", "statistika", "profile", "profil", "me"))
+async def cmd_group_stats(message: types.Message):
+    user_id = message.from_user.id
+    first_name = message.from_user.first_name or "Mafiozi"
+    username = message.from_user.username or ""
+    chat_id = message.chat.id
+    lang = await db.get_group_language(chat_id)
+    
+    user, stats, inventory, achievements = await db.get_full_profile_data(user_id, username, first_name)
+    level = user.get('level', 1)
+    coins = user.get('coins', 0)
+    xp = user.get('xp', 0)
+    wins = stats.get('wins', 0)
+    games = stats.get('games_played', 0)
+    win_rate = f"{(wins / games * 100):.1f}%" if games > 0 else "0%"
+    
+    rank_title = "ASSOCIATE"
+    if level >= 30 or wins >= 100:
+        rank_title = "GODFATHER (DON)"
+    elif level >= 20 or wins >= 50:
+        rank_title = "UNDERBOSS"
+    elif level >= 10 or wins >= 20:
+        rank_title = "CAPO"
+    elif level >= 5 or wins >= 5:
+        rank_title = "SOLDATO"
+        
+    text = (
+        f"👤 **{first_name}** | **DarkTown Mafiozi**\n\n"
+        f"🎖 **Unvon**: `{rank_title}`\n"
+        f"⭐ **Daraja**: `{level}` ({xp} XP)\n"
+        f"💰 **Tangalar**: `{coins:,}` tanga\n"
+        f"🎮 **O'yinlar**: `{games}` ta\n"
+        f"🏆 **G'alabalar**: `{wins}` ta ({win_rate})\n"
+    )
+    from config import WEBAPP_URL
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        from aiogram.types import WebAppInfo
+        kb.add(types.InlineKeyboardButton(text="📱 Profilni Ochish", web_app=WebAppInfo(url=WEBAPP_URL)))
+    await message.answer(text, reply_markup=kb.as_markup() if WEBAPP_URL else None, parse_mode="Markdown")
+
 async def is_user_group_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     if ADMIN_ID and user_id == ADMIN_ID:
         return True
